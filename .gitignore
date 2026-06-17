@@ -427,3 +427,40 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Visual Studio
+.vs/
+.vscode/
+bin 
+*.user
+*.suo
+*.cache
+*.sln.docstates
+
+# Nuget
+packages/
+.nuget/
+
+# SQL server 
+*.mdf
+*.ldf
+*.ndf
+
+# Entity Framework
+Migrations/
+
+# Local Database Files
+App_Data/
+
+# IDE
+.Idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment Variables
+.env
