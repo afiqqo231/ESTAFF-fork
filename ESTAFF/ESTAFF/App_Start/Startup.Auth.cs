@@ -12,9 +12,14 @@ namespace ESTAFF
     {
         public void ConfigureAuth(IAppBuilder app)
         {
+            app.CreatePerOwinContext(ApplicationDbContext.Create);
+            app.CreatePerOwinContext<ApplicationUserManager>(ApplicationUserManager.Create);
+            app.CreatePerOwinContext<ApplicationSignInManager>(ApplicationSignInManager.Create);
+            app.CreatePerOwinContext<ApplicationRoleManager>(ApplicationRoleManager.Create);
+
             app.UseCookieAuthentication(new CookieAuthenticationOptions
             {
-                Authenticationtype = DefaultAuthenticationTypes.ApplicationCookie,
+                AuthenticationType = DefaultAuthenticationTypes.ApplicationCookie,
                 LoginPath = new PathString("/Account/Login"),
                 ExpireTimeSpan = TimeSpan.FromHours(8),
                 SlidingExpiration = true
