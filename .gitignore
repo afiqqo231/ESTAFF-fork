@@ -464,3 +464,5 @@ Thumbs.db
 
 # Environment Variables
 .env
+
+**/Web.config
