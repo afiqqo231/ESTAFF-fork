@@ -20,7 +20,7 @@ namespace ESTAFF
             app.UseCookieAuthentication(new CookieAuthenticationOptions
             {
                 AuthenticationType = DefaultAuthenticationTypes.ApplicationCookie,
-                LoginPath = new PathString("/Account/Login"),
+                LoginPath = new PathString("/Auth/Login"),
                 ExpireTimeSpan = TimeSpan.FromHours(8),
                 SlidingExpiration = true
             });

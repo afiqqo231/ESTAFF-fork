@@ -1,0 +1,70 @@
+﻿body {
+	background: linear-gradient(135deg, #1e3a5f 0%, #2d6a9f 100%);
+	min-height: 100vh;
+	display: flex;
+	align-items: center;
+}
+
+/* Card Container */
+.auth-card {
+	border: none;
+	border-radius: 15px;
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.auth-header {
+	background: linear-gradient(135deg, #1e3a5f, #2d6a9f);
+	color: white;
+	border-radius: 16px 16px 0 0;
+	padding: 2rem;
+	text-align: center;
+}
+
+.auth-header p {
+	opacity: 0.75;
+	margin-top: 0.5rem;
+	margin-bottom: 0;
+}
+
+/* Form Styles */
+.form-control:focus,
+.form-control:focus {
+	border-color: #2d6a9f;
+	box-shadow: 0 0 0 0.2rem rgba(45, 106, 159, 0.25);
+}
+
+/* Button Styles */
+.btn-auth {
+	background: linear-gradient(135deg, #1e3a5f, #2d6a9f);
+	border: none;
+	color: white;
+	padding: 12px;
+	font-size: 1rem;
+	border-radius: 8px;
+	width: 100%;
+}
+
+.btn-auth:hover {
+	opacity: 0.9;
+	color: white;
+}
+
+/* Role Selection Styles */
+.role-card {
+	border: 2px solid #dee2e6;
+	border-radius: 12px;
+	padding: 1rem;
+	cursor: pointer;
+	transition: all 0.2s;
+	text-align: center;
+}
+
+.role-card:hover {
+	border-color: #2d6a9f;
+	background: #f0f7ff;
+}
+
+.role-card.selected {
+	border-color: #2d6a9f;
+	background: #e8f4fd;
+}
