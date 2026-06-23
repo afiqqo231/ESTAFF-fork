@@ -12,21 +12,28 @@ namespace ESTAFF.Controllers
     public class AccountController : Controller
     {
         private ApplicationUserManager _userManager;
-        private ApplicationSingManager _signInManager;
+        private ApplicationSignInManager _signInManager;
         private ApplicationRoleManager _roleManager;
 
         public ApplicationUserManager UserManager
         {
             get => _userManager ?? HttpContext.GetOwinContext()
-                .GetUserManaeger<ApplicationUserManager>();
+                .GetUserManager<ApplicationUserManager>();
             private set => _userManager = value;
         }
 
-        public ApplicationSignManager SignInManager
+        public ApplicationSignInManager SignInManager
         {
             get => _signInManager ?? HttpContext.GetOwinContext()
-                .Get<ApplicationSignManager>();
+                .Get<ApplicationSignInManager>();
             private set => _signInManager = value;
+        }
+
+        public ApplicationRoleManager RoleManager
+        {
+            get => _roleManager ?? HttpContext.GetOwinContext()
+                .Get<ApplicationRoleManager>();
+            private set => _roleManager = value;
         }
 
         private IAuthenticationManager AuthenticationManager =>
@@ -45,7 +52,7 @@ namespace ESTAFF.Controllers
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Login(LoginViewModel model, string returnUrl)
         {
-            if (!ModelState.IsValid) return View(model);
+            if (!ModelState.IsValid) 
                 return View(model);
 
             var result = await SignInManager.PasswordSignInAsync(
@@ -55,11 +62,11 @@ namespace ESTAFF.Controllers
             switch (result)
             {
                 case SignInStatus.Success:
-                    var user = await UserManager.FindByEmmailAsync(model.Email);
+                    var user = await UserManager.FindByEmailAsync(model.Email);
                     return RedirectToRoleDashboard(user.Role);
 
                 case SignInStatus.LockedOut:
-                    model.State.AddModelError("", "Your account is locked. Try again in 5 minutes.");
+                    ModelState.AddModelError("", "Your account is locked. Try again in 5 minutes.");
                     return View(model);
                 
                 case SignInStatus.Failure:
@@ -93,7 +100,7 @@ namespace ESTAFF.Controllers
                 Role = model.Role
             };
 
-            var result = await UserManaer.CreateAsync(user, model.Password);
+            var result = await UserManager.CreateAsync(user, model.Password);
 
             if (result.Succeeded)
             {
