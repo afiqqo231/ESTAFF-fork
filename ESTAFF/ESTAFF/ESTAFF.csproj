@@ -168,6 +168,7 @@
     <Compile Include="Models\Data\Staff.cs" />
     <Compile Include="Models\Data\TaskHistory.cs" />
     <Compile Include="Models\Data\TaskItem.cs" />
+    <Compile Include="Models\ViewModels\AccountViewModels.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Startup.cs" />
   </ItemGroup>
