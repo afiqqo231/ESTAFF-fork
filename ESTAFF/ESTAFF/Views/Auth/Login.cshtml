@@ -62,7 +62,7 @@
                                 @Html.ValidationMessageFor(m => m.Password, "", new { @class = "text-danger small" })
                             </div>
 
-                            <div class="mb-4 d-flex justify-content-between align-items-center">
+                            <div class="mb-4">
                                 <div class="form-check">
                                     @Html.CheckBoxFor(m => m.RememberMe, new { @class = "form-check-input" })
                                     @Html.LabelFor(m => m.RememberMe, new { @class = "form-check-label" })
@@ -73,16 +73,10 @@
                                 <i class="fas fa-sign-in-alt me-2"></i> Sign In
                             </button>
 
-                            <hr class="my-4" />
-
-                            <div class="text-center">
-                                <p class="mb-0 text-muted">
-                                    Don't have an account? 
-                                <a href="@Url.Action("Register", "Auth")" class="text-decoration-none fw-semibold">
-                                    Register here
-                                </a>
+                            <p class="text-center text-muted small mt-4 mb-0">
+                                <i class="fas fa-info-circle me-1"></i> 
+                                Contact your manager if you don't have an account.
                             </p>
-                        </div>
                         }
                     </div>
                 </div>

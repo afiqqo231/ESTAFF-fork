@@ -43,6 +43,13 @@ namespace ESTAFF.Controllers
         [AllowAnonymous]
         public ActionResult Login(string returnUrl)
         {
+            if (User.Identity.IsAuthenticated)
+            {
+                var userId = User.Identity.GetUserId();
+                var user = UserManager.FindById(userId);
+                return RedirectToRoleDashboard(user?.Role);
+            }
+
             ViewBag.ReturnUrl = returnUrl;
             return View();
         }
@@ -76,48 +83,6 @@ namespace ESTAFF.Controllers
             }
         }
 
-        // GET: Auth/Register
-        [AllowAnonymous]
-        public ActionResult Register()
-        {
-            return View();
-        }
-
-        // POST: Auth/Register
-        [HttpPost]
-        [AllowAnonymous]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Register(RegisterViewModel model)
-        {
-            if (!ModelState.IsValid) 
-                return View(model);
-
-            var user = new ApplicationUser
-            {
-                UserName = model.Email,
-                Email = model.Email,
-                FullName = model.FullName,
-                Role = model.Role
-            };
-
-            var result = await UserManager.CreateAsync(user, model.Password);
-
-            if (result.Succeeded)
-            {
-                // Ensure role exists
-                await EnsureRoleExists(model.Role);
-                await UserManager.AddToRoleAsync(user.Id, model.Role);
-
-                // sign in after registration
-                await SignInManager.SignInAsync(user, isPersistent: false, rememberBrowser: false);
-                
-                return RedirectToRoleDashboard(model.Role);
-            }
-
-            AddErrors(result);
-            return View(model);
-        }
-
         // POST: Auth/Logout
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -143,13 +108,6 @@ namespace ESTAFF.Controllers
             await RoleManager.CreateAsync(
                 new Microsoft.AspNet.Identity.EntityFramework.IdentityRole (roleName)
             );  
-        }
-
-        // Helper Methods - Add errors to ModelState
-        private void AddErrors(IdentityResult result)
-        {
-            foreach (var error in result.Errors)
-                ModelState.AddModelError("", error);
         }
 
         protected override void Dispose(bool disposing)

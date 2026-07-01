@@ -1,0 +1,170 @@
+﻿/* ===========================
+   STAT CARDS
+=========================== */
+.stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: transform 0.2s, box-shadow 0.2s;
+    height: 100%;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+}
+
+.stat-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    margin-bottom: 1rem;
+}
+
+.stat-icon.blue   { background: #e8f4fd; color: #2d6a9f; }
+.stat-icon.green  { background: #e8f8f0; color: #1a7a4a; }
+.stat-icon.orange { background: #fff3e0; color: #e65100; }
+.stat-icon.red    { background: #fdecea; color: #c62828; }
+.stat-icon.purple { background: #f3e8fd; color: #6a1a9a; }
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1e3a5f;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+}
+
+.stat-label {
+    color: #6c757d;
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+/* ===========================
+   DATA TABLE
+=========================== */
+.data-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border: none;
+    overflow: hidden;
+}
+
+.data-card-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.data-card-header h6 {
+    margin: 0;
+    font-weight: 700;
+    color: #1e3a5f;
+}
+
+.table th {
+    background: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #e9ecef;
+    padding: 0.85rem 1rem;
+}
+
+.table td {
+    padding: 0.85rem 1rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.9rem;
+    color: #495057;
+}
+
+.table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+/* ===========================
+   STATUS BADGES
+=========================== */
+.status-badge {
+    padding: 0.3rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.status-pending  { background: #fff3cd; color: #856404; }
+.status-inprogress { background: #cfe2ff; color: #084298; }
+.status-complete { background: #d1e7dd; color: #0a3622; }
+.status-overdue  { background: #f8d7da; color: #842029; }
+.status-draft    { background: #e2e3e5; color: #41464b; }
+.status-submitted { background: #cfe2ff; color: #084298; }
+.status-approved { background: #d1e7dd; color: #0a3622; }
+.status-rejected { background: #f8d7da; color: #842029; }
+
+/* ===========================
+   PRIORITY BADGES
+=========================== */
+.priority-low    { background: #d1e7dd; color: #0a3622; }
+.priority-medium { background: #fff3cd; color: #856404; }
+.priority-high   { background: #f8d7da; color: #842029; }
+
+/* ===========================
+   BUTTONS
+=========================== */
+.btn-primary-custom {
+    background: linear-gradient(135deg, #1e3a5f, #2d6a9f);
+    border: none;
+    color: white;
+    border-radius: 8px;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: opacity 0.2s;
+}
+
+.btn-primary-custom:hover {
+    opacity: 0.9;
+    color: white;
+}
+
+.btn-action {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+    border-radius: 6px;
+}
+
+/* ===========================
+   EMPTY STATE
+=========================== */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #6c757d;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.3;
+}
+
+.empty-state p {
+    margin: 0;
+    font-size: 0.95rem;
+}
