@@ -22,7 +22,7 @@
 </head>
 <body>
 
-	// Sidebar
+	<!-- Sidebar -->
 	<div class="sidebar">
 		<div class="sidebar-brand">
 			<i class="fas fa-user-tie"></i>
@@ -31,16 +31,16 @@
 	</div>
 
 	<nav class="sidebar-nav">
-		<p class="nav-section-table">Main</p>
+		<p class="nav-section-label">Main</p>
 		<a href="@Url.Action("Index", "Manager")" 
 		   class="nav-link @(currentController == "Manager" && currentAction == "Index" ? "active" : "")">
 			<i class="fas fa-tachometer-alt"></i> Dashboard
 		</a>
 
-		<p class="nav-section-table">Team</p>
+		<p class="nav-section-label">Team</p>
 		<a href="@Url.Action("Staff", "Manager")"
 			class="nav-link @(currentAction == "Staff" ? "active" : "")">
-			<i class="fas fa-user"></i> My Employee
+			<i class="fas fa-user"></i> My Employees
 		</a>
 		<a href="@Url.Action("CreateStaff", "Manager")"
 			class="nav-link @(currentAction == "CreateStaff" ? "active" : "")">
@@ -67,12 +67,12 @@
 			<i class="fas fa-file-alt"></i> Pending Approvals
 			@if (ViewBag.PendingReportCount != null && ViewBag.PendingReportCount > 0)
 			{ 
-				<span class="badge bg-danger">@ViewBag.PendingReportsCount</span>
+				<span class="badge bg-danger ms-auto">@ViewBag.PendingReportsCount</span>
 			}
 		</a>
 		<a href="@Url.Action("ApprovedReport", "Manager")"
 			class="nav-link @(currentAction == "ApprovedReport" ? "active" : "")">
-			<i class="fas fa-file-check"></i> Approved Reports
+			<i class="fas fa-check-circle"></i> Approved Reports
 		</a>
 	</nav>
 
@@ -94,7 +94,7 @@
 		</div>
 	</div>
 
-	// Main Content
+	<!-- Main Content -->
 	<div class="main-content">
 		<div class="topbar">
 			<div class="topbar-title">
@@ -103,10 +103,10 @@
 			</div>
 			<div class="d-flex align-items-center gap-3">
 				<span class="badge-manager">
-					<i class="fas fa-user-tie me-2"></i> Manager
+					<i class="fas fa-user-tie me-1"></i> Manager
 				</span>
 				<span class="text-muted small">
-					<i class="fas fa-calendar me-1"></i>@DateTime.Now.ToString("dd MM yyyy")
+					<i class="fas fa-calendar me-1"></i>@DateTime.Now.ToString("dd/MM/yyyy")
 				</span>
 			</div>
 		</div>

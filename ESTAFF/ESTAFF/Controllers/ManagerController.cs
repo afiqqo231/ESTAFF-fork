@@ -30,13 +30,73 @@ namespace ESTAFF.Controllers
             SetLayoutData();
             ViewBag.PageTitle = "Manager Dashboard";
             ViewBag.PageSubtitle = "Welcome to the Manager Dashboard. Here you can manage staff and view reports.";
+            
+            var managerId = User.Identity.GetUserId();
+
+            // dashboard stats
+            var staffs = _db.Staffs
+                .Where(e => e.ManagerId == managerId)
+                .ToList();
+
+            var staffIds = staffs.Select(e => e.UserId).ToList();
+
+            // Total employees 
+            ViewBag.TotalStaff = staffs.Count;
+
+            // Total active task
+            ViewBag.TotalActiveReports = _db.Tasks
+                .Count(t => staffIds.Contains(t.AssignedToUserId)
+                    && t.Status != Models.Data.TaskStatus.Complete
+                    && t.Status != Models.Data.TaskStatus.Overdue);
+
+            // Overdue tasks
+            ViewBag.OverdueReports = _db.Tasks
+                .Count(t => staffIds.Contains(t.AssignedToUserId)
+                    && t.Status == Models.Data.TaskStatus.Overdue);
+
+            
+            // Recent tasks
+            var recentTasks = _db.Tasks
+                .Where(t => staffIds.Contains(t.AssignedToUserId))
+                .OrderByDescending(t => t.CreatedDate)
+                .Take(8)
+                .ToList();
+
+            ViewBag.RecentTasks = recentTasks;
+
+            // Recent Staff
+            var recentStaff = staffs
+                .Where(e => e.ManagerId == managerId)
+                .OrderByDescending(e => e.CreatedDate)
+                .Take(5)
+                .ToList();
+
+            ViewBag.RecentStaff = recentStaff;
+
+            // On-time completion rate
+            var onTimeCompletedTasks = _db.Tasks
+                .Count(t => staffIds.Contains(t.AssignedToUserId)
+                    && t.Status == Models.Data.TaskStatus.Complete
+                    && t.CompletedDate <= t.DueDate);
+
+            var completedTasks = _db.Tasks
+                .Where(t => staffIds.Contains(t.AssignedToUserId)
+                    && t.Status == Models.Data.TaskStatus.Complete
+                    && t.CompletedDate <= t.DueDate)
+                .Count();
+
+            ViewBag.OnTimeCompletionRate = completedTasks > 0
+                ? Math.Round((decimal)onTimeCompletedTasks / completedTasks * 100, 1)
+                : 0;
             return View();
         }
 
-        protected override void Dispose(bool disposing)
+        public ActionResult Staff()
         {
-            if (disposing) _db.Dispose();
-            base.Dispose(disposing);
+            SetLayoutData();
+            ViewBag.PageTitle = "My EHS Team";
+            ViewBag.PageSubtitle = "Manage your team members.";
+            return View();
         }
 
         public ActionResult CreateStaff()
@@ -118,5 +178,44 @@ namespace ESTAFF.Controllers
 
             return View(model);
         }
+
+        public ActionResult Tasks()
+        {
+            SetLayoutData();
+            ViewBag.PageTitle = "All Tasks";
+            ViewBag.PageSubtitle = "View and manage all EHS members tasks.";
+            return View();
+        }
+
+        public ActionResult AssignTask()
+        {
+            SetLayoutData();
+            ViewBag.PageTitle = "Assign Task";
+            ViewBag.PageSubtitle = "Create a new task and assign to a team member.";
+            return View();
+        }
+
+        public ActionResult TaskHistory()
+        {
+            SetLayoutData();
+            ViewBag.PageTitle = "Task History";
+            ViewBag.PageSubtitle = "View audit trail of all task changes";
+            return View();
+        }
+
+        public ActionResult PendingReports()
+        {
+            SetLayoutData();
+            ViewBag.PageTitle = "Pending Approvals";
+            ViewBag.PageSubtitle = "View all approved EHS reports.";
+            return View();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) _db.Dispose();
+            base.Dispose(disposing);
+        }
+
     }
 }
