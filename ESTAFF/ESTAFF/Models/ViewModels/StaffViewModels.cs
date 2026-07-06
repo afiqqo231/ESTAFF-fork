@@ -34,4 +34,58 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Hire Date")]
         public DateTime HireDate { get; set; } = DateTime.Today;
     }
+
+    public class EditStaffViewModel
+    {
+        public int StaffId { get; set; }
+
+        public string UserId { get; set; }
+
+        [Required(ErrorMessage = "Full name is required")]
+        [StringLength(256)]
+        [Display(Name = "Full Name")]
+        public string FullName { get; set; }
+
+        [Required(ErrorMessage = "Email is required")]
+        [EmailAddress]
+        [Display(Name = "Email Address")]
+        public string Email { get; set; }
+
+        [StringLength(100)]
+        [Display(Name = "Department")]
+        public string Department { get; set; }
+
+        [Required(ErrorMessage = "Hire date is required")]
+        [DataType(DataType.Date)]
+        [Display(Name = "Hire Date")]
+        public DateTime HireDate { get; set; } 
+
+        [Display(Name = "Active")]
+        public bool IsActive { get; set; } = true;
+
+        public string Role { get; set; }
+
+        // Stats
+        public int TotalTasks { get; set; }
+        public int CompletedTasks { get; set; }
+        public int PendingTasks { get; set; }
+        public int OverdueTasks { get; set; }
+        public decimal OnTimeRate { get; set; }
+    }
+
+    public class StaffListItemViewModel
+    {
+        public int StaffId { get; set; }
+        public string UserId { get; set; }
+        public string FullName { get; set; }
+        public string Email { get; set; }
+        public string Department { get; set; }
+        public DateTime HireDate { get; set; }
+        public bool IsActive { get; set; }
+        public int TotalTasks { get; set; }
+        public int CompletedTasks { get; set; }
+        public int PendingTasks { get; set; }
+        public int OverdueTasks { get; set; }
+        public decimal OnTimeRate { get; set; }
+    }
 }
