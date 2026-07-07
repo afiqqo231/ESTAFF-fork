@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Linq;
+using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
 using Microsoft.AspNet.Identity;
@@ -11,6 +12,8 @@ namespace ESTAFF.Controllers
 {
     public class AuthController : Controller
     {
+        // Application DB context
+        private ApplicationDbContext _db = new ApplicationDbContext();
         private ApplicationUserManager _userManager;
         private ApplicationSignInManager _signInManager;
         private ApplicationRoleManager _roleManager;
@@ -59,26 +62,38 @@ namespace ESTAFF.Controllers
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> Login(LoginViewModel model, string returnUrl)
         {
-            if (!ModelState.IsValid) 
+            if (!ModelState.IsValid)
                 return View(model);
 
+            // Find user by Emp Number
+            var user = _db.Users.FirstOrDefault(
+                u => u.EmpNumber == model.EmpNumber ||
+                (u.Email == model.EmpNumber && u.EmpNumber == null)
+            );
+
+            if (user == null)
+            {
+                ModelState.AddModelError("", "Invalid employee number or password.");
+                return View(model);
+            }
+
+            // Sign in using found username
             var result = await SignInManager.PasswordSignInAsync(
-                model.Email, model.Password, model.RememberMe, shouldLockout: true
+                user.UserName, model.Password, model.RememberMe, shouldLockout: true
             );
 
             switch (result)
             {
                 case SignInStatus.Success:
-                    var user = await UserManager.FindByEmailAsync(model.Email);
                     return RedirectToRoleDashboard(user.Role);
-
-                case SignInStatus.LockedOut:
-                    ModelState.AddModelError("", "Your account is locked. Try again in 5 minutes.");
-                    return View(model);
                 
+                case SignInStatus.LockedOut:
+                    ModelState.AddModelError("", "Account locked. Try again in 5minutes.");
+                    return View(model);
+
                 case SignInStatus.Failure:
                 default:
-                    ModelState.AddModelError("", "Invalid Email or Password.");
+                    ModelState.AddModelError("", "Invalid employee number or password.");
                     return View(model);
             }
         }
@@ -117,6 +132,7 @@ namespace ESTAFF.Controllers
                 _userManager?.Dispose();
                 _signInManager?.Dispose();
                 _roleManager?.Dispose();
+                _db?.Dispose();
             }
             base.Dispose(disposing);
         }

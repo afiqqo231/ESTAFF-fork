@@ -77,14 +77,14 @@
 <div class="row g-4">
 
 	<!-- Recent Tasks -->
-	<div class="col-lg-8">
+	<div class="col-12">
         <div class="section-card">
             <div class="section-header">
                 <h6>
                     Recent Tasks
                 </h6>
                 <a href="@Url.Action("Tasks", "Manager")" class="btn btn-sm btn-primary-custom">
-                    View All →
+                    View All 
                 </a>
             </div>
             <div class="section-body">
@@ -116,52 +116,6 @@
                     <div class="empty-message">
                         <i class="fas fa-inbox"></i>
                         <p>No tasks assigned yet</p>
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
-
-	<!-- Recent Staffs -->
-	<div class="col-lg-4">
-        <div class="section-card">
-            <div class="section-header">
-                <h6>
-                    Recent Hires
-                </h6>
-            </div>
-            <div class="section-body">
-				@if (ViewBag.RecentEmployees != null && ViewBag.RecentEmployees.Count > 0)
-                {
-                    foreach (var emp in ViewBag.RecentEmployees)
-                    {
-                        var user = emp.User;
-                        var fullName = Convert.ToString(user.FullName) ?? string.Empty;
-                        var initialsBuilder = new System.Text.StringBuilder();
-                        foreach (var part in fullName.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries))
-                        {
-                            initialsBuilder.Append(char.ToUpperInvariant(part[0]));
-                        }
-                        var initials = initialsBuilder.ToString();
-                        <div class="employee-item">
-                            <div class="employee-info">
-                                <div class="employee-avatar">@initials</div>
-                                <div class="employee-details">
-                                    <h6>@user.FullName</h6>
-                                    <p>@emp.Department • Hired @emp.HireDate.ToString("MMM dd")</p>
-                                </div>
-                            </div>
-                        </div>
-                    }
-				}
-                else
-                {
-                    <div class="empty-message">
-                        <i class="fas fa-user-plus"></i>
-                        <p class="small">No employees yet</p>
-                        <a href="@Url.Action("CreateStaff", "Manager")" class="btn btn-sm btn-primary-custom mt-2">
-                            Add Employee
-                        </a>
                     </div>
                 }
             </div>

@@ -96,9 +96,57 @@ namespace ESTAFF.Controllers
             SetLayoutData();
             ViewBag.PageTitle = "My EHS Team";
             ViewBag.PageSubtitle = "Manage your team members.";
-            return View();
+
+            var managerId = User.Identity.GetUserId();
+
+            var staffs = _db.Staffs
+                .Where(e => e.ManagerId == managerId)
+                .ToList();
+
+            var staff = staffs.Select(e => new StaffListItemViewModel
+            {
+                StaffId = e.StaffId,
+                UserId = e.UserId,
+                FullName = e.User.FullName,
+                EmpNumber = e.User.EmpNumber,
+                Email = e.User.Email,
+                HireDate = e.HireDate,
+                IsActive = e.User.IsActive,
+
+                TotalTasks = _db.Tasks
+                    .Count(t => t.AssignedToUserId == e.UserId),
+                CompletedTasks = _db.Tasks
+                    .Count(t => t.AssignedToUserId == e.UserId
+                        && t.Status == Models.Data.TaskStatus.Complete),
+                PendingTasks = _db.Tasks
+                    .Count(t => t.AssignedToUserId == e.UserId
+                        && (t.Status == Models.Data.TaskStatus.Pending
+                            || t.Status == Models.Data.TaskStatus.InProgress)),
+
+                OnTimeRate = CalculateOnTimeRate(e.UserId)
+            })
+            .OrderByDescending(e => e.HireDate)
+            .ToList();
+
+            return View("Staff", staff);
         }
 
+        private decimal CalculateOnTimeRate(string userId)
+        {
+            var completedTasks = _db.Tasks
+                .Where(t => t.AssignedToUserId == userId
+                    && t.Status == Models.Data.TaskStatus.Complete)
+                .ToList();
+
+            if (completedTasks.Count == 0)
+                return 0;
+            
+            var onTime = completedTasks
+                .Count(t => t.CompletedDate != null
+                    && t.CompletedDate <= t.DueDate);
+
+            return Math.Round((decimal)onTime / completedTasks.Count * 100, 1);
+        }
         public ActionResult CreateStaff()
         {
             SetLayoutData();
@@ -123,23 +171,33 @@ namespace ESTAFF.Controllers
             var roleManager = HttpContext.GetOwinContext()
                 .Get<ApplicationRoleManager>();
 
+            // Check if emp number already exists
+            var existingNumber = await userManager.FindByEmailAsync(model.EmpNumber);
+            if (existingNumber != null)
+            {
+                ModelState.AddModelError("EmpNumber", "An account with this employee number already exists.");
+                return View(model);
+            }
+
             // Check if email already exists
-            var existingUser = await userManager.FindByEmailAsync(model.Email);
-            if (existingUser != null)
+            var existingEmail = await userManager.FindByEmailAsync(model.Email);
+            if (existingEmail != null)
             {
                 ModelState.AddModelError("Email", "An account with this email already exists.");
                 return View(model);
             }
 
-            // Create the use acc
+            // Create the user acc
             var newUser = new ApplicationUser
             {
                 UserName = model.Email,
                 Email = model.Email,
                 FullName = model.FullName,
+                EmpNumber = model.EmpNumber,
                 Role = model.Role,
                 IsActive = true,
-                CreatedDate = DateTime.Now
+                CreatedDate = DateTime.Now,
+                LastModifiedDate = DateTime.Now
             };
 
             var result = await userManager.CreateAsync(newUser, model.Password);
@@ -161,7 +219,6 @@ namespace ESTAFF.Controllers
                     {
                         UserId = newUser.Id,
                         ManagerId = managerId,
-                        Department = model.Department,
                         HireDate = model.HireDate,
                         CreatedDate = DateTime.Now
                     };
@@ -169,7 +226,7 @@ namespace ESTAFF.Controllers
                     await _db.SaveChangesAsync();
                 }
 
-                TempData["SuccessMessage"] = $"Account for {model.FullName} created successfully.";
+                TempData["SuccessMessage"] = $"Account for {model.FullName} {model.EmpNumber} created successfully!";
                 return RedirectToAction("Staff");
             }
 

@@ -9,6 +9,7 @@ namespace ESTAFF.Models.Data
     {
         public string FullName { get; set; }
         public string Role { get; set; }
+        public string EmpNumber { get; set; }
         public bool IsActive { get; set; }
         public DateTime CreatedDate { get; set; } = DateTime.Now;
         public DateTime LastModifiedDate { get; set; } = DateTime.Now;

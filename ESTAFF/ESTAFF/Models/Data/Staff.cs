@@ -7,7 +7,7 @@ namespace ESTAFF.Models.Data
     public class Staff
     {
         [Key]
-        public string staffId { get; set; }
+        public string StaffId { get; set; }
 
         [Required]
         [ForeignKey("User")]

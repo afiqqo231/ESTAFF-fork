@@ -163,6 +163,14 @@
     <Compile Include="Migrations\202606220614114_InitialCreate.Designer.cs">
       <DependentUpon>202606220614114_InitialCreate.cs</DependentUpon>
     </Compile>
+    <Compile Include="Migrations\202607060639222_AddEmpNumber.cs" />
+    <Compile Include="Migrations\202607060639222_AddEmpNumber.Designer.cs">
+      <DependentUpon>202607060639222_AddEmpNumber.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202607060731244_EmpNumber.cs" />
+    <Compile Include="Migrations\202607060731244_EmpNumber.Designer.cs">
+      <DependentUpon>202607060731244_EmpNumber.cs</DependentUpon>
+    </Compile>
     <Compile Include="Migrations\Configuration.cs" />
     <Compile Include="Models\Data\ApplicationDbContext.cs" />
     <Compile Include="Models\Data\ApplicationIdentity.cs" />
@@ -253,6 +261,7 @@
     <Content Include="Views\Shared\_StaffLayout.cshtml" />
     <Content Include="Views\Manager\Index.cshtml" />
     <Content Include="Views\Manager\CreateStaff.cshtml" />
+    <Content Include="Views\Manager\Staff.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
@@ -266,6 +275,12 @@
   <ItemGroup>
     <EmbeddedResource Include="Migrations\202606220614114_InitialCreate.resx">
       <DependentUpon>202606220614114_InitialCreate.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202607060639222_AddEmpNumber.resx">
+      <DependentUpon>202607060639222_AddEmpNumber.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202607060731244_EmpNumber.resx">
+      <DependentUpon>202607060731244_EmpNumber.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <PropertyGroup>

@@ -30,16 +30,27 @@
 						</div>
 
 						<div class="col-md-6">
-							@Html.LabelFor(m => m.Email, new { @class = "form-label fw-semibold" })
+							@Html.LabelFor(m => m.EmpNumber, new { @class = "form-label fw-semibold" })
 							<div class="input-group">
 								<span class="input-group-text">
-									<i class="fas fa-envelope text-muted"></i>
+									<i class="fas fa-id-badge text-muted"></i>
 								</span>
-								@Html.TextBoxFor(m => m.Email, new { @class = "form-control", placeholder = "Email Address" })
+								@Html.TextBoxFor(m => m.EmpNumber, new { @class = "form-control", placeholder = "e.g. INT001" })
 							</div>
-							@Html.ValidationMessageFor(m => m.Email, "", new { @class = "text-danger small" })
+							@Html.ValidationMessageFor(m => m.EmpNumber, "", new { @class = "text-danger small" })
 						</div>
 						
+						<div class="col-md-6">
+                            @Html.LabelFor(m => m.Email, new { @class = "form-label fw-semibold" })
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-envelope text-muted"></i>
+                                </span>
+                                @Html.TextBoxFor(m => m.Email, new { @class = "form-control", placeholder = "Email address" })
+                            </div>
+                            @Html.ValidationMessageFor(m => m.Email, "", new { @class = "text-danger small" })
+                        </div>
+
 						<div class="col-md-6">
 							@Html.LabelFor(m => m.Password, new { @class = "form-label fw-semibold" })
 							<div class="input-group">
@@ -50,17 +61,6 @@
 							</div>
 							@Html.ValidationMessageFor(m => m.Password, "", new { @class = "text-danger small" })
 							<small class="text-muted">Staff will use this to log in.</small>
-						</div>
-
-						<div class="col-md-6">
-							@Html.LabelFor(m => m.Department, new { @class = "form-label fw-semibold" })
-							<div class="input-group">
-								<span class="input-group-text">
-									<i class="fas fa-building text-muted"></i>
-								</span>
-								@Html.TextBoxFor(m => m.Department, new { @class = "form-control", placeholder = "e.g. SHO" })
-							</div>
-							@Html.ValidationMessageFor(m => m.Department, "", new { @class = "text-danger small" })
 						</div>
 
 						<div class="col-md-6">
@@ -78,7 +78,7 @@
 							@Html.LabelFor(m => m.Role, new { @class = "form-label fw-semibold" })
 							<div class="role-select-group">
 								<div class="role-option" onclick="selectRole('Staff', this)">
-									<i class="fas fa-user text-muted"></i>
+									<i class="fas fa-user text-success"></i>
 									<span>Staff</span>
 								</div>
 								<div class="role-option" onclick="selectRole('Manager', this)">
@@ -95,10 +95,10 @@
 
 					<div class="d-flex gap-2 justify-content-end">
 						<a href="@Url.Action("Staff", "Manager")" class="btn btn-outline-secondary">
-							<i class="fas fa-time me-1"></i>Cancel
+							<i class="fas fa-times me-1"></i>Cancel
 						</a>
 						<button type="submit" class="btn btn-primary">
-							<i class="fas fa-user-plus me-1"></i>Create Account
+							<i class="fas fa-user-plus me-2"></i>Create Account
 						</button>
 					</div>
 				}

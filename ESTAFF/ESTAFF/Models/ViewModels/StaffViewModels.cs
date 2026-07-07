@@ -10,6 +10,11 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Full Name")]
         public string FullName { get; set; }
 
+        [Required(ErrorMessage = "Employee number is required")]
+        [StringLength(50)]
+        [Display(Name = "Employee Number")]
+        public string EmpNumber { get; set; }
+
         [Required(ErrorMessage = "Email is required.")]
         [EmailAddress(ErrorMessage = "Invalid email address.")]
         [Display(Name = "Email Address")]
@@ -24,10 +29,6 @@ namespace ESTAFF.Models.ViewModels
         [Required(ErrorMessage = "Role is required.")]
         [Display(Name = "Role")]
         public string Role { get; set; }
-
-        [StringLength(100)]
-        [Display(Name = "Department")]
-        public string Department { get; set; }
 
         [Required(ErrorMessage = "Hire date is required.")]
         [DataType(DataType.Date)]
@@ -46,14 +47,15 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Full Name")]
         public string FullName { get; set; }
 
+        [Required(ErrorMessage = "Employee number is required")]
+        [StringLength(50)]
+        [Display(Name = "Employee Number")]
+        public string EmpNumber { get; set; }
+
         [Required(ErrorMessage = "Email is required")]
         [EmailAddress]
         [Display(Name = "Email Address")]
         public string Email { get; set; }
-
-        [StringLength(100)]
-        [Display(Name = "Department")]
-        public string Department { get; set; }
 
         [Required(ErrorMessage = "Hire date is required")]
         [DataType(DataType.Date)]
@@ -75,17 +77,16 @@ namespace ESTAFF.Models.ViewModels
 
     public class StaffListItemViewModel
     {
-        public int StaffId { get; set; }
+        public string StaffId { get; set; }
         public string UserId { get; set; }
         public string FullName { get; set; }
+        public string EmpNumber { get; set; }
         public string Email { get; set; }
-        public string Department { get; set; }
         public DateTime HireDate { get; set; }
         public bool IsActive { get; set; }
         public int TotalTasks { get; set; }
         public int CompletedTasks { get; set; }
         public int PendingTasks { get; set; }
-        public int OverdueTasks { get; set; }
         public decimal OnTimeRate { get; set; }
     }
 }

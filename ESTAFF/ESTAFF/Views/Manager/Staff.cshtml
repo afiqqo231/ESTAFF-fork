@@ -1,0 +1,134 @@
+﻿@model List<ESTAFF.Models.ViewModels.StaffListItemViewModel>
+@{
+	ViewBag.Title = "Employees";
+	Layout = "~/Views/Shared/_ManagerLayout.cshtml";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+	<div>
+		<p class="text-muted mb-0">
+			You have <strong>@Model.Count</strong> employee@(Model.Count != 1 ? "s" : "")
+		</p>
+	</div>
+	<a href="@Url.Action("CreateStaff", "Manager")" class="btn btn-primary-custom">
+		<i class="fas fa-user-plus me-2"></i> Add New Ehs Team Member
+	</a>
+</div>
+
+@if (Model.Count > 0)
+{
+	<div class="data card">
+		<div class="employee-table-wrapper">
+			<table class="table employee-table mb-0">
+				<thead>
+					<tr>
+						<th>Name</th>
+						<th>Employee No.</th>
+						<th>Email</th>
+						<th>Hired</th>
+						<th>Tasks</th>
+						<th>On-Time</th>
+						<th>Status</th>
+						<th>Actions</th>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (var emp in Model)
+					{
+						var initials = string.Concat(emp.FullName.Split(' ')
+							.Where(w => w.Length > 0)
+							.Select(w => w[0].ToString().ToUpper()));
+						<tr>
+							<td>
+								<div class="d-flex align-items-center gap-2">
+									<div class="employee-avatar">
+										style="width:32px; height:32px; font-size:0.75rem;">
+										@initials
+									</div>
+									<strong>@emp.FullName</strong>
+								</div>
+							</td>
+							<td>
+								<span class=="badge bg-light text-dark fw-semibold">
+									@emp.EmpNumber
+								</span>
+							</td>
+							<td>
+								<small class="text-muted">@emp.Email</small>
+							</td>
+							<td>
+								<small class="text-muted">
+									@emp.HireDate.ToString("MMM dd, yyyy")</small>
+							</td>
+							<td>
+								<span class="badge bg-light text-dark">
+									@emp.TotalTasks task@(emp.TotalTasks != 1 ? "s" : "")
+								</span>
+								@if (emp.TotalTasks > 0)
+								{
+									<small class="text-muted d-block mt-1">
+										@emp.CompletedTasks completed
+									</small>
+								}
+							</td>
+							<td>
+								<strong class="text-success">
+									@emp.OnTimeRate%
+								</strong>
+								<small class-"text-muted d-block">
+									on-time
+								</small>
+							</td>
+							<td>
+								@if (emp.IsActive)
+								{
+									<span class="employee-badge active">
+										<i class="fas fa-check-circle"></i> Active
+									</span>
+								}
+								else
+								{
+                                    <span class="employee-badge inactive">
+                                        <i class="fas fa-times-circle"></i> Inactive
+                                    </span>
+                                }
+                            </td>
+                            <td>
+                                <div class="employee-actions">
+                                    <a href="@Url.Action("EmployeeDetails", "Manager", 
+                                           new { id = emp.StaffId })"
+                                       class="btn btn-sm btn-outline-primary btn-sm-icon"
+                                       title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="@Url.Action("EditEmployee", "Manager", 
+                                           new { id = emp.StaffId })"
+                                       class="btn btn-sm btn-outline-secondary btn-sm-icon"
+                                       title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+			</table>
+		</div>
+	</div>
+}
+else
+{
+	<div class="data-card">
+        <div class="empty-state py-5">
+            <i class="fas fa-users fa-3x mb-3"></i>
+            <h5>No employees yet</h5>
+            <p class="text-muted mb-0">
+                Get started by adding your first team member.
+            </p>
+            <a href="@Url.Action("CreateStaff", "Manager")" 
+               class="btn btn-primary-custom mt-3">
+                <i class="fas fa-user-plus me-2"></i>Add Your First Employee
+            </a>
+        </div>
+    </div>
+}

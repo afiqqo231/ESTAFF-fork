@@ -4,10 +4,9 @@ namespace ESTAFF.Models.ViewModels
 {
     public class LoginViewModel
     {
-        [Required(ErrorMessage = "Please enter your username.")]
-        [EmailAddress(ErrorMessage = "Please enter a valid email address.")]
-        [Display(Name = "Email")]
-        public string Email { get; set; }
+        [Required(ErrorMessage = "Employee Number is required.")]
+        [Display(Name = "Employee Number")]
+        public string EmpNumber { get; set; }
 
         [Required(ErrorMessage = "Password is required.")]
         [DataType(DataType.Password)]
