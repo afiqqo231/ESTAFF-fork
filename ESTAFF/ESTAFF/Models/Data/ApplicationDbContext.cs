@@ -9,59 +9,44 @@ namespace ESTAFF.Models.Data
         {
         }
 
-        public virtual DbSet<Staff> Staffs { get; set; }
         public virtual DbSet<TaskItem> Tasks { get; set; }
         public virtual DbSet<TaskHistory> TaskHistories { get; set; }
         public virtual DbSet<Report> Reports { get; set; }
-        public virtual DbSet<ReportApproval> Reportapprovals { get; set; }
 
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Staff relationships
-            modelBuilder.Entity<Staff>()
-                .HasRequired(e => e.User)
-                .WithMany(u => u.ManagedStaffs)
-                .HasForeignKey(e => e.UserId)
-                .WillCascadeOnDelete(false);
-
-            modelBuilder.Entity<Staff>()
-                .HasRequired(e => e.Manager)
-                .WithMany()
-                .HasForeignKey(e => e.ManagerId)
-                .WillCascadeOnDelete(false);
-
                 // TaskItem relationships
             modelBuilder.Entity<TaskItem>()
                 .HasRequired(t => t.AssignedToUser)
-                .WithMany(u => u.AssignedTasks)
+                .WithMany()
                 .HasForeignKey(t => t.AssignedToUserId)
                 .WillCascadeOnDelete(false);
 
             modelBuilder.Entity<TaskItem>()
                 .HasRequired(t => t.CreatedByUser)
-                .WithMany(u => u.CreatedTasks)
+                .WithMany()
                 .HasForeignKey(t => t.CreatedByUserId)
                 .WillCascadeOnDelete(false);
 
-            // Report relationships
-            modelBuilder.Entity<Report>()
-                .HasRequired(r => r.Staff)
-                .WithMany()
-                .HasForeignKey(r => r.StaffId)
+
+            modelBuilder.Entity<TaskHistory>()
+                .HasRequired(h => h.Task)
+                .WithMany(t => t.Histories)
+                .HasForeignKey(h => h.TaskId)
                 .WillCascadeOnDelete(true);
 
-            modelBuilder.Entity<Report>()
-                .HasOptional(r => r.SubmittedByUser)
-                .WithMany(u => u.SubmittedReports)
-                .HasForeignKey(r => r.SubmittedByUserId)
+            modelBuilder.Entity<TaskHistory>()
+                .HasRequired(h => h.ChangedByUser)
+                .WithMany()
+                .HasForeignKey(h => h.ChangedByUserId)
                 .WillCascadeOnDelete(false);
 
             modelBuilder.Entity<Report>()
-                .HasOptional(r => r.ApprovedByUser)
-                .WithMany(u => u.ApprovedReports)
-                .HasForeignKey(r => r.ApprovedByUserId)
+                .HasRequired(r => r.User)
+                .WithMany()
+                .HasForeignKey(r => r.UserId)
                 .WillCascadeOnDelete(false);
         }
 

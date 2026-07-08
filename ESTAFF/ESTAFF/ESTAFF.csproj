@@ -159,18 +159,6 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
-    <Compile Include="Migrations\202606220614114_InitialCreate.cs" />
-    <Compile Include="Migrations\202606220614114_InitialCreate.Designer.cs">
-      <DependentUpon>202606220614114_InitialCreate.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\202607060639222_AddEmpNumber.cs" />
-    <Compile Include="Migrations\202607060639222_AddEmpNumber.Designer.cs">
-      <DependentUpon>202607060639222_AddEmpNumber.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\202607060731244_EmpNumber.cs" />
-    <Compile Include="Migrations\202607060731244_EmpNumber.Designer.cs">
-      <DependentUpon>202607060731244_EmpNumber.cs</DependentUpon>
-    </Compile>
     <Compile Include="Migrations\Configuration.cs" />
     <Compile Include="Models\Data\ApplicationDbContext.cs" />
     <Compile Include="Models\Data\ApplicationIdentity.cs" />
@@ -271,17 +259,6 @@
     <None Include="packages.config" />
     <Content Include="Scripts\jquery-3.7.1.slim.min.map" />
     <Content Include="Scripts\jquery-3.7.1.min.map" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Migrations\202606220614114_InitialCreate.resx">
-      <DependentUpon>202606220614114_InitialCreate.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\202607060639222_AddEmpNumber.resx">
-      <DependentUpon>202607060639222_AddEmpNumber.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\202607060731244_EmpNumber.resx">
-      <DependentUpon>202607060731244_EmpNumber.cs</DependentUpon>
-    </EmbeddedResource>
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
