@@ -4,11 +4,11 @@ namespace ESTAFF.Models.ViewModels
 {
     public class LoginViewModel
     {
-        [Required(ErrorMessage = "Employee Number is required.")]
+        [Required(ErrorMessage = "This Field is required")]
         [Display(Name = "Employee Number")]
         public string EmpNumber { get; set; }
 
-        [Required(ErrorMessage = "Password is required.")]
+        [Required(ErrorMessage = "Password is required")]
         [DataType(DataType.Password)]
         [Display(Name = "Password")]
         public string Password { get; set; }

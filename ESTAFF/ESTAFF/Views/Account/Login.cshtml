@@ -1,0 +1,140 @@
+﻿@model ESTAFF.Models.ViewModels.LoginViewModel
+@{
+    ViewBag.Title = "Login";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - ESTAFF Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+    <link href="~/Content/css/auth.css" rel="stylesheet" />
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-4 col-sm-10">
+                <div class="auth-card">
+
+                    <!-- Header Section -->
+                    <div class="auth-header">
+                        <i class="fas fa-layer-group"></i>
+                        <h3>ESTAFF Management System</h3>
+                        <p>Sign in to your account</p>
+                    </div>
+
+                    <!-- Body Section -->
+                    <div class="auth-body">
+                        @using (Html.BeginForm("Login", "Account", 
+                            new { ReturnUrl = ViewBag.ReturnUrl }, FormMethod.Post))
+                        {
+                            @Html.AntiForgeryToken()
+
+                            @Html.ValidationSummary(true, "",
+                                new { @class = "alert alert-danger py-2 small" })
+
+                            if (TempData["SuccessMessage"] != null)
+                            {
+                                <div class="alert alert-success py-2 small">
+                                    <i class="fas fa-check-circle m-1"></i>
+                                    @TempData["SuccessMessage"]
+                                </div>
+                            }
+
+                            
+                            <div class="mb-3">
+                                @Html.LabelFor(m => m.EmpNumber, 
+                                    new { @class = "form-label"})
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-id-badge"></i>
+                                    </span>
+                                    @Html.TextBoxFor(m => m.EmpNumber, 
+                                        new { 
+                                            @class = "form-control", 
+                                            placeholder = "Enter your employee number" 
+                                        })
+                                </div>
+                                @Html.ValidationMessageFor(m => m.EmpNumber, "", 
+                                    new { 
+                                        @class = "text-danger small" 
+                                    })
+                            </div>
+
+                            <div class="mb-3">
+                                @Html.LabelFor(m => m.Password, 
+                                    new { 
+                                        @class = "form-label" 
+                                    })
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-lock"></i>
+                                    </span>
+                                    @Html.PasswordFor(m => m.Password, 
+                                        new { 
+                                            @class = "form-control", 
+                                            placeholder = "Enter your password",
+                                            id = "passwordInput"
+                                        })
+                                    <button class="btn btn-outline-secondary" 
+                                        type="button" 
+                                        id="togglePassword">
+                                        <i class="fas fa-eye" id="toggleIcon"></i>
+                                    </button>
+                                </div>
+                                @Html.ValidationMessageFor(m => m.Password, "", 
+                                    new { @class = "text-danger small" 
+                                })
+                            </div>
+
+                            
+                            <div class="mb-4">
+                                <div class="form-check">
+                                    @Html.CheckBoxFor(m => m.RememberMe, 
+                                        new { 
+                                            @class = "form-check-input" 
+                                        })
+                                    @Html.LabelFor(m => m.RememberMe, 
+                                        new { 
+                                            @class = "form-check-label" 
+                                        })
+                                </div>
+                            </div>
+
+
+                            <button type="submit" class="btn btn-auth">
+                                <i class="fas fa-sign-in-alt me-2"></i> Sign In
+                            </button>
+
+                            <p class="Auth-footer-text">
+                                <i class="fas fa-info-circle me-1"></i> 
+                                Contact your manager if you don't have an account.
+                            </p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('togglePassword').addEventListener('click', function () {
+            var input = document.getElementById('passwordInput');
+            var icon = document.getElementById('toggleIcon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        });
+    </script>
+</body>
+</html>
