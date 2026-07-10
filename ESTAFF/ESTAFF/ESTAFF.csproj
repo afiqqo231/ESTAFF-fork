@@ -258,8 +258,20 @@
     <Content Include="Views\Shared\_EmployeeLayout.cshtml" />
     <Content Include="Views\Admin\Index.cshtml" />
     <Content Include="Views\Admin\CreateStaff.cshtml" />
-    <Content Include="Views\Admin\Staff.cshtml" />
     <Content Include="Views\Employee\Index.cshtml" />
+    <Content Include="Views\Admin\Employees.cshtml" />
+    <Content Include="Views\Admin\Tasks.cshtml" />
+    <Content Include="Views\Admin\AssignTask.cshtml" />
+    <Content Include="Views\Admin\TaskHistory.cshtml" />
+    <Content Include="Views\Admin\PendingReports.cshtml" />
+    <Content Include="Views\Admin\ApprovedReports.cshtml" />
+    <Content Include="Views\Employee\MyTasks.cshtml" />
+    <Content Include="Views\Employee\CreateTask.cshtml" />
+    <Content Include="Views\Employee\DailyView.cshtml" />
+    <Content Include="Views\Employee\WeeklyView.cshtml" />
+    <Content Include="Views\Employee\MyReports.cshtml" />
+    <Content Include="Views\Employee\GenerateReport.cshtml" />
+    <Content Include="Views\Employee\Profile.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
