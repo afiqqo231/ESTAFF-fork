@@ -1,0 +1,164 @@
+﻿@using Microsoft.AspNet.Identity
+@{
+	var userId = User.Identity.GetUserId();
+	var db = new ESTAFF.Models.Data.ApplicationDbContext();
+	var appUser = db.Users.Find(userId);
+	var fullName = appUser?.FullName ?? "Admin";
+	var initials = string.Concat(fullName.Split(' ')
+	    .Where(w => w.Length > 0)
+		.Select(w => w[0].ToString().ToUpper()));	
+	
+	var pendingReports = db.Reports
+		.Count(r => r.Status == ESTAFF.Models.Data.ReportStatus.Submitted);
+
+	var ctrl = ViewContext.RouteData.Values["controller"].ToString();
+	var action = ViewContext.RouteData.Values["action"].ToString();
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>@ViewBag.Title - ESTAFF Admin</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+    <link href="~/Content/css/layout.css" rel="stylesheet" />
+    <link href="~/Content/css/shared.css" rel="stylesheet" />
+    <link href="~/Content/css/manager.css" rel="stylesheet" />
+    @RenderSection("PageStyles", required: false)
+</head>
+<body>
+
+<!-- ======= SIDEBAR ======= -->
+<div class="sidebar">
+
+    <div class="sidebar-brand">
+        <i class="fas fa-layer-group"></i>
+        <h5>EStaff</h5>
+        <p>Admin Portal</p>
+    </div>
+
+    <nav class="sidebar-nav">
+
+        <p class="nav-section-label">Main</p>
+        <a href="@Url.Action("Index", "Admin")"
+           class="nav-link @(ctrl == "Admin" && action == "Index" ? "active" : "")">
+            <i class="fas fa-tachometer-alt"></i> Dashboard
+        </a>
+
+        <p class="nav-section-label">Team</p>
+        <a href="@Url.Action("Employees", "Admin")"
+           class="nav-link @(action == "Employees" ? "active" : "")">
+            <i class="fas fa-users"></i> My Employees
+        </a>
+        <a href="@Url.Action("CreateStaff", "Admin")"
+           class="nav-link @(action == "CreateStaff" ? "active" : "")">
+            <i class="fas fa-user-plus"></i> Add Employee
+        </a>
+
+        <p class="nav-section-label">Tasks</p>
+        <a href="@Url.Action("Tasks", "Admin")"
+           class="nav-link @(action == "Tasks" ? "active" : "")">
+            <i class="fas fa-list-check"></i> All Tasks
+        </a>
+        <a href="@Url.Action("AssignTask", "Admin")"
+           class="nav-link @(action == "AssignTask" ? "active" : "")">
+            <i class="fas fa-plus-circle"></i> Assign Task
+        </a>
+        <a href="@Url.Action("TaskHistory", "Admin")"
+           class="nav-link @(action == "TaskHistory" ? "active" : "")">
+            <i class="fas fa-history"></i> Task History
+        </a>
+
+        <p class="nav-section-label">Reports</p>
+        <a href="@Url.Action("PendingReports", "Admin")"
+           class="nav-link @(action == "PendingReports" ? "active" : "")">
+            <i class="fas fa-file-alt"></i> Pending Approvals
+            @if (pendingReports > 0)
+            {
+                <span class="nav-badge">@pendingReports</span>
+            }
+        </a>
+        <a href="@Url.Action("ApprovedReports", "Admin")"
+           class="nav-link @(action == "ApprovedReports" ? "active" : "")">
+            <i class="fas fa-check-circle"></i> Approved Reports
+        </a>
+
+    </nav>
+
+    <div class="sidebar-footer">
+        <div class="sidebar-user">
+            <div class="sidebar-avatar">
+                @if (!string.IsNullOrEmpty(appUser?.ProfilePicturePath))
+                {
+                    <img src="@Url.Content(appUser.ProfilePicturePath)" alt="@fullName" />
+                }
+                else
+                {
+                    @initials
+                }
+            </div>
+            <div class="sidebar-user-info">
+                <p>@fullName</p>
+                <span><i class="fas fa-shield-alt me-1"></i>Administrator</span>
+            </div>
+        </div>
+        @using (Html.BeginForm("Logout", "Account", FormMethod.Post))
+        {
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn-logout">
+                <i class="fas fa-sign-out-alt me-2"></i>
+					Logout
+            </button>
+        }
+    </div>
+
+</div>
+
+<!-- ======= MAIN CONTENT ======= -->
+<div class="main-content">
+
+    <!-- Topbar -->
+    <div class="topbar">
+        <div class="topbar-left">
+            <h4>@ViewBag.PageTitle</h4>
+            <p>@ViewBag.PageSubtitle</p>
+        </div>
+        <div class="topbar-right">
+            <span class="topbar-badge admin">
+                <i class="fas fa-shield-alt me-1"></i>Admin
+            </span>
+            <span class="topbar-date">
+                <i class="fas fa-calendar-alt me-1"></i>
+                @DateTime.Now.ToString("dd MMM yyyy")
+            </span>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
+    <div class="page-content">
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i>@TempData["SuccessMessage"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>@TempData["ErrorMessage"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+
+        @RenderBody()
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+@RenderSection("PageScripts", required: false)
+</body>
+</html>
