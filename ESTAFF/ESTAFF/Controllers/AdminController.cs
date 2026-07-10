@@ -34,10 +34,10 @@ namespace ESTAFF.Controllers
             return View();
         }
 
-        public ActionResult AssignTasks()
+        public ActionResult AssignTask()
         {
-            ViewBag.PageTitle = "Assign Tasks";
-            ViewBag.PageSubtitle = "Create and assign tasks to members.";
+            ViewBag.PageTitle = "Assign Task";
+            ViewBag.PageSubtitle = "Create and assign a task to a member.";
             return View();
         }
 
