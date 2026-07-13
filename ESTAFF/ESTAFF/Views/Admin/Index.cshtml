@@ -1,160 +1,184 @@
 ﻿@{
-	ViewBag.Title = "Dashboard";
-    ViewBag.PageTitle = "Dashboard";
-    ViewBag.PageSubtitle = "Overview of your team and tasks";
-	Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    ViewBag.Title = "Admin Dashboard";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
 
-<!-- STAT CARDS -->
-<div class="dashboard-grid">
+<!-- Stat Cards -->
+<div class="stats-grid">
 
-	<!-- Total Employees -->
-	<div class="dashboard-stat">
-		<div class="stat-icon">
-			<i class="fas fa-users"></i>
-		</div>
-		<div class="stat-number">@ViewBag.TotalStaffs</div>
-		<div class="stat-title">Total EHS Team</div>
-		<div class="stat-meta">
-			<a href="@Url.Action("Staffs", "Manager")" class="text-decoration-none">
-				Manage team
-			</a>
-		</div>
-	</div>
-
-	<!-- Active Tasks -->
-	<div class="dashboard-stat green">
-        <div class="stat-icon">
-            <i class="fas fa-tasks"></i>
-        </div>
-        <div class="stat-number">@ViewBag.TotalActiveTasks</div>
-        <div class="stat-title">Active Tasks</div>
+    <div class="stat-card blue">
+        <i class= "fas fa-users stat-icon"></i>
+        <div class="stat-value">@ViewBag.TotalEmployees</div>
+        <div class="stat-label">Total Employees</div>
         <div class="stat-meta">
-            <a href="@Url.Action("Tasks", "Manager")" class="text-decoration-none">
-                View all 
-            </a>
+            <a href="@Url.Action("Employees", "Admin")">Manage Team</a>
         </div>
     </div>
 
-	<!-- Overdue Tasks -->
-	<div class="dashboard-stat red">
-        <div class="stat-icon">
-            <i class="fas fa-exclamation-circle"></i>
-        </div>
-        <div class="stat-number">@ViewBag.OverdueTasks</div>
-        <div class="stat-title">Overdue Tasks</div>
+    <div class="stat-card green">
+        <i class="fas fa-list-check stat-icon"></i>
+        <div class="stat-value">@ViewBag.ActiveTasks</div>
+        <div class="stat-label">Active Tasks</div>
         <div class="stat-meta">
-            Needs attention
+            <a href="@Url.Action("Tasks", "Admin")">View Tasks</a>
         </div>
     </div>
 
-	<!-- Pending Approvals -->
-	<div class="dashboard-stat purple">
-        <div class="stat-icon">
-            <i class="fas fa-clipboard-check"></i>
-        </div>
-        <div class="stat-number">@ViewBag.PendingReports</div>
-        <div class="stat-title">Pending Reports</div>
+    <div class="stat-card red">
+        <i class="fas fa-exclamation-circle stat-icon"></i>
+        <div class="stat-value">@ViewBag.OverdueTasks</div>
+        <div class="stat-label">Overdue Tasks</div>
+        <div class="stat-meta">Needs immediate attention</div>
+    </div>
+
+    <div class="stat-card purple">
+        <i class="fas fa-file-alt stat-icon"></i>
+        <div class="stat-value">@ViewBag.PendingReports</div>
+        <div class="stat-label">Pending Reports</div>
         <div class="stat-meta">
-            <a href="@Url.Action("PendingReports", "Manager")" class="text-decoration-none">
-                Review 
-            </a>
+            <a href="@Url.Action("PendingReports", "Admin")">Review Now</a>
         </div>
     </div>
 
-	<!-- On time Rate -->
-	<div class="dashboard-stat blue">
-        <div class="stat-icon">
-            <i class="fas fa-chart-pie"></i>
-        </div>
-        <div class="stat-number">@ViewBag.OnTimeCompletionRate%</div>
-        <div class="stat-title">On-Time Completion</div>
-        <div class="stat-meta">
-            Team average
-        </div>
-    </div>
-
+    <div class="stat-card orange">
+        <i class="fas fa-chart-pie stat-icon"></i>
+        <div class="stat-value">@ViewBag.OnTimeRate%</div>
+        <div class="stat-label">Team completion average</div>
 </div>
 
-<div class="row g-4">
+<!-- Middle Row -->
+<div class="row g-4 mb-4">
 
-	<!-- Recent Tasks -->
-	<div class="col-12">
-        <div class="section-card">
-            <div class="section-header">
+    <!-- Recent Tasks Card -->
+    <div class="col-lg-8">
+        <div class="data-card">
+            <div class="data-card-header">
                 <h6>
-                    Recent Tasks
+                    <i class="fas fa-clock me-2 text-primary"></i>Recent Tasks
                 </h6>
-                <a href="@Url.Action("Tasks", "Manager")" class="btn btn-sm btn-primary-custom">
-                    View All 
+                <a href="@Url.Action("Tasks", "Admin")" 
+                    class="btn-primary-custom" style="font-size:0.78rem; padding: 0.35rem 0.85rem;">
+                    View All
                 </a>
             </div>
-            <div class="section-body">
-				@if (ViewBag.RecentTasks != null && ViewBag.RecentTasks.Count > 0)
+            <div class="data-card-body">
+                @if (ViewBag.RecentTasks != null &&
+                    ((IEnumerable<ESTAFF.Models.Data.TaskItem>)ViewBag.RecentTasks).Any())
                 {
-                    foreach (var task in ViewBag.RecentTasks)
+                    foreach (var task in (IEnumerable<ESTAFF.Models.Data.TaskItem>)ViewBag.RecentTasks)
                     {
-                        var employee = task.AssignedToUser;
-                        var statusClass = task.Status.ToString().ToLower();
+                        var dotClass = task.Status.ToString().ToLower()
+                            .Replace("inprogress","inprogress");
+
                         <div class="task-item">
-                            <div class="task-status @statusClass"></div>
-                            <div class="task-content flex-grow-1">
+                            <div class="task-dot @dotClass"></div>
+                            <div class="task-info">
                                 <h6>@task.Title</h6>
                                 <p>
-                                    Assigned to <strong>@employee.FullName</strong>
-                                    • Due @task.DueDate.ToString("MMM dd, yyyy")
+                                    Assigned to
+                                    <strong>@task.AssignedToUser?.FullName</strong>
+                                    &nbsp;&nbsp;
+                                    Due @task.DueDate.ToString("MMM dd, yyyy")
                                 </p>
                             </div>
-                            <div>
-								<span class="status-badge status-@statusClass">
-                                    @task.Status
-                                </span>
-                            </div>
+                            <span class="status-badge status-@dotClass">
+                                @task.Status
+                            </span>        
                         </div>
                     }
                 }
                 else
-				{
-                    <div class="empty-message">
+                {
+                    <div class="empty-state">
                         <i class="fas fa-inbox"></i>
-                        <p>No tasks assigned yet</p>
+                        <h5>No tasks yet</h5>
+                        <p>Assign your team a task to get started.</p>
                     </div>
                 }
             </div>
         </div>
     </div>
 
+    <!-- Task Breakdown -->
+    <div class="col-lg-4">
+        <div class="data-card h-100">
+            <div class="data-card-header">
+                <h6>
+                    <i class="fas fa-chart-donut me-2 text-primary"></i>
+                    Task Breakdown
+                </h6>
+            </div>
+            <div class="data-card-body">
+                <div class="breakdown-grid">
+                    <div class="breakdown-item pending">
+                        <div class="breakdown-value">@ViewBag.PendingCount</div>
+                        <div class="breakdown-label">Pending</div>
+                    </div>
+                    <div class="breakdown-item inprogress">
+                        <div class="breakdown-value">@ViewBag.InProgressCount</div>
+                        <div class="breakdown-label">In Progress</div>
+                    </div>
+                    <div class="breakdown-item complete">
+                        <div class="breakdown-value">@ViewBag.CompleteCount</div>
+                        <div class="breakdown-label">Completed</div>
+                    </div>
+                    <div class="breakdown-item overdue">
+                        <div class="breakdown-value">@ViewBag.OverdueCount</div>
+                        <div class="breakdown-label">Overdue</div>
+                    </div>
+                </div>
+                
+                <hr class="my-3" />
+
+                <div class="text-center">
+                    <p class="text-muted small mb-1">Total Tasks</p>
+                    <h3 class="fw-700 text-primary mb-0">@ViewBag.TotalTasks</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
-<!-- Quick Actions -->
-<div class="section-card">
-    <div class="section-header">
+<! -- Quick Action -- >
+<div class="data-card">
+    <div class="data-card-header">
         <h6>
-            Quick Actions
+            <i class="fas fa-bolt me-2 text-warning"></i>Quick Actions
         </h6>
     </div>
-    <div class="section-body">
-        <div class="row g-2">
-            <div class="col-sm-6 col-md-3">
-                <a href="@Url.Action("CreateStaff", "Manager")" class="btn btn-primary-custom w-100">
-                    <i class="fas fa-user-plus me-2"></i>Add Employee
-                </a>
-            </div>
-            <div class="col-sm-6 col-md-3">
-                <a href="@Url.Action("AssignTask", "Manager")" class="btn btn-primary-custom w-100">
-                    <i class="fas fa-plus-circle me-2"></i>Assign Task
-                </a>
-            </div>
-			<div class="col-sm-6 col-md-3">
-                <a href="@Url.Action("PendingReports", "Manager")" class="btn btn-primary-custom w-100">
-                    <i class="fas fa-file-check me-2"></i>Review Reports
-                </a>
-            </div>
-            <div class="col-sm-6 col-md-3">
-                <a href="@Url.Action("TaskHistory", "Manager")" class="btn btn-primary-custom w-100">
-                    <i class="fas fa-history me-2"></i>Task History
-                </a>
-            </div>
+    <div class="data-card-body">
+        <div class="quick-actions-grid">
+            <a href="@Url.Action("CreateStaff", "Admin")"
+                class="quick-action-btn">
+                <i class="fas fa-user-plus"></i>
+                <span>Add Employee</span>
+            </a>
+            <a href="@Url.Action("AssignTask", "Admin")"
+                class="quick-action-btn">
+                <i class="fas fa-plus-circle"></i>
+                <span>Review Reports</span>
+            </a>
+            <a href="@Url.Action("PendingReports", "Admin")"
+               class="quick-action-btn">
+                <i class="fas fa-file-check"></i>
+                <span>Review Reports</span>
+            </a>
+            <a href="@Url.Action("TaskHistory", "Admin")"
+                class="quick-action-btn">
+                <i class="fas fa-history"></i>
+                <span>Task History</span>
+            </a>
+            <a href="@Url.Action("Employees", "Admin")"
+               class="quick-action-btn">
+                <i class="fas fa-users"></i>
+                <span>View Team</span>
+            </a>
+            <a href="@Url.Action("ApprovedReports", "Admin")"
+               class="quick-action-btn">
+                <i class="fas fa-check-circle"></i>
+                <span>Approved Reports</span>
+            </a>
         </div>
     </div>
 </div>

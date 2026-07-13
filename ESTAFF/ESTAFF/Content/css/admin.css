@@ -1,11 +1,139 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web;
+﻿/* ===========================
+   ADMIN DASHBOARD
+=========================== */
 
-namespace ESTAFF.Content.css
-{
-	public class admin
-	{
-	}
+/* Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.75rem;
+}
+
+/* Recent Task Item */
+.task-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid #f5f5f5;
+}
+
+.task-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.task-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.task-dot.pending    { background: #ffc107; }
+.task-dot.inprogress { background: #0dcaf0; }
+.task-dot.complete   { background: #198754; }
+.task-dot.overdue    { background: #dc3545; }
+
+.task-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.task-info h6 {
+    margin: 0 0 0.15rem 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1e3a5f;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.task-info p {
+    margin: 0;
+    font-size: 0.775rem;
+    color: #6c757d;
+}
+
+/* Status Breakdown */
+.breakdown-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+}
+
+.breakdown-item {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 1rem;
+    text-align: center;
+    transition: background 0.2s;
+}
+
+.breakdown-item:hover {
+    background: #f0f2f5;
+}
+
+.breakdown-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #1e3a5f;
+    line-height: 1;
+    margin-bottom: 0.3rem;
+}
+
+.breakdown-label {
+    font-size: 0.72rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-weight: 500;
+}
+
+.breakdown-item.pending    .breakdown-value { color: #856404; }
+.breakdown-item.inprogress .breakdown-value { color: #084298; }
+.breakdown-item.complete   .breakdown-value { color: #0a3622; }
+.breakdown-item.overdue    .breakdown-value { color: #842029; }
+
+/* Quick Actions */
+.quick-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.85rem;
+}
+
+.quick-action-btn {
+    background: white;
+    border: 1.5px solid #e9ecef;
+    border-radius: 12px;
+    padding: 1.25rem 1rem;
+    text-align: center;
+    text-decoration: none;
+    color: #1e3a5f;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.quick-action-btn:hover {
+    border-color: #2d6a9f;
+    background: #f0f7ff;
+    color: #1e3a5f;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(45, 106, 159, 0.12);
+    text-decoration: none;
+}
+
+.quick-action-btn i {
+    font-size: 1.4rem;
+    color: #2d6a9f;
+}
+
+.quick-action-btn span {
+    font-size: 0.8rem;
+    font-weight: 600;
 }
