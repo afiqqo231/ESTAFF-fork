@@ -1,184 +1,464 @@
 ﻿@{
-    ViewBag.Title = "Admin Dashboard";
+    ViewBag.Title    = "Dashboard";
+    ViewBag.PageTitle    = "Dashboard";
+    ViewBag.PageSubtitle = "Welcome back! Here's what's happening today.";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
+
+    var recentTasks = ViewBag.RecentTasks as
+        IEnumerable<ESTAFF.Models.Data.TaskItem> ?? 
+        Enumerable.Empty<ESTAFF.Models.Data.TaskItem>();
+
+    int total     = (int)(ViewBag.TotalTasks      ?? 0);
+    int pending   = (int)(ViewBag.PendingCount    ?? 0);
+    int inprog    = (int)(ViewBag.InProgressCount ?? 0);
+    int complete  = (int)(ViewBag.CompleteCount   ?? 0);
+    int overdue   = (int)(ViewBag.OverdueCount    ?? 0);
+    decimal rate  = (decimal)(ViewBag.OnTimeRate  ?? 0m);
+
+    // Donut percentages (guard divide-by-zero)
+    double dPending  = total > 0 ? Math.Round((double)pending  / total * 100) : 0;
+    double dInprog   = total > 0 ? Math.Round((double)inprog   / total * 100) : 0;
+    double dComplete = total > 0 ? Math.Round((double)complete / total * 100) : 0;
+    double dOverdue  = total > 0 ? Math.Round((double)overdue  / total * 100) : 0;
+
+    // Gauge stroke for on-time rate
+    double gaugeCirc  = 2 * Math.PI * 54; // r=54
+    double gaugeFill  = gaugeCirc * (double)rate / 100;
+    double gaugeEmpty = gaugeCirc - gaugeFill;
 }
 
-<!-- Stat Cards -->
-<div class="stats-grid">
+<!-- ══════════════════════════════════════════
+     KPI CARDS — 4 columns
+═══════════════════════════════════════════ -->
+<div class="kpi-grid">
 
-    <div class="stat-card blue">
-        <i class= "fas fa-users stat-icon"></i>
-        <div class="stat-value">@ViewBag.TotalEmployees</div>
-        <div class="stat-label">Total Employees</div>
-        <div class="stat-meta">
-            <a href="@Url.Action("Employees", "Admin")">Manage Team</a>
+    <div class="kpi-card blue">
+        <div class="kpi-icon-wrap blue">
+            <i class="fas fa-users"></i>
         </div>
+        <div class="kpi-value">@ViewBag.TotalEmployees</div>
+        <div class="kpi-title">Total Employees</div>
+        <a href="@Url.Action("Employees","Admin")" class="kpi-link">
+            Manage team <i class="fas fa-arrow-right" style="font-size:0.65rem"></i>
+        </a>
     </div>
 
-    <div class="stat-card green">
-        <i class="fas fa-list-check stat-icon"></i>
-        <div class="stat-value">@ViewBag.ActiveTasks</div>
-        <div class="stat-label">Active Tasks</div>
-        <div class="stat-meta">
-            <a href="@Url.Action("Tasks", "Admin")">View Tasks</a>
+    <div class="kpi-card green">
+        <div class="kpi-icon-wrap green">
+            <i class="fas fa-check-circle"></i>
         </div>
+        <div class="kpi-value">@ViewBag.ActiveTasks</div>
+        <div class="kpi-title">Active Tasks</div>
+        <a href="@Url.Action("Tasks","Admin")" class="kpi-link">
+            View all <i class="fas fa-arrow-right" style="font-size:0.65rem"></i>
+        </a>
     </div>
 
-    <div class="stat-card red">
-        <i class="fas fa-exclamation-circle stat-icon"></i>
-        <div class="stat-value">@ViewBag.OverdueTasks</div>
-        <div class="stat-label">Overdue Tasks</div>
-        <div class="stat-meta">Needs immediate attention</div>
-    </div>
-
-    <div class="stat-card purple">
-        <i class="fas fa-file-alt stat-icon"></i>
-        <div class="stat-value">@ViewBag.PendingReports</div>
-        <div class="stat-label">Pending Reports</div>
-        <div class="stat-meta">
-            <a href="@Url.Action("PendingReports", "Admin")">Review Now</a>
+    <div class="kpi-card orange">
+        <div class="kpi-icon-wrap orange">
+            <i class="fas fa-exclamation-triangle"></i>
         </div>
+        <div class="kpi-value">@ViewBag.OverdueTasks</div>
+        <div class="kpi-title">Overdue Tasks</div>
+        <a href="@Url.Action("Tasks","Admin")" class="kpi-link">
+            Needs attention <i class="fas fa-arrow-right" style="font-size:0.65rem"></i>
+        </a>
     </div>
 
-    <div class="stat-card orange">
-        <i class="fas fa-chart-pie stat-icon"></i>
-        <div class="stat-value">@ViewBag.OnTimeRate%</div>
-        <div class="stat-label">Team completion average</div>
+    <div class="kpi-card red">
+        <div class="kpi-icon-wrap red">
+            <i class="fas fa-file-alt"></i>
+        </div>
+        <div class="kpi-value">@ViewBag.PendingReports</div>
+        <div class="kpi-title">Pending Reports</div>
+        <a href="@Url.Action("PendingReports","Admin")" class="kpi-link">
+            Review now <i class="fas fa-arrow-right" style="font-size:0.65rem"></i>
+        </a>
+    </div>
+
 </div>
 
-<!-- Middle Row -->
-<div class="row g-4 mb-4">
+<!-- ══════════════════════════════════════════
+     CHARTS ROW — Line chart + Donut
+═══════════════════════════════════════════ -->
+<div class="charts-row">
 
-    <!-- Recent Tasks Card -->
-    <div class="col-lg-8">
-        <div class="data-card">
-            <div class="data-card-header">
-                <h6>
-                    <i class="fas fa-clock me-2 text-primary"></i>Recent Tasks
-                </h6>
-                <a href="@Url.Action("Tasks", "Admin")" 
-                    class="btn-primary-custom" style="font-size:0.78rem; padding: 0.35rem 0.85rem;">
-                    View All
+    <!-- Line Chart -->
+    <div class="chart-card">
+        <div class="chart-card-header">
+            <h6><i class="fas fa-chart-line me-2 text-primary"></i>Task Overview</h6>
+            <select class="chart-filter" id="chartFilter" onchange="updateChart(this.value)">
+                <option value="weekly">This Week</option>
+                <option value="monthly">This Month</option>
+            </select>
+        </div>
+        <canvas id="taskLineChart" height="110"></canvas>
+    </div>
+
+    <!-- Donut Chart -->
+    <div class="chart-card">
+        <div class="chart-card-header">
+            <h6><i class="fas fa-chart-donut me-2 text-primary"></i>Task Breakdown</h6>
+        </div>
+        <div class="donut-wrapper">
+            <div class="donut-container">
+                <canvas id="donutChart" width="180" height="180"></canvas>
+                <div class="donut-center">
+                    <div class="donut-center-value">@total</div>
+                    <div class="donut-center-label">Total</div>
+                </div>
+            </div>
+            <div class="donut-legend">
+                <div class="legend-item">
+                    <div class="legend-left">
+                        <div class="legend-dot" style="background:#F59E0B"></div>
+                        Pending
+                    </div>
+                    <span class="legend-value">@pending</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-left">
+                        <div class="legend-dot" style="background:#3B82F6"></div>
+                        In Progress
+                    </div>
+                    <span class="legend-value">@inprog</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-left">
+                        <div class="legend-dot" style="background:#10B981"></div>
+                        Completed
+                    </div>
+                    <span class="legend-value">@complete</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-left">
+                        <div class="legend-dot" style="background:#EF4444"></div>
+                        Overdue
+                    </div>
+                    <span class="legend-value">@overdue</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════
+     SECOND ROW — Recent Tasks + On-Time Rate
+═══════════════════════════════════════════ -->
+<div class="second-row">
+
+    <!-- Recent Tasks -->
+    <div class="panel-card">
+        <div class="panel-header">
+            <h6><i class="fas fa-clock me-2 text-primary"></i>Recent Tasks</h6>
+            <a href="@Url.Action("Tasks","Admin")"
+               style="font-size:0.775rem; color:#2563EB; font-weight:500; text-decoration:none;">
+                View all →
+            </a>
+        </div>
+
+        @if (recentTasks.Any())
+        {
+            foreach (var task in recentTasks)
+            {
+                var dc = task.Status == ESTAFF.Models.Data.TaskStatus.InProgress
+                    ? "inprogress" : task.Status.ToString().ToLower();
+                var bc = "badge-" + dc;
+
+                <div class="task-row">
+                    <div class="task-row-dot @dc"></div>
+                    <div class="task-row-info">
+                        <p class="task-row-title">@task.Title</p>
+                        <p class="task-row-meta">
+                            @(task.AssignedToUser?.FullName ?? "—")
+                            &nbsp;·&nbsp;
+                            Due @task.DueDate.ToString("MMM dd, yyyy")
+                        </p>
+                    </div>
+                    <span class="badge-pill @bc">@task.Status</span>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="empty-state-premium">
+                <div class="empty-icon-wrap">
+                    <i class="fas fa-inbox"></i>
+                </div>
+                <h5>No tasks yet</h5>
+                <p>Assign your first task to get started.</p>
+                <a href="@Url.Action("AssignTask","Admin")" class="btn-assign">
+                    <i class="fas fa-plus"></i> Assign Task
                 </a>
             </div>
-            <div class="data-card-body">
-                @if (ViewBag.RecentTasks != null &&
-                    ((IEnumerable<ESTAFF.Models.Data.TaskItem>)ViewBag.RecentTasks).Any())
-                {
-                    foreach (var task in (IEnumerable<ESTAFF.Models.Data.TaskItem>)ViewBag.RecentTasks)
-                    {
-                        var dotClass = task.Status.ToString().ToLower()
-                            .Replace("inprogress","inprogress");
+        }
+    </div>
 
-                        <div class="task-item">
-                            <div class="task-dot @dotClass"></div>
-                            <div class="task-info">
-                                <h6>@task.Title</h6>
-                                <p>
-                                    Assigned to
-                                    <strong>@task.AssignedToUser?.FullName</strong>
-                                    &nbsp;&nbsp;
-                                    Due @task.DueDate.ToString("MMM dd, yyyy")
-                                </p>
-                            </div>
-                            <span class="status-badge status-@dotClass">
-                                @task.Status
-                            </span>        
-                        </div>
-                    }
-                }
+    <!-- On-Time Rate -->
+    <div class="panel-card ontime-card">
+        <div class="panel-header" style="justify-content:center; border:none; margin-bottom:0;">
+            <h6><i class="fas fa-gauge-high me-2 text-success"></i>Team On-Time Rate</h6>
+        </div>
+
+        <!-- SVG Gauge -->
+        <div class="gauge-wrapper">
+            <svg viewBox="0 0 120 120" width="160" height="160">
+                <!-- Track -->
+                <circle cx="60" cy="60" r="54"
+                        fill="none"
+                        stroke="#F1F5F9"
+                        stroke-width="10"
+                        stroke-linecap="round" />
+                <!-- Fill -->
+                <circle cx="60" cy="60" r="54"
+                        fill="none"
+                        stroke="url(#gaugeGrad)"
+                        stroke-width="10"
+                        stroke-linecap="round"
+                        stroke-dasharray="@gaugeFill.ToString("F1") @gaugeEmpty.ToString("F1")"
+                        transform="rotate(-90 60 60)" />
+                <defs>
+                    <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%"   stop-color="#10B981"/>
+                        <stop offset="100%" stop-color="#34D399"/>
+                    </linearGradient>
+                </defs>
+            </svg>
+            <div class="gauge-center">
+                <div class="gauge-value">@rate%</div>
+                <div class="gauge-label">On-Time</div>
+            </div>
+        </div>
+
+        <div class="success-card">
+            <i class="fas fa-trophy"></i>
+            <p>
+                @if (rate >= 80)
+                { <text>Excellent Performance!</text> }
+                else if (rate >= 50)
+                { <text>Good Progress</text> }
                 else
-                {
-                    <div class="empty-state">
-                        <i class="fas fa-inbox"></i>
-                        <h5>No tasks yet</h5>
-                        <p>Assign your team a task to get started.</p>
-                    </div>
+                { <text>Needs Improvement</text> }
+            </p>
+            <span>Based on all completed tasks</span>
+        </div>
+    </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════
+     QUICK ACTIONS — 4 cards
+═══════════════════════════════════════════ -->
+<div class="quick-actions-row">
+
+    <a href="@Url.Action("CreateStaff","Admin")" class="qa-card">
+        <div class="qa-icon blue"><i class="fas fa-user-plus"></i></div>
+        <div class="qa-text">
+            <p class="qa-title">Add Employee</p>
+            <p class="qa-subtitle">Create a new staff account</p>
+        </div>
+        <i class="fas fa-chevron-right qa-chevron"></i>
+    </a>
+
+    <a href="@Url.Action("AssignTask","Admin")" class="qa-card">
+        <div class="qa-icon green"><i class="fas fa-plus-circle"></i></div>
+        <div class="qa-text">
+            <p class="qa-title">Assign Task</p>
+            <p class="qa-subtitle">Create & assign to employee</p>
+        </div>
+        <i class="fas fa-chevron-right qa-chevron"></i>
+    </a>
+
+    <a href="@Url.Action("PendingReports","Admin")" class="qa-card">
+        <div class="qa-icon orange"><i class="fas fa-file-check"></i></div>
+        <div class="qa-text">
+            <p class="qa-title">View Reports</p>
+            <p class="qa-subtitle">Review pending approvals</p>
+        </div>
+        <i class="fas fa-chevron-right qa-chevron"></i>
+    </a>
+
+    <a href="@Url.Action("PendingReports","Admin")" class="qa-card">
+        <div class="qa-icon purple"><i class="fas fa-clipboard-check"></i></div>
+        <div class="qa-text">
+            <p class="qa-title">Pending Approvals</p>
+            <p class="qa-subtitle">@ViewBag.PendingReports awaiting review</p>
+        </div>
+        <i class="fas fa-chevron-right qa-chevron"></i>
+    </a>
+
+</div>
+
+@section PageStyles {
+    <style>
+        /* Remove default page-content padding conflict */
+        .page-content { padding: 1.75rem 2rem; }
+    </style>
+}
+
+@section PageScripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+    // ── Shared chart defaults ────────────────────
+    Chart.defaults.font.family = 'Inter, sans-serif';
+    Chart.defaults.font.size   = 12;
+    Chart.defaults.color       = '#94A3B8';
+
+    // ── Line Chart ───────────────────────────────
+    const weeklyData = {
+        labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+        datasets: [
+            {
+                label: 'Completed',
+                data: [@complete, 0, 0, 0, 0, 0, 0],
+                borderColor: '#10B981',
+                backgroundColor: 'rgba(16,185,129,0.08)',
+                borderWidth: 2.5,
+                tension: 0.4,
+                fill: true,
+                pointRadius: 4,
+                pointBackgroundColor: '#10B981',
+                pointBorderColor: 'white',
+                pointBorderWidth: 2
+            },
+            {
+                label: 'Pending',
+                data: [@pending, 0, 0, 0, 0, 0, 0],
+                borderColor: '#F59E0B',
+                backgroundColor: 'rgba(245,158,11,0.06)',
+                borderWidth: 2.5,
+                tension: 0.4,
+                fill: true,
+                pointRadius: 4,
+                pointBackgroundColor: '#F59E0B',
+                pointBorderColor: 'white',
+                pointBorderWidth: 2
+            },
+            {
+                label: 'In Progress',
+                data: [@inprog, 0, 0, 0, 0, 0, 0],
+                borderColor: '#3B82F6',
+                backgroundColor: 'rgba(59,130,246,0.06)',
+                borderWidth: 2.5,
+                tension: 0.4,
+                fill: true,
+                pointRadius: 4,
+                pointBackgroundColor: '#3B82F6',
+                pointBorderColor: 'white',
+                pointBorderWidth: 2
+            },
+            {
+                label: 'Overdue',
+                data: [@overdue, 0, 0, 0, 0, 0, 0],
+                borderColor: '#EF4444',
+                backgroundColor: 'rgba(239,68,68,0.06)',
+                borderWidth: 2.5,
+                tension: 0.4,
+                fill: true,
+                pointRadius: 4,
+                pointBackgroundColor: '#EF4444',
+                pointBorderColor: 'white',
+                pointBorderWidth: 2
+            }
+        ]
+    };
+
+    const monthlyData = {
+        labels: ['Week 1','Week 2','Week 3','Week 4'],
+        datasets: weeklyData.datasets.map(d => ({
+            ...d,
+            data: [d.data[0], 0, 0, 0]
+        }))
+    };
+
+    const lineCtx = document.getElementById('taskLineChart').getContext('2d');
+    const lineChart = new Chart(lineCtx, {
+        type: 'line',
+        data: weeklyData,
+        options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    align: 'end',
+                    labels: {
+                        boxWidth: 8,
+                        boxHeight: 8,
+                        borderRadius: 4,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        padding: 16,
+                        font: { size: 11, weight: '500' }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'white',
+                    titleColor: '#0F172A',
+                    bodyColor: '#64748B',
+                    borderColor: '#E2E8F0',
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 10,
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.1)'
                 }
-            </div>
-        </div>
-    </div>
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    border: { display: false },
+                    ticks: { font: { size: 11 }, color: '#94A3B8' }
+                },
+                y: {
+                    grid: { color: '#F1F5F9', drawBorder: false },
+                    border: { display: false, dash: [4,4] },
+                    ticks: {
+                        font: { size: 11 },
+                        color: '#94A3B8',
+                        stepSize: 1
+                    },
+                    beginAtZero: true
+                }
+            }
+        }
+    });
 
-    <!-- Task Breakdown -->
-    <div class="col-lg-4">
-        <div class="data-card h-100">
-            <div class="data-card-header">
-                <h6>
-                    <i class="fas fa-chart-donut me-2 text-primary"></i>
-                    Task Breakdown
-                </h6>
-            </div>
-            <div class="data-card-body">
-                <div class="breakdown-grid">
-                    <div class="breakdown-item pending">
-                        <div class="breakdown-value">@ViewBag.PendingCount</div>
-                        <div class="breakdown-label">Pending</div>
-                    </div>
-                    <div class="breakdown-item inprogress">
-                        <div class="breakdown-value">@ViewBag.InProgressCount</div>
-                        <div class="breakdown-label">In Progress</div>
-                    </div>
-                    <div class="breakdown-item complete">
-                        <div class="breakdown-value">@ViewBag.CompleteCount</div>
-                        <div class="breakdown-label">Completed</div>
-                    </div>
-                    <div class="breakdown-item overdue">
-                        <div class="breakdown-value">@ViewBag.OverdueCount</div>
-                        <div class="breakdown-label">Overdue</div>
-                    </div>
-                </div>
-                
-                <hr class="my-3" />
+    function updateChart(val) {
+        lineChart.data = val === 'weekly' ? weeklyData : monthlyData;
+        lineChart.update('active');
+    }
 
-                <div class="text-center">
-                    <p class="text-muted small mb-1">Total Tasks</p>
-                    <h3 class="fw-700 text-primary mb-0">@ViewBag.TotalTasks</h3>
-                </div>
-            </div>
-        </div>
-    </div>
-
-</div>
-
-<! -- Quick Action -- >
-<div class="data-card">
-    <div class="data-card-header">
-        <h6>
-            <i class="fas fa-bolt me-2 text-warning"></i>Quick Actions
-        </h6>
-    </div>
-    <div class="data-card-body">
-        <div class="quick-actions-grid">
-            <a href="@Url.Action("CreateStaff", "Admin")"
-                class="quick-action-btn">
-                <i class="fas fa-user-plus"></i>
-                <span>Add Employee</span>
-            </a>
-            <a href="@Url.Action("AssignTask", "Admin")"
-                class="quick-action-btn">
-                <i class="fas fa-plus-circle"></i>
-                <span>Review Reports</span>
-            </a>
-            <a href="@Url.Action("PendingReports", "Admin")"
-               class="quick-action-btn">
-                <i class="fas fa-file-check"></i>
-                <span>Review Reports</span>
-            </a>
-            <a href="@Url.Action("TaskHistory", "Admin")"
-                class="quick-action-btn">
-                <i class="fas fa-history"></i>
-                <span>Task History</span>
-            </a>
-            <a href="@Url.Action("Employees", "Admin")"
-               class="quick-action-btn">
-                <i class="fas fa-users"></i>
-                <span>View Team</span>
-            </a>
-            <a href="@Url.Action("ApprovedReports", "Admin")"
-               class="quick-action-btn">
-                <i class="fas fa-check-circle"></i>
-                <span>Approved Reports</span>
-            </a>
-        </div>
-    </div>
-</div>
+    // ── Donut Chart ──────────────────────────────
+    const donutCtx = document.getElementById('donutChart').getContext('2d');
+    new Chart(donutCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Pending','In Progress','Completed','Overdue'],
+            datasets: [{
+                data: [@pending, @inprog, @complete, @overdue],
+                backgroundColor: ['#F59E0B','#3B82F6','#10B981','#EF4444'],
+                borderColor: 'white',
+                borderWidth: 3,
+                hoverOffset: 6
+            }]
+        },
+        options: {
+            cutout: '72%',
+            responsive: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'white',
+                    titleColor: '#0F172A',
+                    bodyColor: '#64748B',
+                    borderColor: '#E2E8F0',
+                    borderWidth: 1,
+                    padding: 10,
+                    cornerRadius: 8
+                }
+            }
+        }
+    });
+    </script>
+}
