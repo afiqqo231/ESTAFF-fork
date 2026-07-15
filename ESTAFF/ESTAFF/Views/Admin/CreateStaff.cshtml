@@ -1,5 +1,224 @@
-﻿@{
-    ViewBag.Title = "Page Title";
+﻿@model ESTAFF.Models.ViewModels.CreateStaffViewModel
+@{
+    ViewBag.Title = "Add Employee";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
-<p class="text-muted">Coming soon...</p>
+
+<div class="create-staff-layout">
+
+    <!-- LEFT: Form -->
+    <div class="form-card">
+        <h5 class="form-card-title">
+            <i class="fas fa-user-plus"></i>
+            New Staff Account
+        </h5>
+
+        @using (Html.BeginForm("CreateStaff", "Admin", FormMethod.Post))
+        {
+            @Html.AntiForgeryToken()
+
+            @Html.ValidationSummary(true, "",
+                new { @class = "alert alert-danger py-2 small" })
+
+            <div class="row g-3">
+
+                <!-- Full Name -->
+                <div class="col-md-6">
+                    @Html.LabelFor(m => m.FullName,
+                        new { @class = "form-label" })
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-user"></i>
+                        </span>
+                        @Html.TextBoxFor(m => m.FullName,
+                            new {
+                                @class = "form-control",
+                                placeholder = " "
+                            })
+                    </div>
+                    @Html.ValidationMessageFor(m => m.FullName, "",
+                        new { @class = "text-danger small" })
+                </div>
+
+                <!-- Employee Number -->
+                <div class="col-md-6">
+                    @Html.LabelFor(m => m.EmpNumber,
+                        new { @class = "form-label" })
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-id-badge"></i>
+                        </span>
+                        @Html.TextBoxFor(m => m.EmpNumber,
+                            new {
+                                @class = "form-control",
+                                placeholder = "e.g. INT001"
+                            })
+                    </div>
+                    @Html.ValidationMessageFor(m => m.EmpNumber, "",
+                        new { @class = "text-danger small" })
+                </div>
+
+                <!-- Email -->
+                <div class="col-md-6">
+                    @Html.LabelFor(m => m.Email,
+                        new { @class = "form-label" })
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-envelope"></i>
+                        </span>
+                        @Html.TextBoxFor(m => m.Email,
+                            new {
+                                @class = "form-control",
+                                placeholder = "email@company.com"
+                            })
+                    </div>
+                    @Html.ValidationMessageFor(m => m.Email, "",
+                        new { @class = "text-danger small" })
+                </div>
+
+                <!-- Hire Date -->
+                <div class="col-md-6">
+                    @Html.LabelFor(m => m.HireDate,
+                        new { @class = "form-label" })
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-calendar-alt"></i>
+                        </span>
+                        @Html.TextBoxFor(m => m.HireDate,
+                            "{0:yyyy-MM-dd}",
+                            new {
+                                @class = "form-control",
+                                type = "date"
+                            })
+                    </div>
+                    @Html.ValidationMessageFor(m => m.HireDate, "",
+                        new { @class = "text-danger small" })
+                </div>
+
+                <!-- Password -->
+                <div class="col-12">
+                    @Html.LabelFor(m => m.Password,
+                        new { @class = "form-label" })
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-lock"></i>
+                        </span>
+                        @Html.PasswordFor(m => m.Password,
+                            new {
+                                @class = "form-control",
+                                placeholder =
+                                    "Min. 6 characters with a number",
+                                id = "pwdInput"
+                            })
+                        <button class="btn btn-outline-secondary"
+                                type="button"
+                                id="togglePwd">
+                            <i class="fas fa-eye" id="pwdIcon"></i>
+                        </button>
+                    </div>
+                    @Html.ValidationMessageFor(m => m.Password, "",
+                        new { @class = "text-danger small" })
+                    <small class="text-muted mt-1 d-block">
+                        <i class="fas fa-info-circle me-1"
+                           style="color:var(--primary)"></i>
+                        Employee uses this password to sign in.
+                    </small>
+                </div>
+
+            </div>
+
+            <hr style="border-color:var(--border-subtle);
+                       margin:1.5rem 0;" />
+
+            <div class="d-flex justify-content-end gap-2">
+                <a href="@Url.Action("Employees", "Admin")"
+                   class="btn-cancel">
+                    <i class="fas fa-times me-1"></i>Cancel
+                </a>
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-user-plus me-1"></i>
+                    Create Account
+                </button>
+            </div>
+        }
+    </div>
+
+    <!-- RIGHT: Info Panel -->
+    <div class="info-panel">
+        <div class="info-panel-header">
+            <div class="info-panel-icon">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+            <h6>Account Info</h6>
+            <p>What happens after creation</p>
+        </div>
+        <div class="info-panel-body">
+            <div class="info-item">
+                <div class="info-item-icon">
+                    <i class="fas fa-id-badge"></i>
+                </div>
+                <div class="info-item-text">
+                    <h6>Employee Number</h6>
+                    <p>
+                        Used as the login credential.
+                        Must be unique across the system.
+                    </p>
+                </div>
+            </div>
+            <div class="info-item">
+                <div class="info-item-icon">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <div class="info-item-text">
+                    <h6>Temporary Password</h6>
+                    <p>
+                        Share this with the employee.
+                        They can use it to sign in immediately.
+                    </p>
+                </div>
+            </div>
+            <div class="info-item">
+                <div class="info-item-icon">
+                    <i class="fas fa-envelope"></i>
+                </div>
+                <div class="info-item-text">
+                    <h6>Email Address</h6>
+                    <p>
+                        Used for notifications and
+                        account identification.
+                    </p>
+                </div>
+            </div>
+            <div class="info-item">
+                <div class="info-item-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="info-item-text">
+                    <h6>Instant Access</h6>
+                    <p>
+                        Account is active immediately
+                        after creation.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section PageScripts {
+    <script>
+        document.getElementById('togglePwd')
+            .addEventListener('click', function () {
+                var input = document.getElementById('pwdInput');
+                var icon  = document.getElementById('pwdIcon');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.replace('fa-eye', 'fa-eye-slash');
+                } else {
+                    input.type = 'password';
+                    icon.classList.replace('fa-eye-slash', 'fa-eye');
+                }
+            });
+    </script>
+}

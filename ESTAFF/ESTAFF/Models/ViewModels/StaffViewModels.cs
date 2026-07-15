@@ -26,10 +26,6 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Temporary Password")]
         public string Password { get; set; }
 
-        [Required(ErrorMessage = "Role is required.")]
-        [Display(Name = "Role")]
-        public string Role { get; set; }
-
         [Required(ErrorMessage = "Hire date is required.")]
         [DataType(DataType.Date)]
         [Display(Name = "Hire Date")]

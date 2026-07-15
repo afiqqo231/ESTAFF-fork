@@ -11,7 +11,6 @@ using Microsoft.AspNet.Identity.Owin;
 using ESTAFF.Filters;
 using ESTAFF.Models.Data;
 using ESTAFF.Models.ViewModels;
-using System.Net;
 using ESTAFF.Services;
 
 namespace ESTAFF.Controllers
@@ -122,7 +121,7 @@ namespace ESTAFF.Controllers
         {
             ViewBag.PageTitle    = "Add Employee";
             ViewBag.PageSubtitle = "Create a new staff account.";
-            return View();
+            return View(new CreateStaffViewModel());
         }
 
         // ══════════════════════════════════════════
@@ -136,7 +135,7 @@ namespace ESTAFF.Controllers
             ViewBag.PageSubtitle = "Create a new staff account.";
 
             if (!ModelState.IsValid)
-                return View(model);
+                return View("CreateStaff", model);
 
             var userManager = HttpContext.GetOwinContext()
                 .GetUserManager<ApplicationUserManager>();
@@ -146,7 +145,7 @@ namespace ESTAFF.Controllers
             {
                 ModelState.AddModelError("EmpNumber",
                     "This employee number is already in use.");
-                return View(model);
+                return View("CreateStaff", model);
             }
 
             // Check duplicate email
@@ -154,7 +153,7 @@ namespace ESTAFF.Controllers
             {
                 ModelState.AddModelError("Email",
                     "An account with this email already exists.");
-                return View(model);
+                return View("CreateStaff", model);
             }
 
             var newUser = new ApplicationUser
@@ -182,7 +181,7 @@ namespace ESTAFF.Controllers
             foreach (var error in result.Errors)
                 ModelState.AddModelError("", error);
 
-            return View(model);
+            return View("CreateStaff", model);
         }
 
         // ══════════════════════════════════════════
@@ -246,7 +245,7 @@ namespace ESTAFF.Controllers
                 return HttpNotFound();
 
             if (!ModelState.IsValid)
-                return View(model);
+                return View("EditEmployee", model);
 
             // Check duplicate employee number (exclude self)
             if (_db.Users.Any(u => u.EmpNumber == model.EmpNumber
@@ -254,7 +253,7 @@ namespace ESTAFF.Controllers
             {
                 ModelState.AddModelError("EmpNumber",
                     "This employee number is already in use.");
-                return View(model);
+                return View("EditEmployee", model);
             }
 
             user.FullName           = model.FullName;

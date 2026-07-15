@@ -275,6 +275,7 @@
     <Content Include="Views\Employee\GenerateReport.cshtml" />
     <Content Include="Views\Employee\Profile.cshtml" />
     <Content Include="Views\Admin\EditTask.cshtml" />
+    <Content Include="Views\Admin\EditEmployee.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
