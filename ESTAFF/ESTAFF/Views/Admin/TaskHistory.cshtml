@@ -1,5 +1,95 @@
-﻿@{
-    ViewBag.Title = "Page Title";
+﻿@model List<ESTAFF.Models.ViewModels.TaskHistoryItemViewModel>
+@{
+    ViewBag.Title = "Task History";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
-<p class="text-muted">Coming soon...</p>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+
+        @if (Model.Count > 0)
+        {
+            <div class="data-card-header mb-3"
+                 style="background:white; border-radius:var(--radius-lg);
+                        border:1px solid var(--border-subtle);
+                        box-shadow:var(--shadow-sm);">
+                <h6 style="margin:0; font-size:0.9rem; font-weight:700;
+                            color:var(--text-primary); display:flex;
+                            align-items:center; gap:0.5rem;">
+                    <i class="fas fa-history"
+                       style="color:var(--primary)"></i>
+                    Audit Trail
+                </h6>
+                <span class="task-count-badge">
+                    @Model.Count entries
+                </span>
+            </div>
+
+            <div class="history-timeline">
+                @foreach (var item in Model)
+                {
+                    var dotClass = item.Action.ToLower() switch
+                    {
+                        "created"       => "created",
+                        "updated"       => "updated",
+                        "deleted"       => "deleted",
+                        "statuschanged" => "status",
+                        _               => "updated"
+                    };
+
+                    var actionIcon = item.Action.ToLower() switch
+                    {
+                        "created"       => "fa-plus-circle",
+                        "updated"       => "fa-edit",
+                        "deleted"       => "fa-trash",
+                        "statuschanged" => "fa-exchange-alt",
+                        _               => "fa-edit"
+                    };
+
+                    <div class="history-item anim-fade-up">
+                        <div class="history-dot @dotClass"></div>
+                        <div class="history-content">
+                            <div class="history-header">
+                                <span class="history-action">
+                                    <i class="fas @actionIcon me-1"
+                                       style="font-size:0.75rem"></i>
+                                    @item.Action
+                                </span>
+                                <span class="history-date">
+                                    @item.ChangedDate.ToString("MMM dd, yyyy · h:mm tt")
+                                </span>
+                            </div>
+                            <div class="history-task">
+                                Task: <strong>@item.TaskTitle</strong>
+                            </div>
+                            @if (!string.IsNullOrEmpty(item.NewValue))
+                            {
+                                <div class="history-detail">
+                                    @item.NewValue
+                                </div>
+                            }
+                            <div class="history-by">
+                                <i class="fas fa-user-circle"></i>
+                                @item.ChangedByName
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fas fa-history"></i>
+                </div>
+                <h5>No history yet</h5>
+                <p>
+                    Task changes and actions will appear
+                    here as an audit trail.
+                </p>
+            </div>
+        }
+
+    </div>
+</div>

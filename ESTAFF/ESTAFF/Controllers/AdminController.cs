@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Web;
 using TaskStatus = ESTAFF.Models.Data.TaskStatus;
@@ -10,6 +11,8 @@ using Microsoft.AspNet.Identity.Owin;
 using ESTAFF.Filters;
 using ESTAFF.Models.Data;
 using ESTAFF.Models.ViewModels;
+using System.Net;
+using ESTAFF.Services;
 
 namespace ESTAFF.Controllers
 {
@@ -294,25 +297,289 @@ namespace ESTAFF.Controllers
         // ══════════════════════════════════════════
         // PLACEHOLDER ACTIONS
         // ══════════════════════════════════════════
-        public ActionResult Tasks()
+
+        // ══════════════════════════════════════════
+        // TASKS — LIST
+        // ══════════════════════════════════════════
+        public ActionResult Tasks(string status = "", string employeeId = "")
         {
             ViewBag.PageTitle    = "All Tasks";
             ViewBag.PageSubtitle = "View and manage all employee tasks.";
-            return View();
+
+            // Auto flag overdue tasks
+            var taskService = new TaskService(_db);
+            taskService.UpdateOverdueTasks();
+
+            var query = _db.Tasks.AsQueryable();
+
+            // Filter by status
+            if (!string.IsNullOrEmpty(status) &&
+                Enum.TryParse<TaskStatus>(status, out var statusEnum))
+                query = query.Where(t => t.Status == statusEnum);
+
+            // Filter by employee
+            if (!string.IsNullOrEmpty(employeeId))
+                query = query.Where(t => t.AssignedToUserId == employeeId);
+
+            var tasks = query
+                .OrderByDescending(t => t.CreatedDate)
+                .ToList()
+                .Select(t => new TaskListItemViewModel
+                 {
+                    TaskId = t.TaskId,
+                    Title = t.Title,
+                    Description = t.Description,
+                    Status = t.Status,
+                    Priority = t.Priority,
+                    DueDate = t.DueDate,
+                    CreatedDate = t.CreatedDate,
+                    CompletedDate = t.CompletedDate,
+                    AssignedToUserId = t.AssignedToUserId,
+                    AssignedToName = t.AssignedToUser?.FullName ?? "-",
+                    AssignedToEmpNumber = t.AssignedToUser?.EmpNumber ?? "-",
+                    CreatedByName = t.CreatedByUser?.FullName ?? "-"
+                    
+                 })
+                 .ToList();
+
+            // Employee dropdown for filtering
+            ViewBag.Employees = _db.Users
+                .Where(u => !u.IsAdmin && u.IsActive)
+                .OrderBy(u => u.FullName)
+                .ToList();
+
+            ViewBag.SelectedStatus = status;
+            ViewBag.SelectedEmployeeId = employeeId;
+
+            return View(tasks);
         }
 
+
+        // ══════════════════════════════════════════
+        // ASSIGN TASK — GET
+        // ══════════════════════════════════════════
         public ActionResult AssignTask()
         {
             ViewBag.PageTitle    = "Assign Task";
             ViewBag.PageSubtitle = "Create and assign a task to an employee.";
-            return View();
+
+            var vm = new AssignTaskViewModel
+            {
+                Employees = GetEmployeeSelectList()
+            };
+            
+            return View(vm);
         }
 
+        // ══════════════════════════════════════════
+        // ASSIGN TASK — POST
+        // ══════════════════════════════════════════
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult AssignTask(AssignTaskViewModel model)
+        {
+            ViewBag.PageTitle = "Assign Task";
+            ViewBag.PageSubtitle = "Create and assign a task to an employee.";
+
+            model.Employees = GetEmployeeSelectList();
+
+            if (!ModelState.IsValid)
+                return View(model);
+
+            var adminId = System.Web.HttpContext.Current.User
+                .Identity.GetUserId();
+
+            var task = new TaskItem
+            {
+                Title = model.Title,
+                Description = model.Description,
+                AssignedToUserId = model.AssignedToUserId,
+                CreatedByUserId = adminId,
+                DueDate = model.DueDate,
+                Priority = model.Priority,
+                Status = TaskStatus.Pending,
+                CreatedDate = DateTime.Now,
+                LastModifiedDate = DateTime.Now
+            };
+
+            _db.Tasks.Add(task);
+            _db.SaveChanges();
+
+            // Log history
+            var taskService = new TaskService(_db);
+            taskService.LogHistory(
+                task.TaskId,
+                "Created",
+                null,
+                $"Task '{task.Title}' assigned",
+                adminId);
+
+            TempData["SuccessMessage"] =
+                $"Task '{model.Title}' assigned successfully!";
+            return RedirectToAction("Tasks");
+        }
+
+        // ══════════════════════════════════════════
+        // EDIT TASK — GET
+        // ══════════════════════════════════════════
+        public ActionResult EditTask(int id)
+        {
+            ViewBag.PageTitle = "Edit Tasks";
+            ViewBag.PageSubtitle = "Update task details.";
+
+            var task = _db.Tasks.Find(id);
+            if (task == null) return HttpNotFound();
+
+            var vm = new EditTaskViewModel
+            {
+                TaskId = task.TaskId,
+                Title = task.Title,
+                Description = task.Description,
+                AssignedToUserId = task.AssignedToUserId,
+                DueDate = task.DueDate,
+                Priority = task.Priority,
+                Status = task.Status,
+                Employees = GetEmployeeSelectList()
+            };
+            return View(vm);
+        }
+
+        // ══════════════════════════════════════════
+        // EDIT TASK — POST
+        // ══════════════════════════════════════════
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult EditTask(int id, EditTaskViewModel model)
+        {
+            ViewBag.PageTitle = "Edit Task";
+            ViewBag.PageSubtitle = "Update task details.";
+
+            model.Employees = GetEmployeeSelectList();
+
+            if (!ModelState.IsValid)
+                return View(model);
+
+            var task = _db.Tasks.Find(id);
+            if (task == null) return HttpNotFound();
+
+            var adminId = System.Web.HttpContext.Current.User
+                .Identity.GetUserId();
+            var taskService = new TaskService(_db);
+            var changes = new System.Text.StringBuilder();
+
+            // Track changes
+            if (task.Title != model.Title)
+            {
+                changes.Append($"Title: '{task.Title}' → '{model.Title}'. ");
+                task.Title = model.Title;
+            }
+
+            if (task.AssignedToUserId != model.AssignedToUserId)
+            {
+                var oldEmp = _db.Users.Find(task.AssignedToUserId);
+                var newEmp = _db.Users.Find(model.AssignedToUserId);
+                changes.Append($"Assigned: '{oldEmp?.FullName}'" + 
+                    $" → '{newEmp?.FullName}'. ");
+                task.AssignedToUserId = model.AssignedToUserId;
+            }
+
+            if(task.DueDate != model.DueDate)
+            {
+                changes.Append($"Due Date: '{task.DueDate:MMM dd}'" + 
+                    $" → '{model.DueDate:MMM dd}'. ");
+                task.DueDate = model.DueDate;
+            }
+
+            if (task.Priority != model.Priority)
+            {
+                changes.Append($"Priority: '{task.Priority}'" +
+                    $" → '{model.Priority}'. ");
+                task.Priority = model.Priority;
+            }
+
+            if (task.Status != model.Status)
+            {
+                changes.Append($"Status: '{task.Status}'" +
+                            $" → '{model.Status}'. ");
+                task.Status = model.Status;
+
+                if (model.Status == TaskStatus.Complete)
+                    task.CompletedDate = DateTime.Now;
+            }
+
+            task.LastModifiedDate = DateTime.Now;
+            _db.SaveChanges();
+
+            if (changes.Length > 0)
+                taskService.LogHistory(
+                    task.TaskId,
+                    "Updated",
+                    "Previous values",
+                    changes.ToString(),
+                    adminId
+                    );
+
+            TempData["SuccessMessage"] = "Task updated successfully!";
+            return RedirectToAction("Tasks");
+                
+        }
+
+        // ══════════════════════════════════════════
+        // DELETE TASK — POST
+        // ══════════════════════════════════════════
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult DeleteTask(int id)
+        {
+            var task = _db.Tasks.Find(id);
+            if (task == null) return HttpNotFound();
+
+            var adminId = System.Web.HttpContext.Current.User
+                .Identity.GetUserId();
+            var taskService = new TaskService(_db);
+            var taskTitle = task.Title;
+
+            taskService.LogHistory(
+                task.TaskId,
+                "Deleted",
+                $"Task '{task.Title}'",
+                null,
+                adminId
+            );
+
+            _db.Tasks.Remove(task);
+            _db.SaveChanges();
+
+            TempData["SuccessMessage"] = 
+                $"Task '{taskTitle}' deleted successfully!";
+            return RedirectToAction("Tasks");
+        }
+
+        // ══════════════════════════════════════════
+        // TASK HISTORY
+        // ══════════════════════════════════════════
         public ActionResult TaskHistory()
         {
             ViewBag.PageTitle    = "Task History";
             ViewBag.PageSubtitle = "Audit trail of all task changes.";
-            return View();
+
+            var history = _db.TaskHistories
+                .OrderByDescending(h => h.ChangedDate)
+                .ToList()
+                .Select(h => new TaskHistoryItemViewModel
+                {
+                    HistoryId = h.HistoryId,
+                    TaskId = h.TaskId,
+                    TaskTitle = h.Task?.Title ?? "-",
+                    Action = h.Action,
+                    OldValue = h.OldValue,
+                    NewValue = h.NewValue,
+                    ChangedByName = h.ChangedByUser?.FullName ?? "-",
+                    ChangedDate = h.ChangedDate
+                })
+                .ToList();
+
+            return View(history);
         }
 
         public ActionResult PendingReports()
@@ -332,6 +599,20 @@ namespace ESTAFF.Controllers
         // ══════════════════════════════════════════
         // HELPER
         // ══════════════════════════════════════════
+
+        private List<EmployeeSelectItem> GetEmployeeSelectList()
+        {
+            return _db.Users
+                .Where(u => !u.IsAdmin && u.IsActive)
+                .OrderBy(u => u.FullName)
+                .Select(u => new EmployeeSelectItem
+                {
+                    UserId = u.Id,
+                    FullName = u.FullName,
+                    EmployeeNumber = u.EmpNumber
+                })
+                .ToList();
+        }
         private decimal CalculateOnTimeRate(string userId)
         {
             var completed = _db.Tasks
