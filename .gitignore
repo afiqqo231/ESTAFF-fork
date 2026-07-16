@@ -446,8 +446,6 @@ packages/
 *.ldf
 *.ndf
 
-# Entity Framework
-Migrations/
 
 # Local Database Files
 App_Data/
