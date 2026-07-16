@@ -1,5 +1,235 @@
-﻿@{
-    ViewBag.Title = "Page Title";
+@model List<ESTAFF.Models.ViewModels.TaskListItemViewModel>
+@{
+    ViewBag.Title = "All Tasks";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    var selectedStatus = ViewBag.SelectedStatus as string ?? "";
+    var employees = ViewBag.Employees as 
+        List<ESTAFF.Models.Data.ApplicationUser> ??
+        new List<ESTAFF.Models.Data.ApplicationUser>();
 }
-<p class="text-muted">Coming soon...</p>
+
+<!-- Filter -->
+<div class="task-filter-bar">
+
+    <!-- Status Pills -->
+    <div class="status-filter-pills">
+
+        <a href="@Url.Action("Tasks", "Admin")"
+           class="status-pill-btn @(string.IsNullOrEmpty(selectedStatus) ? "active-filter" : "")">
+            All
+        </a>
+
+        <a href="@Url.Action("Tasks", "Admin", new { status = "Pending" })"
+           class="status-pill-btn @(selectedStatus == "Pending" ? "active-filter" : "")">
+            Pending
+        </a>
+
+        <a href="@Url.Action("Tasks", "Admin", new { status = "In Progress" })"
+           class="status-pill-btn @(selectedStatus == "In Progress" ? "active-filter" : "")">
+            In Progress
+        </a>
+
+        <a href="@Url.Action("Tasks", "Admin", new { status = "Completed" })"
+           class="status-pill-btn @(selectedStatus == "Completed" ? "active-filter" : "")">
+            Completed
+        </a>
+
+        <a href="@Url.Action("Tasks", "Admin", new { status = "Overdue" })"
+           class="status-pill-btn @(selectedStatus == "Overdue" ? "active-filter" : "")">
+            Overdue
+        </a>
+    </div>
+
+    <!-- Employee filter -->
+    <div class="filter-group">
+        <span class="filter-label">Employee</span>
+        <select class="filter-select"
+            onchange="filterByEmployee(this.value)">
+            <option value="">All Employees</option>
+            @foreach (var emp in employees)
+            {
+                <option value="@emp.Id"
+                    @(ViewBag.SelectedEmployeeId == emp.Id ? "selected" : "")>
+                    @emp.FullName
+                </option>
+            }
+        </select>
+    </div>
+
+    <!-- Assign button -->
+    <a href="@Url.Action("AssignTask", "Admin")" 
+        class="btn-primary-custom ms-auto">
+        <i class="fas fa-plus"></i> Assign Task
+    </a>
+
+</div>
+
+<!-- Task List -->
+<div class="task-table-card">
+    <div class="task-table-header">
+        <h6>
+            <i class="fas fa-list-check"></i> 
+            Task
+        <h6>
+        <span class="task-count-badge">@Model.Count tasks</span>
+    </div>
+
+    @if (Model.Count > 0)
+    {
+        <table class="data-table" style="width: 100%">
+            <thead>
+                <tr>
+                    <th style="padding-left:1.5rem">Task</th>
+                    <th>Assigned To</th>
+                    <th>Priority</th>
+                    <th>Due Date</th>
+                    <th>Status</th>
+                    <th>Created </th>
+                    <th style="padding-right:1.5rem">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var task in Model)
+                {
+                    var statusClass = task.Status ==
+                        ESTAFF.Models.Data.TaskStatus.InProgress
+                        ? "inprogress"
+                        : task.Status.ToString().ToLower();
+
+                    var priorityClass = task.Priority.HasValue
+                        ? task.Priority.ToString().ToLower()
+                        : "";
+
+                    var isOverdue = task.DueDate.Date < DateTime.Today
+                        && task.Status != ESTAFF.Models.Data.TaskStatus.Complete;
+
+                    <tr>
+                        <td style="padding-left:1.5rem; max-width:220px">
+                            <div style="font-weight:600; color:var(--text-primary);
+                                        font-size:0.845rem; white-space:nowrap;
+                                        overflow:hidden; text-overflow:ellipsis">
+                                @task.Title
+                            </div>
+                            @if (!string.IsNullOrEmpty(task.Description))
+                            {
+                                <div style="font-size:0.72rem; color:var(--text-muted);
+                                            margin-top:0.15rem; white-space:nowrap;
+                                            overflow:hidden; text-overflow:ellipsis">
+                                    @task.Description
+                                </div>
+                            }
+                        </td>
+                        <td>
+                            <div style="font-size:0.82rem; font-weight:600;
+                                        color:var(--text-primary)">
+                                @task.AssignedToName
+                            </div>
+                            <div style="font-size:0.7rem; color:var(--text-muted);">
+                                @task.AssignedToEmpNumber
+                            </div>
+                        </td>
+                        <td>
+                            @if (task.Priority.HasValue)
+                            {
+                                <span class="badge-pill badge-@priorityClass">
+                                    <span class="priority-dot @priorityClass"></span>
+                                    @task.Priority
+                                </span>
+                            }
+                            else
+                            {
+                                <span style="color:var(--text-muted);
+                                            font-size:0.78rem">-</span>
+                            }
+                        </td>
+                        <td>
+                            <span style="font-size:0.82rem; font-weight:500;
+                                         color:@(isOverdue ? "var(--danger)" : "var(--text-secondary)");">
+                                @task.DueDate.ToString("MMM dd, yyyy")
+                            </span>
+                            @if (isOverdue)
+                            {
+                                <div style="font-size:0.65rem; color:var(--danger);
+                                            font-weight:600;">
+                                    OVERDUE
+                                </div>
+                            }
+                        </td>
+                        <td>
+                            <span class="badge-pill badge-@statusClass">
+                                @task.Status
+                            </span>
+                        </td>
+                        <td>
+                            <span style="font-size:0.78rem;
+                                         color:var(--text-muted);">
+                                @task.CreatedDate.ToString("MMM dd")
+                            </span>
+                        </td>
+                        <td style="padding-right:1.5rem;">
+                            <div class="task-actions">
+                                <a href="@Url.Action("EditTask", "Admin",
+                                       new { id = task.TaskId })"
+                                   class="btn-task-action edit"
+                                   title="Edit Task">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                @using (Html.BeginForm("DeleteTask", "Admin",
+                                    new { id = task.TaskId }, FormMethod.Post,
+                                    new { style = "display:inline" }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit"
+                                            class="btn-task-action delete"
+                                            title="Delete Task"
+                                            onclick="return confirm('Delete \'@task.Title\'?')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <i class="fas fa-list-check"></i>
+            </div>
+            <h5>No tasks found</h5>
+            <p>
+                @if (!string.IsNullOrEmpty(selectedStatus))
+                {
+                    <text>No @selectedStatus.ToLower() tasks found.</text>
+                }
+                else
+                {
+                    <text>Assign your first task to get started.</text>
+                }
+            </p>
+            <a href="@Url.Action("AssignTask", "Admin")"
+               class="btn-primary-custom mt-2">
+                <i class="fas fa-plus"></i> Assign Task
+            </a>
+        </div>
+    }
+</div>
+
+@section PageScripts {
+    <script>
+        function filterByEmployee(employeeId) {
+            var status = '@selectedStatus';
+            var url    = '@Url.Action("Tasks", "Admin")';
+            var params = [];
+
+            if (status)     params.push('status='     + status);
+            if (employeeId) params.push('employeeId=' + employeeId);
+
+            window.location.href = url +
+                (params.length ? '?' + params.join('&') : '');
+        }
+    </script>
+}

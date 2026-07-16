@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel.DataAnnotations;
 
 namespace ESTAFF.Models.ViewModels
@@ -26,20 +26,29 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Temporary Password")]
         public string Password { get; set; }
 
-        [Required(ErrorMessage = "Role is required.")]
-        [Display(Name = "Role")]
-        public string Role { get; set; }
-
         [Required(ErrorMessage = "Hire date is required.")]
         [DataType(DataType.Date)]
         [Display(Name = "Hire Date")]
         public DateTime HireDate { get; set; } = DateTime.Today;
     }
 
-    public class EditStaffViewModel
+    public class EmployeeCardViewModel
     {
-        public int StaffId { get; set; }
-
+        public string UserId { get; set; }
+        public string FullName { get; set; }
+        public string EmpNumber { get; set; }
+        public string Email { get; set; }
+        public string ProfilePicturePath { get; set; }
+        public bool IsActive { get; set; }
+        public DateTime HireDate { get; set; }
+        public int TotalTasks { get; set; }
+        public int CompletedTasks { get; set; }
+        public int PendingTasks { get; set; }
+        public int OverdueTasks { get; set; }
+        public decimal OnTimeRate { get; set; }
+    }
+    public class EditEmployeeViewModel
+    {
         public string UserId { get; set; }
 
         [Required(ErrorMessage = "Full name is required")]
@@ -57,36 +66,19 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Email Address")]
         public string Email { get; set; }
 
-        [Required(ErrorMessage = "Hire date is required")]
         [DataType(DataType.Date)]
         [Display(Name = "Hire Date")]
         public DateTime HireDate { get; set; } 
 
         [Display(Name = "Active")]
-        public bool IsActive { get; set; } = true;
+        public bool IsActive { get; set; } 
 
-        public string Role { get; set; }
-
+        public string ProfilePicturePath { get; set; }
         // Stats
         public int TotalTasks { get; set; }
         public int CompletedTasks { get; set; }
         public int PendingTasks { get; set; }
         public int OverdueTasks { get; set; }
-        public decimal OnTimeRate { get; set; }
-    }
-
-    public class StaffListItemViewModel
-    {
-        public string StaffId { get; set; }
-        public string UserId { get; set; }
-        public string FullName { get; set; }
-        public string EmpNumber { get; set; }
-        public string Email { get; set; }
-        public DateTime HireDate { get; set; }
-        public bool IsActive { get; set; }
-        public int TotalTasks { get; set; }
-        public int CompletedTasks { get; set; }
-        public int PendingTasks { get; set; }
         public decimal OnTimeRate { get; set; }
     }
 }

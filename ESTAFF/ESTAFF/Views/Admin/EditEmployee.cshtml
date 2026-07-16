@@ -1,0 +1,236 @@
+﻿@model ESTAFF.Models.ViewModels.EditEmployeeViewModel
+@{
+    ViewBag.Title = "Edit Employee";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+
+    var initials = string.Concat(
+        Model.FullName.Split(' ')
+             .Where(w => w.Length > 0)
+             .Select(w => w[0].ToString().ToUpper()));
+}
+
+<div class="edit-layout">
+
+    <!-- LEFT: Form -->
+    <div>
+        <div class="form-card">
+            <h5 class="form-card-title">
+                <i class="fas fa-user-edit"></i>
+                Employee Information
+            </h5>
+
+            @using (Html.BeginForm("EditEmployee", "Admin",
+                new { id = Model.UserId }, FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                @Html.HiddenFor(m => m.UserId)
+
+                @Html.ValidationSummary(true, "",
+                    new { @class = "alert alert-danger py-2 small" })
+
+                <div class="row g-3">
+
+                    <!-- Full Name -->
+                    <div class="col-md-6">
+                        @Html.LabelFor(m => m.FullName,
+                            new { @class = "form-label" })
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-user"></i>
+                            </span>
+                            @Html.TextBoxFor(m => m.FullName,
+                                new { @class = "form-control" })
+                        </div>
+                        @Html.ValidationMessageFor(m => m.FullName, "",
+                            new { @class = "text-danger small" })
+                    </div>
+
+                    <!-- Employee Number -->
+                    <div class="col-md-6">
+                        @Html.LabelFor(m => m.EmpNumber,
+                            new { @class = "form-label" })
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-id-badge"></i>
+                            </span>
+                            @Html.TextBoxFor(m => m.EmpNumber,
+                                new { @class = "form-control" })
+                        </div>
+                        @Html.ValidationMessageFor(m => m.EmpNumber, "",
+                            new { @class = "text-danger small" })
+                    </div>
+
+                    <!-- Email -->
+                    <div class="col-md-6">
+                        @Html.LabelFor(m => m.Email,
+                            new { @class = "form-label" })
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-envelope"></i>
+                            </span>
+                            @Html.TextBoxFor(m => m.Email,
+                                new { @class = "form-control" })
+                        </div>
+                        @Html.ValidationMessageFor(m => m.Email, "",
+                            new { @class = "text-danger small" })
+                    </div>
+
+                    <!-- Hire Date -->
+                    <div class="col-md-6">
+                        @Html.LabelFor(m => m.HireDate,
+                            new { @class = "form-label" })
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-calendar-alt"></i>
+                            </span>
+                            @Html.TextBoxFor(m => m.HireDate,
+                                "{0:yyyy-MM-dd}",
+                                new {
+                                    @class = "form-control",
+                                    type = "date"
+                                })
+                        </div>
+                    </div>
+
+                    <!-- Active Toggle -->
+                    <div class="col-12">
+                        <div class="toggle-wrap">
+                            <div class="form-check form-switch mb-0">
+                                @Html.CheckBoxFor(m => m.IsActive,
+                                    new {
+                                        @class = "form-check-input",
+                                        role = "switch",
+                                        style =
+                                            "width:2.5rem; height:1.25rem;"
+                                    })
+                            </div>
+                            <div class="toggle-text">
+                                <span class="toggle-label">
+                                    Account Active
+                                </span>
+                                <span class="toggle-hint">
+                                    Inactive employees cannot sign in
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <hr style="border-color:var(--border-subtle);
+                           margin:1.5rem 0;" />
+
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="@Url.Action("Employees", "Admin")"
+                       class="btn-cancel">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn-submit">
+                        <i class="fas fa-save me-1"></i>
+                        Save Changes
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- RIGHT: Profile + Performance -->
+    <div>
+
+        <!-- Profile Preview -->
+        <div class="profile-preview">
+            <div class="profile-preview-banner"></div>
+            <div class="profile-preview-body">
+                <div class="profile-preview-avatar">
+                    @if (!string.IsNullOrEmpty(Model.ProfilePicturePath))
+                    {
+                        <img src="@Url.Content(Model.ProfilePicturePath)"
+                             alt="@Model.FullName" />
+                    }
+                    else
+                    {
+                        @initials
+                    }
+                </div>
+                <h6 class="profile-preview-name">@Model.FullName</h6>
+                <span class="emp-card-number">
+                    <i class="fas fa-id-badge"></i>
+                    @Model.EmpNumber
+                </span>
+
+                <div style="margin-top:0.85rem;">
+                    @if (Model.IsActive)
+                    {
+                        <span class="badge-pill badge-complete">
+                            <i class="fas fa-circle"
+                               style="font-size:0.45rem;
+                                      vertical-align:middle;"></i>
+                            Active
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge-pill badge-overdue">
+                            <i class="fas fa-circle"
+                               style="font-size:0.45rem;
+                                      vertical-align:middle;"></i>
+                            Inactive
+                        </span>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Stats -->
+        <div class="perf-card">
+            <h6 class="perf-card-title">
+                <i class="fas fa-chart-line"></i>
+                Performance
+            </h6>
+
+            <div class="perf-stat-grid">
+                <div class="perf-stat-item">
+                    <div class="perf-stat-value">
+                        @Model.TotalTasks
+                    </div>
+                    <div class="perf-stat-label">Total</div>
+                </div>
+                <div class="perf-stat-item completed">
+                    <div class="perf-stat-value">
+                        @Model.CompletedTasks
+                    </div>
+                    <div class="perf-stat-label">Completed</div>
+                </div>
+                <div class="perf-stat-item pending">
+                    <div class="perf-stat-value">
+                        @Model.PendingTasks
+                    </div>
+                    <div class="perf-stat-label">Pending</div>
+                </div>
+                <div class="perf-stat-item overdue">
+                    <div class="perf-stat-value">
+                        @Model.OverdueTasks
+                    </div>
+                    <div class="perf-stat-label">Overdue</div>
+                </div>
+            </div>
+
+            <!-- On-Time Rate -->
+            <div class="emp-ontime-wrap" style="margin-bottom:0;">
+                <div class="emp-ontime-header">
+                    <span class="emp-ontime-label">On-Time Rate</span>
+                    <span class="emp-ontime-value">
+                        @Model.OnTimeRate%
+                    </span>
+                </div>
+                <div class="emp-ontime-bar">
+                    <div class="emp-ontime-fill"
+                         style="width:@Model.OnTimeRate%">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>

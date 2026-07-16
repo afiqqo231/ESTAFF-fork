@@ -1,5 +1,240 @@
-﻿@{
-    ViewBag.Title = "Page Title";
+@model List<ESTAFF.Models.ViewModels.EmployeeCardViewModel>
+@{
+    ViewBag.Title = "My Employees";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
-<p class="text-muted">Coming soon...</p>
+
+<!-- TOOLBAR -->
+<div class="emp-toolbar">
+    <div class="emp-search-wrap">
+        <i class="fas fa-search"></i>
+        <input type="text"
+               id="empSearch"
+               class="emp-search"
+               placeholder="Search by name or employee number..."
+               onkeyup="filterCards()" />
+    </div>
+    <div class="d-flex align-items-center gap-3">
+        <span class="emp-count" id="empCount">
+            <strong>@Model.Count</strong>
+            employee@(Model.Count != 1 ? "s" : "")
+        </span>
+        <a href="@Url.Action("CreateStaff", "Admin")"
+           class="btn-primary-custom">
+            <i class="fas fa-user-plus"></i> Add Employee
+        </a>
+    </div>
+</div>
+
+@if (Model.Count > 0)
+{
+    <!-- PROFILE CARDS GRID -->
+    <div class="emp-cards-grid" id="empCardsGrid">
+
+        @foreach (var emp in Model)
+        {
+            var initials = string.Concat(
+                emp.FullName.Split(' ')
+                   .Where(w => w.Length > 0)
+                   .Select(w => w[0].ToString().ToUpper()));
+
+            var statusClass = emp.IsActive ? "active" : "inactive";
+            var statusText  = emp.IsActive ? "Active"  : "Inactive";
+
+            <div class="emp-card anim-fade-up"
+                 data-name="@emp.FullName.ToLower()"
+                 data-number="@(emp.EmpNumber?.ToLower() ?? "")">
+
+                <!-- Banner -->
+                <div class="emp-card-banner">
+
+                    <!-- Status Pill -->
+                    <span class="emp-status-pill @statusClass">
+                        <span class="emp-status-dot"></span>
+                        @statusText
+                    </span>
+
+                    <!-- Avatar -->
+                    <div class="emp-avatar-wrap">
+                        <div class="emp-avatar">
+                            @if (!string.IsNullOrEmpty(emp.ProfilePicturePath))
+                            {
+                                <img src="@Url.Content(emp.ProfilePicturePath)"
+                                     alt="@emp.FullName" />
+                            }
+                            else
+                            {
+                                @initials
+                            }
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Body -->
+                <div class="emp-card-body">
+
+                    <h6 class="emp-card-name">@emp.FullName</h6>
+
+                    <span class="emp-card-number">
+                        <i class="fas fa-id-badge"></i>
+                        @emp.EmpNumber
+                    </span>
+
+                    <p class="emp-card-email">@emp.Email</p>
+
+                    <div class="emp-card-hire">
+                        <i class="fas fa-calendar-alt"></i>
+                        Hired @emp.HireDate.ToString("MMM dd, yyyy")
+                    </div>
+
+                    <!-- Task Stats -->
+                    <div class="emp-card-stats">
+                        <div class="emp-stat-item">
+                            <span class="emp-stat-value">
+                                @emp.TotalTasks
+                            </span>
+                            <span class="emp-stat-label">Total</span>
+                        </div>
+                        <div class="emp-stat-item">
+                            <span class="emp-stat-value"
+                                  style="color:var(--primary)">
+                                @emp.CompletedTasks
+                            </span>
+                            <span class="emp-stat-label">Done</span>
+                        </div>
+                        <div class="emp-stat-item">
+                            <span class="emp-stat-value"
+                                  style="color:var(--danger)">
+                                @emp.OverdueTasks
+                            </span>
+                            <span class="emp-stat-label">Overdue</span>
+                        </div>
+                    </div>
+
+                    <!-- On-Time Rate Bar -->
+                    <div class="emp-ontime-wrap">
+                        <div class="emp-ontime-header">
+                            <span class="emp-ontime-label">
+                                On-Time Rate
+                            </span>
+                            <span class="emp-ontime-value">
+                                @emp.OnTimeRate%
+                            </span>
+                        </div>
+                        <div class="emp-ontime-bar">
+                            <div class="emp-ontime-fill"
+                                 style="width:@emp.OnTimeRate%">
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Actions -->
+                <div class="emp-card-actions">
+                    <a href="@Url.Action("EditEmployee", "Admin",
+                           new { id = emp.UserId })"
+                       class="btn btn-edit">
+                        <i class="fas fa-edit me-1"></i>Edit
+                    </a>
+
+                    @using (Html.BeginForm("ToggleActive", "Admin",
+                        new { id = emp.UserId },
+                        FormMethod.Post,
+                        new { style = "flex:1;" }))
+                    {
+                        @Html.AntiForgeryToken()
+
+                        if (emp.IsActive)
+                        {
+                            <button type="submit"
+                                    class="btn btn-deactivate w-100"
+                                    onclick="return confirm(
+                                        'Deactivate @emp.FullName? ' +
+                                        'They will not be able to login.')">
+                                <i class="fas fa-ban me-1"></i>Deactivate
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="submit"
+                                    class="btn btn-activate w-100"
+                                    onclick="return confirm(
+                                        'Activate @emp.FullName?')">
+                                <i class="fas fa-check me-1"></i>Activate
+                            </button>
+                        }
+                    }
+                </div>
+
+            </div>
+        }
+
+    </div>
+
+    <!-- No Search Results -->
+    <div id="noResults" style="display:none;">
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <i class="fas fa-search"></i>
+            </div>
+            <h5>No results found</h5>
+            <p>Try a different name or employee number.</p>
+        </div>
+    </div>
+}
+else
+{
+    <!-- Empty State -->
+    <div class="empty-state">
+        <div class="empty-state-icon">
+            <i class="fas fa-users"></i>
+        </div>
+        <h5>No employees yet</h5>
+        <p>
+            Get started by adding your first team member.
+        </p>
+        <a href="@Url.Action("CreateStaff", "Admin")"
+           class="btn-primary-custom mt-2">
+            <i class="fas fa-user-plus"></i> Add First Employee
+        </a>
+    </div>
+}
+
+@section PageScripts {
+    <script>
+        function filterCards() {
+            var input   = document.getElementById('empSearch')
+                              .value.toLowerCase();
+            var cards   = document.querySelectorAll('.emp-card');
+            var visible = 0;
+
+            cards.forEach(function (card) {
+                var name   = card.getAttribute('data-name')   || '';
+                var number = card.getAttribute('data-number') || '';
+
+                if (name.includes(input) || number.includes(input)) {
+                    card.style.display = '';
+                    visible++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            // Update count
+            document.getElementById('empCount').innerHTML =
+                '<strong>' + visible + '</strong> employee' +
+                (visible !== 1 ? 's' : '');
+
+            // Show/hide no results
+            var noRes = document.getElementById('noResults');
+            var grid  = document.getElementById('empCardsGrid');
+
+            if (noRes)
+                noRes.style.display = visible === 0 ? '' : 'none';
+            if (grid)
+                grid.style.display  = visible === 0 ? 'none' : '';
+        }
+    </script>
+}

@@ -1,4 +1,4 @@
-﻿@using Microsoft.AspNet.Identity
+@using Microsoft.AspNet.Identity
 @{
     var userId   = User.Identity.GetUserId();
     var db       = new ESTAFF.Models.Data.AppDbContext();
@@ -32,6 +32,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" 
           rel="stylesheet" />
 
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" 
+          rel="stylesheet" />
+
     <!-- Your CSS -->
     <link href="~/Content/css/layout.css" rel="stylesheet" />
     <link href="~/Content/css/shared.css" rel="stylesheet" />
@@ -44,9 +47,13 @@
 <div class="sidebar">
 
     <div class="sidebar-brand">
-        <i class="fas fa-layer-group"></i>
-        <h5>EStaff</h5>
-        <p>Employee Portal</p>
+        <div class="sidebar-brand-icon">
+            <i class="fas fa-layer-group"></i>
+        </div>
+        <div class="sidebar-brand-text">
+            <h5>EStaff</h5>
+            <p>Employee Portal</p>
+        </div>
     </div>
 
     <nav class="sidebar-nav">

@@ -1,5 +1,275 @@
-﻿@{
-    ViewBag.Title = "Page Title";
+@model ESTAFF.Models.ViewModels.AssignTaskViewModel
+@{
+    ViewBag.Title = "Assign Task";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
-<p class="text-muted">Coming soon...</p>
+
+<div class="assign-task-layout">
+
+    <!-- LEFT: Form -->
+    <div class="form-card">
+        <h5 class="form-card-title">
+            <i class="fas fa-plus-circle"></i>
+            New Task
+        </h5>
+
+        @using (Html.BeginForm("AssignTask", "Admin", FormMethod.Post))
+        {
+            @Html.AntiForgeryToken()
+            @Html.ValidationSummary(true, "",
+                new { @class = "alert alert-danger py-2 small" })
+
+            <div class="row g-3">
+
+                <!-- Title -->
+                <div class="col-12">
+                    @Html.LabelFor(m => m.Title,
+                        new { @class = "form-label" })
+                    @Html.TextBoxFor(m => m.Title,
+                        new { @class = "form-control",
+                              placeholder = "e.g. Prepare Q3 report",
+                              id = "taskTitle",
+                              oninput = "updatePreview()" })
+                    @Html.ValidationMessageFor(m => m.Title, "",
+                        new { @class = "text-danger small" })
+                </div>
+
+                <!-- Description -->
+                <div class="col-12">
+                    @Html.LabelFor(m => m.Description,
+                        new { @class = "form-label" })
+                    @Html.TextAreaFor(m => m.Description,
+                        new { @class = "form-control",
+                              placeholder = "Optional task description...",
+                              rows = 3,
+                              style = "resize:none;" })
+                </div>
+
+                <!-- Assign To -->
+                <div class="col-md-6">
+                    @Html.LabelFor(m => m.AssignedToUserId,
+                        new { @class = "form-label" })
+                    @Html.DropDownListFor(m => m.AssignedToUserId,
+                        new SelectList(Model.Employees, "UserId", "Display"),
+                        "— Select Employee —",
+                        new { @class = "form-control",
+                              id = "assignedTo",
+                              onchange = "updatePreview()" })
+                    @Html.ValidationMessageFor(m => m.AssignedToUserId, "",
+                        new { @class = "text-danger small" })
+                </div>
+
+                <!-- Due Date -->
+                <div class="col-md-6">
+                    @Html.LabelFor(m => m.DueDate,
+                        new { @class = "form-label" })
+                    @Html.TextBoxFor(m => m.DueDate,
+                        "{0:yyyy-MM-dd}",
+                        new { @class = "form-control",
+                              type = "date",
+                              id = "dueDate",
+                              oninput = "updatePreview()" })
+                    @Html.ValidationMessageFor(m => m.DueDate, "",
+                        new { @class = "text-danger small" })
+                </div>
+
+                <!-- Priority -->
+                <div class="col-12">
+                    @Html.LabelFor(m => m.Priority,
+                        new { @class = "form-label" })
+                    <div style="display:flex; gap:0.5rem;">
+                        @foreach (ESTAFF.Models.Data.TaskPriority p in
+                            Enum.GetValues(typeof(ESTAFF.Models.Data.TaskPriority)))
+                        {
+                            var colorMap = new Dictionary<string, string>
+                            {
+                                { "Low",    "var(--primary)" },
+                                { "Medium", "#F59E0B" },
+                                { "High",   "var(--danger)" }
+                            };
+                            var col = colorMap.ContainsKey(p.ToString())
+                                ? colorMap[p.ToString()] : "#999";
+
+                            <label style="flex:1; cursor:pointer;">
+                                <input type="radio"
+                                       name="Priority"
+                                       value="@((int)p)"
+                                       style="display:none;"
+                                       class="priority-radio"
+                                       onchange="updatePreview()" />
+                                <div class="priority-option"
+                                     data-color="@col"
+                                     style="border:1.5px solid #E2E8F0;
+                                            border-radius:var(--radius-sm);
+                                            padding:0.6rem;
+                                            text-align:center;
+                                            font-size:0.775rem;
+                                            font-weight:600;
+                                            color:var(--text-muted);
+                                            transition:var(--transition);
+                                            cursor:pointer;">
+                                    <span class="priority-dot @p.ToString().ToLower()"
+                                          style="vertical-align:middle;
+                                                 margin-right:0.3rem;"></span>
+                                    @p
+                                </div>
+                            </label>
+                        }
+                    </div>
+                </div>
+
+            </div>
+
+            <hr style="border-color:var(--border-subtle); margin:1.5rem 0;" />
+
+            <div class="d-flex justify-content-end gap-2">
+                <a href="@Url.Action("Tasks", "Admin")"
+                   class="btn-cancel">
+                    Cancel
+                </a>
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-paper-plane me-1"></i>
+                    Assign Task
+                </button>
+            </div>
+        }
+    </div>
+
+    <!-- RIGHT: Live Preview -->
+    <div class="task-preview-card">
+        <div class="task-preview-title">
+            <i class="fas fa-eye"></i> Live Preview
+        </div>
+
+        <div class="preview-item">
+            <span class="preview-label">Task Title</span>
+            <span class="preview-value" id="prev-title"
+                  style="color:var(--text-muted); font-weight:400;
+                         font-style:italic;">
+                Enter a title...
+            </span>
+        </div>
+
+        <div class="preview-item">
+            <span class="preview-label">Assigned To</span>
+            <span class="preview-value" id="prev-employee"
+                  style="color:var(--text-muted); font-weight:400;
+                         font-style:italic;">
+                Select employee...
+            </span>
+        </div>
+
+        <div class="preview-item">
+            <span class="preview-label">Due Date</span>
+            <span class="preview-value" id="prev-due"
+                  style="color:var(--text-muted); font-weight:400;
+                         font-style:italic;">
+                Pick a date...
+            </span>
+        </div>
+
+        <div class="preview-item">
+            <span class="preview-label">Priority</span>
+            <span id="prev-priority"
+                  style="color:var(--text-muted); font-size:0.78rem;
+                         font-style:italic;">
+                Not set
+            </span>
+        </div>
+
+        <div class="preview-item">
+            <span class="preview-label">Status</span>
+            <span class="badge-pill badge-pending">Pending</span>
+        </div>
+    </div>
+
+</div>
+
+@section PageScripts {
+    <script>
+    // Priority radio visual
+    document.querySelectorAll('.priority-radio').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            document.querySelectorAll('.priority-option').forEach(function (opt) {
+                opt.style.borderColor  = '#E2E8F0';
+                opt.style.background   = 'white';
+                opt.style.color        = 'var(--text-muted)';
+            });
+            var opt       = this.nextElementSibling;
+            var color     = opt.getAttribute('data-color');
+            opt.style.borderColor = color;
+            opt.style.background  = color + '15';
+            opt.style.color       = color;
+        });
+    });
+
+    // Live Preview
+    function updatePreview() {
+        var title    = document.getElementById('taskTitle').value;
+        var empSel   = document.getElementById('assignedTo');
+        var empText  = empSel.options[empSel.selectedIndex]?.text ?? '';
+        var dueRaw   = document.getElementById('dueDate').value;
+        var priority = document.querySelector('.priority-radio:checked');
+
+        // Title
+        var prevTitle = document.getElementById('prev-title');
+        if (title) {
+            prevTitle.textContent  = title;
+            prevTitle.style.color  = 'var(--text-primary)';
+            prevTitle.style.fontWeight = '600';
+            prevTitle.style.fontStyle  = 'normal';
+        } else {
+            prevTitle.textContent  = 'Enter a title...';
+            prevTitle.style.color  = 'var(--text-muted)';
+            prevTitle.style.fontWeight = '400';
+            prevTitle.style.fontStyle  = 'italic';
+        }
+
+        // Employee
+        var prevEmp = document.getElementById('prev-employee');
+        if (empSel.value) {
+            prevEmp.textContent  = empText;
+            prevEmp.style.color  = 'var(--text-primary)';
+            prevEmp.style.fontWeight = '600';
+            prevEmp.style.fontStyle  = 'normal';
+        } else {
+            prevEmp.textContent  = 'Select employee...';
+            prevEmp.style.color  = 'var(--text-muted)';
+            prevEmp.style.fontWeight = '400';
+            prevEmp.style.fontStyle  = 'italic';
+        }
+
+        // Due Date
+        var prevDue = document.getElementById('prev-due');
+        if (dueRaw) {
+            var d = new Date(dueRaw + 'T00:00:00');
+            prevDue.textContent  = d.toLocaleDateString('en-US',
+                { month: 'short', day: 'numeric', year: 'numeric' });
+            prevDue.style.color  = 'var(--text-primary)';
+            prevDue.style.fontWeight = '600';
+            prevDue.style.fontStyle  = 'normal';
+        } else {
+            prevDue.textContent  = 'Pick a date...';
+            prevDue.style.color  = 'var(--text-muted)';
+            prevDue.style.fontWeight = '400';
+            prevDue.style.fontStyle  = 'italic';
+        }
+
+        // Priority
+        var prevPriority = document.getElementById('prev-priority');
+        if (priority) {
+            var opt   = priority.nextElementSibling;
+            var color = opt.getAttribute('data-color');
+            var label = opt.textContent.trim();
+            prevPriority.innerHTML =
+                '<span class="badge-pill" style="background:' + color +
+                '20; color:' + color + '; border:1px solid ' + color +
+                '40; font-size:0.68rem; font-weight:700; padding:0.22rem 0.7rem; border-radius:20px;">' +
+                label + '</span>';
+        } else {
+            prevPriority.innerHTML =
+                '<span style="color:var(--text-muted); font-size:0.78rem; font-style:italic;">Not set</span>';
+        }
+    }
+    </script>
+}
