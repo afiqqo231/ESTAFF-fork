@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ESTAFF.Models.Data
 {
+    [Table("TaskItems", Schema = "ESTAFF")]
     public class TaskItem
     {
         [Key]

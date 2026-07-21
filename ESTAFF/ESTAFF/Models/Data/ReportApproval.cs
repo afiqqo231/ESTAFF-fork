@@ -4,6 +4,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ESTAFF.Models.Data
 {
+    [Table("ReportApprovals", Schema = "ESTAFF")]
+
     public class ReportApproval
     {
         [Key]

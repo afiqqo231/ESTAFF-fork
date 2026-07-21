@@ -4,7 +4,7 @@
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 
     var initials = string.Concat(
-        Model.FullName.Split(' ')
+        Model.UserName.Split(' ')
              .Where(w => w.Length > 0)
              .Select(w => w[0].ToString().ToUpper()));
 }
@@ -32,31 +32,31 @@
 
                     <!-- Full Name -->
                     <div class="col-md-6">
-                        @Html.LabelFor(m => m.FullName,
+                        @Html.LabelFor(m => m.UserName,
                             new { @class = "form-label" })
                         <div class="input-group">
                             <span class="input-group-text">
                                 <i class="fas fa-user"></i>
                             </span>
-                            @Html.TextBoxFor(m => m.FullName,
+                            @Html.TextBoxFor(m => m.UserName,
                                 new { @class = "form-control" })
                         </div>
-                        @Html.ValidationMessageFor(m => m.FullName, "",
+                        @Html.ValidationMessageFor(m => m.UserName, "",
                             new { @class = "text-danger small" })
                     </div>
 
                     <!-- Employee Number -->
                     <div class="col-md-6">
-                        @Html.LabelFor(m => m.EmpNumber,
+                        @Html.LabelFor(m => m.EmpID,
                             new { @class = "form-label" })
                         <div class="input-group">
                             <span class="input-group-text">
                                 <i class="fas fa-id-badge"></i>
                             </span>
-                            @Html.TextBoxFor(m => m.EmpNumber,
+                            @Html.TextBoxFor(m => m.EmpID,
                                 new { @class = "form-control" })
                         </div>
-                        @Html.ValidationMessageFor(m => m.EmpNumber, "",
+                        @Html.ValidationMessageFor(m => m.EmpID, "",
                             new { @class = "text-danger small" })
                     </div>
 
@@ -145,17 +145,17 @@
                     @if (!string.IsNullOrEmpty(Model.ProfilePicturePath))
                     {
                         <img src="@Url.Content(Model.ProfilePicturePath)"
-                             alt="@Model.FullName" />
+                             alt="@Model.UserName" />
                     }
                     else
                     {
                         @initials
                     }
                 </div>
-                <h6 class="profile-preview-name">@Model.FullName</h6>
+                <h6 class="profile-preview-name">@Model.UserName</h6>
                 <span class="emp-card-number">
                     <i class="fas fa-id-badge"></i>
-                    @Model.EmpNumber
+                    @Model.EmpID
                 </span>
 
                 <div style="margin-top:0.85rem;">

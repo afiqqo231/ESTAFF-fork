@@ -8,12 +8,12 @@ namespace ESTAFF.Models.ViewModels
         [Required(ErrorMessage = "Full name is required.")]
         [StringLength(256)]
         [Display(Name = "Full Name")]
-        public string FullName { get; set; }
+        public string UserName { get; set; }
 
         [Required(ErrorMessage = "Employee number is required")]
         [StringLength(50)]
         [Display(Name = "Employee Number")]
-        public string EmpNumber { get; set; }
+        public string EmpID { get; set; }
 
         [Required(ErrorMessage = "Email is required.")]
         [EmailAddress(ErrorMessage = "Invalid email address.")]
@@ -35,8 +35,8 @@ namespace ESTAFF.Models.ViewModels
     public class EmployeeCardViewModel
     {
         public string UserId { get; set; }
-        public string FullName { get; set; }
-        public string EmpNumber { get; set; }
+        public string UserName { get; set; }
+        public string EmpID { get; set; }
         public string Email { get; set; }
         public string ProfilePicturePath { get; set; }
         public bool IsActive { get; set; }
@@ -54,12 +54,12 @@ namespace ESTAFF.Models.ViewModels
         [Required(ErrorMessage = "Full name is required")]
         [StringLength(256)]
         [Display(Name = "Full Name")]
-        public string FullName { get; set; }
+        public string UserName { get; set; }
 
         [Required(ErrorMessage = "Employee number is required")]
         [StringLength(50)]
         [Display(Name = "Employee Number")]
-        public string EmpNumber { get; set; }
+        public string EmpID { get; set; }
 
         [Required(ErrorMessage = "Email is required")]
         [EmailAddress]

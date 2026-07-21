@@ -76,7 +76,7 @@ namespace ESTAFF.Models.ViewModels
         public DateTime? CompletedDate { get; set; }
         public string AssignedToUserId { get; set; }
         public string AssignedToName { get; set; }
-        public string AssignedToEmpNumber { get; set; }
+        public string AssignedToEmpID { get; set; }
         public string CreatedByName { get; set; }
         public bool IsOverdue => Status != TaskStatus.Complete
             && DueDate.Date < DateTime.Today;
@@ -98,8 +98,8 @@ namespace ESTAFF.Models.ViewModels
     {
         public string UserId { get; set; }
         public string FullName { get; set; }
-        public string EmployeeNumber { get; set; }
-        public string Display => $"{FullName} ({EmployeeNumber})";
+        public string EmpID { get; set; }
+        public string Display => $"{FullName} ({EmpID})";
     }
 
 

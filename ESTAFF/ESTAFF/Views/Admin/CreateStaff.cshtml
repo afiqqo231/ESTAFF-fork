@@ -24,37 +24,37 @@
 
                 <!-- Full Name -->
                 <div class="col-md-6">
-                    @Html.LabelFor(m => m.FullName,
+                    @Html.LabelFor(m => m.UserName,
                         new { @class = "form-label" })
                     <div class="input-group">
                         <span class="input-group-text">
                             <i class="fas fa-user"></i>
                         </span>
-                        @Html.TextBoxFor(m => m.FullName,
+                        @Html.TextBoxFor(m => m.UserName,
                             new {
                                 @class = "form-control",
                                 placeholder = " "
                             })
                     </div>
-                    @Html.ValidationMessageFor(m => m.FullName, "",
+                    @Html.ValidationMessageFor(m => m.UserName, "",
                         new { @class = "text-danger small" })
                 </div>
 
                 <!-- Employee Number -->
                 <div class="col-md-6">
-                    @Html.LabelFor(m => m.EmpNumber,
+                    @Html.LabelFor(m => m.EmpID,
                         new { @class = "form-label" })
                     <div class="input-group">
                         <span class="input-group-text">
                             <i class="fas fa-id-badge"></i>
                         </span>
-                        @Html.TextBoxFor(m => m.EmpNumber,
+                        @Html.TextBoxFor(m => m.EmpID,
                             new {
                                 @class = "form-control",
                                 placeholder = "e.g. INT001"
                             })
                     </div>
-                    @Html.ValidationMessageFor(m => m.EmpNumber, "",
+                    @Html.ValidationMessageFor(m => m.EmpID, "",
                         new { @class = "text-danger small" })
                 </div>
 

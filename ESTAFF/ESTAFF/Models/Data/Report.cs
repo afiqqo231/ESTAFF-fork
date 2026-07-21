@@ -5,6 +5,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ESTAFF.Models.Data
 {
+    [Table("Reports", Schema = "ESTAFF")]
+
     public class Report
     {
         [Key]

@@ -19,7 +19,7 @@ namespace ESTAFF.Services
         {
             var today = DateTime.Today;
 
-            var overdueTasks = _db.Tasks
+            var overdueTasks = _db.TaskItems
                 .Where(t => t.Status != TaskStatus.Complete
                          && t.Status != TaskStatus.Overdue
                          && DbFunctions.TruncateTime(t.DueDate) < today)

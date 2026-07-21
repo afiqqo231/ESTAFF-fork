@@ -50,8 +50,8 @@ namespace ESTAFF.Controllers
 
             // Find user by email (admin) or employee number (employee)
             var user = _db.Users.FirstOrDefault(u =>
-                u.Email == model.EmpNumber ||
-                u.EmpNumber == model.EmpNumber);
+                u.Email == model.EmpID ||
+                u.EmpID == model.EmpID);
 
             if (user == null)
             {

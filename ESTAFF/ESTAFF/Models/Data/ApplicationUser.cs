@@ -7,8 +7,7 @@ namespace ESTAFF.Models.Data
     
     public class ApplicationUser : IdentityUser
     {
-        public string FullName { get; set; }
-        public string EmpNumber { get; set; }
+        public string EmpID { get; set; }
         public bool IsAdmin { get; set; } = false;
         public bool IsActive { get; set; } = true;
         public string ProfilePicturePath { get; set; }

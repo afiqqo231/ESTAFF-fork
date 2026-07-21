@@ -31,19 +31,19 @@ namespace ESTAFF.Controllers
             var totalEmployees = _db.Users
                 .Count(u => !u.IsAdmin && u.IsActive);
 
-            var activeTasks = _db.Tasks
+            var activeTasks = _db.TaskItems
                 .Count(t => t.Status == TaskStatus.Pending
                          || t.Status == TaskStatus.InProgress);
 
-            var overdueTasks = _db.Tasks
+            var overdueTasks = _db.TaskItems
                 .Count(t => t.Status == TaskStatus.Overdue);
 
             var pendingReports = _db.Reports
                 .Count(r => r.Status == ReportStatus.Submitted);
 
-            var totalTasks = _db.Tasks.Count();
+            var totalTasks = _db.TaskItems.Count();
 
-            var completedTasks = _db.Tasks
+            var completedTasks = _db.TaskItems
                 .Where(t => t.Status == TaskStatus.Complete)
                 .ToList();
 
@@ -61,12 +61,12 @@ namespace ESTAFF.Controllers
             ViewBag.PendingReports  = pendingReports;
             ViewBag.TotalTasks      = totalTasks;
             ViewBag.OnTimeRate      = onTimeRate;
-            ViewBag.PendingCount    = _db.Tasks.Count(t => t.Status == TaskStatus.Pending);
-            ViewBag.InProgressCount = _db.Tasks.Count(t => t.Status == TaskStatus.InProgress);
-            ViewBag.CompleteCount   = _db.Tasks.Count(t => t.Status == TaskStatus.Complete);
-            ViewBag.OverdueCount    = _db.Tasks.Count(t => t.Status == TaskStatus.Overdue);
+            ViewBag.PendingCount    = _db.TaskItems.Count(t => t.Status == TaskStatus.Pending);
+            ViewBag.InProgressCount = _db.TaskItems.Count(t => t.Status == TaskStatus.InProgress);
+            ViewBag.CompleteCount   = _db.TaskItems.Count(t => t.Status == TaskStatus.Complete);
+            ViewBag.OverdueCount    = _db.TaskItems.Count(t => t.Status == TaskStatus.Overdue);
 
-            ViewBag.RecentTasks = _db.Tasks
+            ViewBag.RecentTasks = _db.TaskItems
                 .OrderByDescending(t => t.CreatedDate)
                 .Take(8)
                 .ToList();
@@ -89,22 +89,22 @@ namespace ESTAFF.Controllers
                 .Select(u => new EmployeeCardViewModel
                 {
                     UserId             = u.Id,
-                    FullName           = u.FullName,
-                    EmpNumber          = u.EmpNumber,
+                    UserName           = u.UserName,
+                    EmpID          = u.EmpID,
                     Email              = u.Email,
                     ProfilePicturePath = u.ProfilePicturePath,
                     IsActive           = u.IsActive,
                     HireDate           = u.HireDate ?? DateTime.Now,
-                    TotalTasks         = _db.Tasks
+                    TotalTasks         = _db.TaskItems
                         .Count(t => t.AssignedToUserId == u.Id),
-                    CompletedTasks     = _db.Tasks
+                    CompletedTasks     = _db.TaskItems
                         .Count(t => t.AssignedToUserId == u.Id
                                  && t.Status == TaskStatus.Complete),
-                    PendingTasks       = _db.Tasks
+                    PendingTasks       = _db.TaskItems
                         .Count(t => t.AssignedToUserId == u.Id
                                  && (t.Status == TaskStatus.Pending
                                  ||  t.Status == TaskStatus.InProgress)),
-                    OverdueTasks       = _db.Tasks
+                    OverdueTasks       = _db.TaskItems
                         .Count(t => t.AssignedToUserId == u.Id
                                  && t.Status == TaskStatus.Overdue),
                     OnTimeRate         = CalculateOnTimeRate(u.Id)
@@ -141,9 +141,9 @@ namespace ESTAFF.Controllers
                 .GetUserManager<ApplicationUserManager>();
 
             // Check duplicate employee number
-            if (_db.Users.Any(u => u.EmpNumber == model.EmpNumber))
+            if (_db.Users.Any(u => u.EmpID == model.EmpID))
             {
-                ModelState.AddModelError("EmpNumber",
+                ModelState.AddModelError("EmpID",
                     "This employee number is already in use.");
                 return View("CreateStaff", model);
             }
@@ -158,10 +158,9 @@ namespace ESTAFF.Controllers
 
             var newUser = new ApplicationUser
             {
-                UserName         = model.Email,
                 Email            = model.Email,
-                FullName         = model.FullName,
-                EmpNumber        = model.EmpNumber,
+                UserName         = model.UserName,
+                EmpID        = model.EmpID,
                 IsAdmin          = false,
                 IsActive         = true,
                 HireDate         = model.HireDate,
@@ -174,7 +173,7 @@ namespace ESTAFF.Controllers
             if (result.Succeeded)
             {
                 TempData["SuccessMessage"] =
-                    $"Account for {model.FullName} ({model.EmpNumber}) created successfully!";
+                    $"Account for {model.UserName} ({model.EmpID}) created successfully!";
                 return RedirectToAction("Employees");
             }
 
@@ -196,7 +195,7 @@ namespace ESTAFF.Controllers
             if (user == null || user.IsAdmin)
                 return HttpNotFound();
 
-            var completedTasks = _db.Tasks
+            var completedTasks = _db.TaskItems
                 .Where(t => t.AssignedToUserId == id
                          && t.Status == TaskStatus.Complete)
                 .ToList();
@@ -208,18 +207,18 @@ namespace ESTAFF.Controllers
             var vm = new EditEmployeeViewModel
             {
                 UserId             = user.Id,
-                FullName           = user.FullName,
-                EmpNumber          = user.EmpNumber,
+                UserName           = user.UserName,
+                EmpID          = user.EmpID,
                 Email              = user.Email,
                 HireDate           = user.HireDate ?? DateTime.Now,
                 IsActive           = user.IsActive,
                 ProfilePicturePath = user.ProfilePicturePath,
-                TotalTasks         = _db.Tasks.Count(t => t.AssignedToUserId == id),
+                TotalTasks         = _db.TaskItems.Count(t => t.AssignedToUserId == id),
                 CompletedTasks     = completedTasks.Count,
-                PendingTasks       = _db.Tasks.Count(t => t.AssignedToUserId == id
+                PendingTasks       = _db.TaskItems.Count(t => t.AssignedToUserId == id
                                          && (t.Status == TaskStatus.Pending
                                          ||  t.Status == TaskStatus.InProgress)),
-                OverdueTasks       = _db.Tasks.Count(t => t.AssignedToUserId == id
+                OverdueTasks       = _db.TaskItems.Count(t => t.AssignedToUserId == id
                                          && t.Status == TaskStatus.Overdue),
                 OnTimeRate         = completedTasks.Count > 0
                                          ? Math.Round((decimal)onTime / completedTasks.Count * 100, 1)
@@ -248,16 +247,16 @@ namespace ESTAFF.Controllers
                 return View("EditEmployee", model);
 
             // Check duplicate employee number (exclude self)
-            if (_db.Users.Any(u => u.EmpNumber == model.EmpNumber
+            if (_db.Users.Any(u => u.EmpID == model.EmpID
                                 && u.Id != id))
             {
-                ModelState.AddModelError("EmpNumber",
+                ModelState.AddModelError("EmpID",
                     "This employee number is already in use.");
                 return View("EditEmployee", model);
             }
 
-            user.FullName           = model.FullName;
-            user.EmpNumber          = model.EmpNumber;
+            user.UserName           = model.UserName;
+            user.EmpID          = model.EmpID;
             user.Email              = model.Email;
             user.UserName           = model.Email;
             user.HireDate           = model.HireDate;
@@ -267,7 +266,7 @@ namespace ESTAFF.Controllers
             await _db.SaveChangesAsync();
 
             TempData["SuccessMessage"] =
-                $"{model.FullName}'s information updated successfully!";
+                $"{model.UserName}'s information updated successfully!";
             return RedirectToAction("Employees");
         }
 
@@ -288,7 +287,7 @@ namespace ESTAFF.Controllers
 
             var status = user.IsActive ? "activated" : "deactivated";
             TempData["SuccessMessage"] =
-                $"{user.FullName}'s account has been {status}.";
+                $"{user.UserName}'s account has been {status}.";
 
             return RedirectToAction("Employees");
         }
@@ -309,7 +308,7 @@ namespace ESTAFF.Controllers
             var taskService = new TaskService(_db);
             taskService.UpdateOverdueTasks();
 
-            var query = _db.Tasks.AsQueryable();
+            var query = _db.TaskItems.AsQueryable();
 
             // Filter by status
             if (!string.IsNullOrEmpty(status) &&
@@ -334,9 +333,9 @@ namespace ESTAFF.Controllers
                     CreatedDate = t.CreatedDate,
                     CompletedDate = t.CompletedDate,
                     AssignedToUserId = t.AssignedToUserId,
-                    AssignedToName = t.AssignedToUser?.FullName ?? "-",
-                    AssignedToEmpNumber = t.AssignedToUser?.EmpNumber ?? "-",
-                    CreatedByName = t.CreatedByUser?.FullName ?? "-"
+                    AssignedToName = t.AssignedToUser?.UserName ?? "-",
+                    AssignedToEmpID = t.AssignedToUser?.EmpID ?? "-",
+                    CreatedByName = t.CreatedByUser?.UserName ?? "-"
                     
                  })
                  .ToList();
@@ -344,7 +343,7 @@ namespace ESTAFF.Controllers
             // Employee dropdown for filtering
             ViewBag.Employees = _db.Users
                 .Where(u => !u.IsAdmin && u.IsActive)
-                .OrderBy(u => u.FullName)
+                .OrderBy(u => u.UserName)
                 .ToList();
 
             ViewBag.SelectedStatus = status;
@@ -401,7 +400,7 @@ namespace ESTAFF.Controllers
                 LastModifiedDate = DateTime.Now
             };
 
-            _db.Tasks.Add(task);
+            _db.TaskItems.Add(task);
             _db.SaveChanges();
 
             // Log history
@@ -426,7 +425,7 @@ namespace ESTAFF.Controllers
             ViewBag.PageTitle = "Edit Tasks";
             ViewBag.PageSubtitle = "Update task details.";
 
-            var task = _db.Tasks.Find(id);
+            var task = _db.TaskItems.Find(id);
             if (task == null) return HttpNotFound();
 
             var vm = new EditTaskViewModel
@@ -458,7 +457,7 @@ namespace ESTAFF.Controllers
             if (!ModelState.IsValid)
                 return View(model);
 
-            var task = _db.Tasks.Find(id);
+            var task = _db.TaskItems.Find(id);
             if (task == null) return HttpNotFound();
 
             var adminId = System.Web.HttpContext.Current.User
@@ -477,8 +476,8 @@ namespace ESTAFF.Controllers
             {
                 var oldEmp = _db.Users.Find(task.AssignedToUserId);
                 var newEmp = _db.Users.Find(model.AssignedToUserId);
-                changes.Append($"Assigned: '{oldEmp?.FullName}'" + 
-                    $" → '{newEmp?.FullName}'. ");
+                changes.Append($"Assigned: '{oldEmp?.UserName}'" + 
+                    $" → '{newEmp?.UserName}'. ");
                 task.AssignedToUserId = model.AssignedToUserId;
             }
 
@@ -530,7 +529,7 @@ namespace ESTAFF.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult DeleteTask(int id)
         {
-            var task = _db.Tasks.Find(id);
+            var task = _db.TaskItems.Find(id);
             if (task == null) return HttpNotFound();
 
             var adminId = System.Web.HttpContext.Current.User
@@ -546,7 +545,7 @@ namespace ESTAFF.Controllers
                 adminId
             );
 
-            _db.Tasks.Remove(task);
+            _db.TaskItems.Remove(task);
             _db.SaveChanges();
 
             TempData["SuccessMessage"] = 
@@ -573,7 +572,7 @@ namespace ESTAFF.Controllers
                     Action = h.Action,
                     OldValue = h.OldValue,
                     NewValue = h.NewValue,
-                    ChangedByName = h.ChangedByUser?.FullName ?? "-",
+                    ChangedByName = h.ChangedByUser?.UserName ?? "-",
                     ChangedDate = h.ChangedDate
                 })
                 .ToList();
@@ -603,18 +602,18 @@ namespace ESTAFF.Controllers
         {
             return _db.Users
                 .Where(u => !u.IsAdmin && u.IsActive)
-                .OrderBy(u => u.FullName)
+                .OrderBy(u => u.UserName)
                 .Select(u => new EmployeeSelectItem
                 {
                     UserId = u.Id,
-                    FullName = u.FullName,
-                    EmployeeNumber = u.EmpNumber
+                    FullName = u.UserName,
+                    EmpID = u.EmpID
                 })
                 .ToList();
         }
         private decimal CalculateOnTimeRate(string userId)
         {
-            var completed = _db.Tasks
+            var completed = _db.TaskItems
                 .Where(t => t.AssignedToUserId == userId
                          && t.Status == TaskStatus.Complete)
                 .ToList();

@@ -6,7 +6,7 @@ namespace ESTAFF.Models.ViewModels
     {
         [Required(ErrorMessage = "This Field is required")]
         [Display(Name = "Employee Number")]
-        public string EmpNumber { get; set; }
+        public string EmpID { get; set; }
 
         [Required(ErrorMessage = "Password is required")]
         [DataType(DataType.Password)]

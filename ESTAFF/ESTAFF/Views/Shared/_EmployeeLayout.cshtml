@@ -1,10 +1,10 @@
 @using Microsoft.AspNet.Identity
 @{
     var userId   = User.Identity.GetUserId();
-    var db       = new ESTAFF.Models.Data.AppDbContext();
+    var db       = new ESTAFF.Models.Data.ApplicationDbContext();
     var appUser  = db.Users.Find(userId);
-    var fullName = appUser?.FullName ?? "Employee";
-    var empNo    = appUser?.EmployeeNumber ?? "";
+    var fullName = appUser?.UserName ?? "Employee";
+    var empNo    = appUser?.EmpID ?? "";
     var initials = string.Concat(fullName.Split(' ')
         .Where(w => w.Length > 0)
         .Select(w => w[0].ToString().ToUpper()));

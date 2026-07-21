@@ -171,7 +171,7 @@
                     <div class="task-row-info">
                         <p class="task-row-title">@task.Title</p>
                         <p class="task-row-meta">
-                            @(task.AssignedToUser?.FullName ?? "—")
+                            @(task.AssignedToUser?.UserName ?? "—")
                             &nbsp;·&nbsp;
                             Due @task.DueDate.ToString("MMM dd, yyyy")
                         </p>

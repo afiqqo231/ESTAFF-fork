@@ -50,19 +50,19 @@
 
                             
                             <div class="mb-3">
-                                @Html.LabelFor(m => m.EmpNumber, 
+                                @Html.LabelFor(m => m.EmpID, 
                                     new { @class = "form-label"})
                                 <div class="input-group">
                                     <span class="input-group-text">
                                         <i class="fas fa-id-badge"></i>
                                     </span>
-                                    @Html.TextBoxFor(m => m.EmpNumber, 
+                                    @Html.TextBoxFor(m => m.EmpID, 
                                         new { 
                                             @class = "form-control", 
                                             placeholder = "Enter your employee number" 
                                         })
                                 </div>
-                                @Html.ValidationMessageFor(m => m.EmpNumber, "", 
+                                @Html.ValidationMessageFor(m => m.EmpID, "", 
                                     new { 
                                         @class = "text-danger small" 
                                     })

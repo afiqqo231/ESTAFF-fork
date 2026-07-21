@@ -34,7 +34,7 @@
         @foreach (var emp in Model)
         {
             var initials = string.Concat(
-                emp.FullName.Split(' ')
+                emp.UserName.Split(' ')
                    .Where(w => w.Length > 0)
                    .Select(w => w[0].ToString().ToUpper()));
 
@@ -42,8 +42,8 @@
             var statusText  = emp.IsActive ? "Active"  : "Inactive";
 
             <div class="emp-card anim-fade-up"
-                 data-name="@emp.FullName.ToLower()"
-                 data-number="@(emp.EmpNumber?.ToLower() ?? "")">
+                 data-name="@emp.UserName.ToLower()"
+                 data-number="@(emp.EmpID?.ToLower() ?? "")">
 
                 <!-- Banner -->
                 <div class="emp-card-banner">
@@ -60,7 +60,7 @@
                             @if (!string.IsNullOrEmpty(emp.ProfilePicturePath))
                             {
                                 <img src="@Url.Content(emp.ProfilePicturePath)"
-                                     alt="@emp.FullName" />
+                                     alt="@emp.UserName" />
                             }
                             else
                             {
@@ -74,11 +74,11 @@
                 <!-- Body -->
                 <div class="emp-card-body">
 
-                    <h6 class="emp-card-name">@emp.FullName</h6>
+                    <h6 class="emp-card-name">@emp.UserName</h6>
 
                     <span class="emp-card-number">
                         <i class="fas fa-id-badge"></i>
-                        @emp.EmpNumber
+                        @emp.EmpID
                     </span>
 
                     <p class="emp-card-email">@emp.Email</p>
@@ -151,7 +151,7 @@
                             <button type="submit"
                                     class="btn btn-deactivate w-100"
                                     onclick="return confirm(
-                                        'Deactivate @emp.FullName? ' +
+                                        'Deactivate @emp.UserName? ' +
                                         'They will not be able to login.')">
                                 <i class="fas fa-ban me-1"></i>Deactivate
                             </button>
@@ -161,7 +161,7 @@
                             <button type="submit"
                                     class="btn btn-activate w-100"
                                     onclick="return confirm(
-                                        'Activate @emp.FullName?')">
+                                        'Activate @emp.UserName?')">
                                 <i class="fas fa-check me-1"></i>Activate
                             </button>
                         }

@@ -50,7 +50,7 @@
             {
                 <option value="@emp.Id"
                     @(ViewBag.SelectedEmployeeId == emp.Id ? "selected" : "")>
-                    @emp.FullName
+                    @emp.UserName
                 </option>
             }
         </select>
@@ -70,7 +70,7 @@
         <h6>
             <i class="fas fa-list-check"></i> 
             Task
-        <h6>
+        </h6>
         <span class="task-count-badge">@Model.Count tasks</span>
     </div>
 
@@ -125,7 +125,7 @@
                                 @task.AssignedToName
                             </div>
                             <div style="font-size:0.7rem; color:var(--text-muted);">
-                                @task.AssignedToEmpNumber
+                                @task.AssignedToEmpID
                             </div>
                         </td>
                         <td>

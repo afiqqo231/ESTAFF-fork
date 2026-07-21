@@ -11,7 +11,7 @@ namespace ESTAFF.Migrations
         public Configuration()
         {
             AutomaticMigrationsEnabled = true;
-            AutomaticMigrationDataLossAllowed = false;
+            AutomaticMigrationDataLossAllowed = true;
         }
 
         protected override void Seed(ApplicationDbContext context)
@@ -27,17 +27,37 @@ namespace ESTAFF.Migrations
             {
                 var manager = new ApplicationUser
                 {
-                    UserName = adminEmail,
                     Email = adminEmail,
-                    FullName = "System Admin",
+                    UserName = "System Admin",
                     IsAdmin = true,
                     IsActive = true,
-                    EmpNumber = null,
+                    EmpID = null,
                     CreatedDate = DateTime.Now,
                     LastModifiedDate = DateTime.Now
                 };
 
                 userManager.Create(manager, adminPassword);
+            }
+
+            string employeeEmail = "employee1@estaff.com";
+            string employeeNumber = "EMP001";
+            string employeePassword = "Employee123";
+
+            if (userManager.FindByEmail(employeeEmail) == null)
+            {
+                var employee = new ApplicationUser
+                {
+                    Email = employeeEmail,
+                    UserName = "Test Employee",
+                    IsAdmin = false,
+                    IsActive = true,
+                    EmpID = employeeNumber,
+                    HireDate = DateTime.Now,
+                    CreatedDate = DateTime.Now,
+                    LastModifiedDate = DateTime.Now
+                };
+
+                userManager.Create(employee, employeePassword);
             }
         }
     }
