@@ -1,7 +1,231 @@
-﻿@{
+@{
 	ViewBag.Title = "Dashboard";
-	ViewBag.PageTitle = "Dashboard";
-	ViewBag.PageSubtitle = "Here's your task overview for today.";
-	Layout = null;
+	Layout = "~/Views/Shared/_EmployeeLayout.cshtml";
+
+	var dueToday = ViewBag.DueToday as List<ESTAFF.Models.Data.TaskItem>
+				   ?? new List<ESTAFF.Models.Data.TaskItem>();
+	var recentTasks = ViewBag.RecentTasks as List<ESTAFF.Models.Data.TaskItem>
+				   ?? new List<ESTAFF.Models.Data.TaskItem>();
+
+	decimal onTime = (decimal)(ViewBag.OnTimeRate ?? 0m);
+	double gaugeCirc = 2 * Math.PI * 54;
+	double gaugeFill = gaugeCirc * (double)onTime / 100;
+	double gaugeEmpty = gaugeCirc - gaugeFill;
 }
-<h2>Employee Dashboard</h2>
+
+<!-- Stat Cards -->
+<div class="emp-dash-stats">
+	
+	<div class="emp-dash-card anim-fade-up anim-delay-1">
+		<div class="emp-dash-card-icon blue">
+			<i class="fas fa-list-check"></i>
+		</div>
+		<div class="emp-dash-value">@ViewBag.TotalTasks</div>
+		<div class="emp-dash-label">Total Tasks</div>
+	</div>
+
+	<div class="emp-dash-card anim-fade-up anim-delay-2">
+		<div class="emp-dash-card-icon orange">
+			<i class="fas fa-hourglass-half"></i>
+		</div>
+		<div class="emp-dash-value">@ViewBag.PendingTasks</div>
+		<div class="emp-dash-label">Pending</div>
+	</div>
+
+	<div class="emp-dash-card anim-fade-up anim-delay-3">
+		<div class="emp-dash-card-icon green">
+			<i class="fas fa-check-circle"></i>
+		</div>
+		<div class="emp-dash-value">@ViewBag.CompletedTasks</div>
+		<div class="emp-dash-label">Completed</div>
+	</div>
+
+	<div class="emp-dash-card anim-fade-up anim-delay-4">
+		<div class="emp-dash-card-icon red">
+			<i class="fas fa-exclamation-circle"></i>
+		</div>
+		<div class="emp-dash-value">@ViewBag.OverdueTasks</div>
+		<div class="emp-dash-label">Overdue</div>
+	</div>
+
+</div>
+
+<!-- Main Row -->
+<div class="row g-4 mb-4">
+
+	<!-- Due Today -->
+	<div class="col-lg-8">
+		<div class="panel-card h-100">
+			<div class="panel-header">
+				<h6>
+					<i class="fas fa-calendar-day"></i>
+					Due Today
+					@if (dueToday.Count > 0)
+					{
+						<span class="task-count-badge ms-1">
+							@dueToday.Count
+						</span>
+					}
+				</h6>
+				<a href="@Url.Action("DailyView", "Employee")"
+					class="panel-link">
+					View All
+				</a>
+			</div>
+
+			@if (dueToday.Any())
+			{
+				foreach (var task in dueToday)
+				{
+					var sc = task.Status == 
+						ESTAFF.Models.Data.TaskStatus.InProgress 
+						? "inprogress" 
+						: task.Status.ToString().ToLower();
+
+					<div class="task-row">
+						<div class="task-row-dot @sc"></div>
+						<div class="task-row-info">
+							<p class="task-row-title">@task.Title</p>
+							<p class="task-row-meta">
+								Due today
+								@if (task.Priority.HasValue)
+								{
+									<text> | Priority @task.Priority</text>
+								}
+							</p>
+						</div>
+						<span class="badge-pill badge-@sc">
+							@task.Status
+						</span>
+					</div>								
+				}
+			}
+			else
+			{
+				<div class="empty-state" style="padding:2.5rem 1rem;">
+					<div class="empty-state-icon">
+						<i class="fas fa-calendar-check"></i>
+					</div>
+					<h5>Nothing due today</h5>
+					<p>You're all caught up for today.</p>
+				</div>
+			}
+		</div>
+	</div>
+
+	<!-- On-Time Rate -->
+	<div class="col-lg-4">
+		<div class="panel-card ontime-card h-100">
+			<div class="panel-header" style="justify-content:center; border:none; margin-bottom:0;">
+				<h6>
+					<i class="fas fa-gauge-high"></i>
+					On-Time Rate
+				</h6>
+			</div>
+
+			<div class="gauge-wrapper">
+				<svg viewbox="0 0 120 120"
+                     width="160" height="160">
+                    <circle cx="60" cy="60" r="54"
+                            fill="none"
+                            stroke="#F1F5F9"
+                            stroke-width="10"
+                            stroke-linecap="round" />
+                    <circle cx="60" cy="60" r="54"
+                            fill="none"
+                            stroke="url(#gaugeGreen)"
+                            stroke-width="10"
+                            stroke-linecap="round"
+                            stroke-dasharray="@gaugeFill.ToString("F1") @gaugeEmpty.ToString("F1")"
+                            transform="rotate(-90 60 60)" />
+					<defs>
+                        <linearGradient id="gaugeGreen"
+                            x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%"
+                                  stop-color="#10B981" />
+                            <stop offset="100%"
+                                  stop-color="#34D399" />
+                        </linearGradient>
+                    </defs>
+				</svg>
+                <div class="gauge-center">
+                    <div class="gauge-value">@onTime%</div>
+                    <div class="gauge-label">On-Time</div>
+                </div>
+            </div>
+
+            <div class="success-card">
+                <i class="fas fa-trophy"></i>
+                <p>
+                    @if (onTime >= 80)
+                    { <text>Excellent Performance!</text> }
+                    else if (onTime >= 50)
+                    { <text>Good Progress</text> }
+                    else
+                    { <text>Keep It Up!</text> }
+                </p>
+                <span>Based on your completed tasks</span>
+			</div>
+		</div>
+	</div>
+
+</div>
+
+<!-- Recent Tasks -->
+<div class="panel-card">
+	<div class="panel-header">
+		<h6>
+			<i class="fas fa-clock"></i>
+			Recent Tasks
+		</h6>
+		<a href="@Url.Action("MyTasks", "Employee")"
+			class="panel-link">
+			View All
+		</a>
+	</div>
+
+	@if (recentTasks.Any())
+	{
+		foreach (var task in recentTasks)
+		{
+			var sc = task.Status == 
+				ESTAFF.Models.Data.TaskStatus.InProgress
+				? "inprogress"
+				: task.Status.ToString().ToLower();
+			var isOD = task.DueDate.Date < DateTime.Today
+					&& task.Status != ESTAFF.Models.Data.TaskStatus.Complete;
+
+			<div class="task-row">
+				<div class="task-row-dot @sc"></div>
+				<div class="task-row-info">
+					<p class="task-row-title">@task.Title</p>
+					<p class="task-row-meta" style="@(isOD ? "color:var(--danger);" : "")">
+						Due @task.DueDate.ToString("MMM dd, yyyy")
+						@if (isOD) { <text> | Overdue</text> }
+					</p>
+				</div>
+				<span class="badge-pill badge-@sc">
+					@task.Status
+				</span>
+			</div>
+		}
+	}
+	else
+	{
+		<div class="empty-state" style="padding:2.5rem 1rem;">
+			<div class="empty-state-icon">
+				<i class="fas fa-inbox"></i>
+			</div>
+			<h5>No tasks yet</h5>
+			<p>Create your first task or wait for your manager to assign you</p>
+			<a href="@Url.Action("CreateTasks", "Employee")" 
+			   class="btn-primary-custom">
+			   <i class="fas fa-plus"></i> Create Task
+			</a>
+	</div>
+	}
+
+</div>
+
+
+	
