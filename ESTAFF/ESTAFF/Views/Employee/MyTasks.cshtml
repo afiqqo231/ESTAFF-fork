@@ -1,5 +1,186 @@
-﻿@{
-    ViewBag.Title = "Page Title";
+﻿@model List<ESTAFF.Models.ViewModels.TaskListItemViewModel>
+@{
+    ViewBag.Title = "My Tasks";
     Layout = "~/Views/Shared/_EmployeeLayout.cshtml";
+    var sel = ViewBag.SelectedStatus as string ?? "";
 }
-<p class="text-muted">Coming soon...</p>
+
+<!-- Tab Pills -->
+<div class="task-tabs">
+    <a href="@Url.Action("MyTasks", "Employee")"
+        class="task-tab @(string.IsNullOrEmpty(sel) ? "active" : "")">
+        All
+        <span class="task-tab-count">@ViewBag.AllCount</span>
+    </a>
+    <a href="@Url.Action("MyTasks","Employee", new { status="Pending" })"
+       class="task-tab @(sel=="Pending" ? "active" : "")">
+        Pending
+        <span class="task-tab-count">@ViewBag.PendingCount</span>
+    </a>
+    <a href="@Url.Action("MyTasks","Employee", new { status="InProgress" })"
+       class="task-tab @(sel=="InProgress" ? "active" : "")">
+        In Progress
+        <span class="task-tab-count">@ViewBag.InProgCount</span>
+    </a>
+    <a href="@Url.Action("MyTasks","Employee", new { status="Complete" })"
+       class="task-tab @(sel=="Complete" ? "active" : "")">
+        Completed
+        <span class="task-tab-count">@ViewBag.CompleteCount</span>
+    </a>
+    <a href="@Url.Action("MyTasks","Employee", new { status="Overdue" })"
+       class="task-tab @(sel=="Overdue" ? "active" : "")">
+        Overdue
+        <span class="task-tab-count">@ViewBag.OverdueCount</span>
+    </a>
+
+    <!-- Create Task Button -->
+    <a href="@Url.Action("CreateTask", "Employee")"
+        class="btn btn-primary-custom ms-auto"
+        style="font-size:0.8rem; padding:0.45rem 1rem;">
+        <i class="fas fa-plus"></i> New Task
+    </a>
+</div>
+
+@if (Model.Count > 0)
+{
+    <div class="my-task-grid">
+        @foreach (var task in Model)
+        {
+            var sc = task.Status ==
+                ESTAFF.Models.Data.TaskStatus.InProgress
+                ? "inprogress"
+                : task.Status.ToString().ToLower();
+
+            var pc = task.Priority.HasValue
+                ? task.Priority.ToString().ToLower()
+                : "";
+            
+            var isOD = task.DueDate.Date < DateTime.Today
+                    && task.Status != ESTAFF.Models.Data.TaskStatus.Complete;
+
+            var isSelfCreated = task.CreatedByName ==
+                (ViewBag.FullName as string ?? "");
+
+            <div class="my-task-card anim-fade-up">
+
+                <div class="my-task-card-top">
+                    <span class="badge-pill badge-@sc">
+                        @task.Status
+                    </span>
+                    @if (task.Priority.HasValue)
+                    {
+                        <span class="badge-pill badge-@pc">
+                            @task.Priority
+                        </span>
+                    }
+                </div>
+
+                <div class="my-task-card-body">
+                    <h6 class="my-task-title">@task.Title</h6>
+                    @if (!string.IsNullOrEmpty(task.Description))
+                    {
+                        <p class="my-task-desc">@task.Description</p>
+                    }
+                </div>
+
+                <div class="my-task-meta">
+                    <div class="my-task-meta-item">
+                        <i class="fas fa-calendar-alt"></i>
+                        @task.DueDate.ToString("MMM dd, yyyy")
+                        @if (isOD) { <text> | Overdue</text> }
+                    </div>
+                    @if (task.CreatedByName != null)
+                    {
+                        <div class="my-task-meta-item">
+                            <i class="fas fa-user-circle"></i>
+                            @task.CreatedByName
+                        </div>
+                    }
+                </div>
+                
+                <div class="my-task-card-footer">
+                    @using (Html.BeginForm("UpdateStatus", "Employee",
+                        FormMethod.Post,
+                        new { style = "display:contents;" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="taskId" 
+                               value="@task.TaskId" />
+                        <div class="status-select-wrap">
+                            <select name="status"
+                                    class="status-select"
+                                    onchange="this.form.submit()">
+                                @foreach (ESTAFF.Models.Data.TaskStatus s in
+                                    Enum.GetValues(typeof(ESTAFF.Models.Data.TaskStatus)))
+                                {
+                                    if (s != ESTAFF.Models.Data.TaskStatus.Overdue)
+                                    {
+                                        <option value="@s"
+                                            @(task.Status == s ? "selected" : "")>
+                                            @s
+                                        </option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    }
+
+                    <div class="task-card-actions">
+                        <a href="@Url.Action("EditTask", "Employee",
+                            new { id = task.TaskId })"
+                            class="btn-task-sm edit"
+                            title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </a>
+
+                        if (isSelfCreated)
+                        {
+                            @using (Html.BeginForm("DeleteTask", "Employee",
+                                new { id = task.TaskId }, FormMethod.Post,
+                                new { style = "display:contents;" }))
+
+                            {
+                                @Html.AntiForgeryToken()
+                                <button type="submit"
+                                        class="btn-task-sm delete"
+                                        title="Delete"
+                                        onclick="return confirm('Delete this task?');">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            }
+                        }
+                    </div>
+                </div>
+
+            </div>
+        }
+    </div>
+
+}
+else
+{
+    <div class="empty-state">
+        <div class="empty-state-icon">
+            <i class="fas fa-inbox"></i>
+        </div>
+        <h5>No tasks found</h5>
+        <p>
+            @if (!string.IsNullOrEmpty(sel))
+            {
+                <text>
+                No @sel.ToLower() task.
+                </text>
+            }
+            else
+            {
+                <text>
+                Create your first task to get started.
+                </text>
+            }
+        </p>
+        <a href="@Url.Action("CreateTask", "Employee")"
+            class="btn-primary-custom">
+            <i class="fas fa-plus"></i> Create Task
+        </a>
+    </div>
+}
