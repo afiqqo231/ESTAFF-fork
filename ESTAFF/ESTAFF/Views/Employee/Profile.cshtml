@@ -1,5 +1,99 @@
-﻿@{
-    ViewBag.Title = "Page Title";
+﻿@model ESTAFF.Models.Data.ApplicationUser
+@{
+    ViewBag.Title = "My Profile";
     Layout = "~/Views/Shared/_EmployeeLayout.cshtml";
+    var initials = string.Concat(
+        Model.FullName.Split(' ')
+             .Where(w => w.Length > 0)
+             .Select(w => w[0].ToString().ToUpper()));
 }
-<p class="text-muted">Coming soon...</p>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="form-card" style="text-align:center;">
+            <div class="profile-upload-wrap">
+                <div class="profile-upload-avatar">
+                    @if (!string.IsNullOrEmpty(Model.ProfilePicturePath))
+                    {
+                        <img src="@Url.Content(Model.ProfilePicturePath)"
+                             alt="@Model.FullName" />
+                    }
+                    else
+                    {
+                        @initials
+                    }
+                </div>
+                <div class="profile-upload-btn"
+                     title="Upload photo (coming soon)">
+                    <i class="fas fa-camera"></i>
+                </div>
+            </div>
+
+            <h4 style="font-weight:800; color:var(--text-primary);
+                       margin:0 0 0.25rem; letter-spacing:-0.5px;">
+                @Model.FullName
+            </h4>
+
+            <span class="emp-card-number">
+                <i class="fas fa-id-badge"></i>
+                @Model.EmpNumber
+            </span>
+
+            <hr style="border-color:var(--border-subtle);
+                       margin:1.5rem 0;" />
+
+            <div style="text-align:left;">
+
+                <div style="display:flex; justify-content:space-between;
+                            align-items:center; padding:0.75rem 0;
+                            border-bottom:1px solid var(--border-subtle);">
+                    <span style="font-size:0.78rem; font-weight:600;
+                                 color:var(--text-muted); text-transform:uppercase;
+                                 letter-spacing:0.5px;">
+                        Email
+                    </span>
+                    <span style="font-size:0.875rem; font-weight:600;
+                                 color:var(--text-primary);">
+                        @Model.Email
+                    </span>
+                </div>
+
+                <div style="display:flex; justify-content:space-between;
+                            align-items:center; padding:0.75rem 0;
+                            border-bottom:1px solid var(--border-subtle);">
+                    <span style="font-size:0.78rem; font-weight:600;
+                                 color:var(--text-muted); text-transform:uppercase;
+                                 letter-spacing:0.5px;">
+                        Hire Date
+                    </span>
+                    <span style="font-size:0.875rem; font-weight:600;
+                                 color:var(--text-primary);">
+                        @(Model.HireDate.HasValue
+                            ? Model.HireDate.Value.ToString("MMMM dd, yyyy")
+                            : "—")
+                    </span>
+                </div>
+
+                <div style="display:flex; justify-content:space-between;
+                            align-items:center; padding:0.75rem 0;">
+                    <span style="font-size:0.78rem; font-weight:600;
+                                 color:var(--text-muted); text-transform:uppercase;
+                                 letter-spacing:0.5px;">
+                        Status
+                    </span>
+                    <span class="badge-pill badge-complete">
+                        <i class="fas fa-circle"
+                           style="font-size:0.45rem; vertical-align:middle;"></i>
+                        Active
+                    </span>
+                </div>
+
+            </div>
+
+            <p style="font-size:0.72rem; color:var(--text-muted);
+                      margin:1.25rem 0 0; font-style:italic;">
+                Profile photo upload coming soon.
+            </p>
+        </div>
+    </div>
+</div>

@@ -1,5 +1,156 @@
-﻿@{
-    ViewBag.Title = "Page Title";
+﻿@model List<ESTAFF.Models.Data.TaskItem>
+@{
+    ViewBag.Title = "Daily View";
     Layout = "~/Views/Shared/_EmployeeLayout.cshtml";
+    DateTime targetDate = (DateTime)ViewBag.TargetDate;
+    bool isToday = (bool)ViewBag.IsToday;
 }
-<p class="text-muted">Coming soon...</p>
+
+<!-- DAILY HEADER -->
+<div class="daily-header">
+    <div class="daily-date-nav">
+        <a href="@Url.Action("DailyView","Employee",
+               new { date = ((DateTime)ViewBag.PrevDate).ToString("yyyy-MM-dd") })"
+           class="date-nav-btn">
+            <i class="fas fa-chevron-left"></i>
+        </a>
+        <div>
+            <span class="daily-date-label">
+                @targetDate.ToString("dddd, MMMM dd")
+            </span>
+            <span class="daily-date-sub">
+                @targetDate.ToString("yyyy")
+            </span>
+        </div>
+        <a href="@Url.Action("DailyView","Employee",
+               new { date = ((DateTime)ViewBag.NextDate).ToString("yyyy-MM-dd") })"
+           class="date-nav-btn">
+            <i class="fas fa-chevron-right"></i>
+        </a>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+        @if (isToday)
+        {
+            <span class="today-badge">
+                <i class="fas fa-circle"
+                   style="font-size:0.45rem; vertical-align:middle;
+                          margin-right:0.3rem;"></i>
+                Today
+            </span>
+        }
+        else
+        {
+            <a href="@Url.Action("DailyView","Employee")"
+               class="btn-outline-custom"
+               style="font-size:0.775rem; padding:0.4rem 1rem;">
+                Back to Today
+            </a>
+        }
+        <a href="@Url.Action("CreateTask","Employee")"
+           class="btn-primary-custom"
+           style="font-size:0.8rem; padding:0.45rem 1rem;">
+            <i class="fas fa-plus"></i> Add Task
+        </a>
+    </div>
+</div>
+
+<!-- TASKS FOR THE DAY -->
+@if (Model.Count > 0)
+{
+    <div style="max-width:700px;">
+        @foreach (var task in Model)
+        {
+            var sc = task.Status ==
+                ESTAFF.Models.Data.TaskStatus.InProgress
+                ? "inprogress"
+                : task.Status.ToString().ToLower();
+
+            var isComplete = task.Status ==
+                ESTAFF.Models.Data.TaskStatus.Complete;
+
+            <div class="daily-task-item @(isComplete ? "complete" : "") anim-fade-up">
+                <div class="daily-task-accent @sc"></div>
+                <div class="daily-task-info">
+                    <h6 class="daily-task-title">@task.Title</h6>
+                    @if (!string.IsNullOrEmpty(task.Description))
+                    {
+                        <p class="daily-task-desc">@task.Description</p>
+                    }
+                    <div class="daily-task-tags">
+                        <span class="badge-pill badge-@sc">
+                            @task.Status
+                        </span>
+                        @if (task.Priority.HasValue)
+                        {
+                            var pc = task.Priority.ToString().ToLower();
+                            <span class="badge-pill badge-@pc">
+                                @task.Priority
+                            </span>
+                        }
+                    </div>
+                </div>
+
+                <!-- Quick Status Update -->
+                @using (Html.BeginForm("UpdateStatus", "Employee",
+                    FormMethod.Post,
+                    new { style = "display:flex; gap:0.4rem;" }))
+                {
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="taskId"
+                           value="@task.TaskId" />
+
+                    if (task.Status != ESTAFF.Models.Data.TaskStatus.Complete)
+                    {
+                        <button type="submit" name="status"
+                                value="InProgress"
+                                class="btn-outline-custom"
+                                style="font-size:0.72rem; padding:0.35rem 0.8rem;"
+                                title="Mark In Progress">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        <button type="submit" name="status"
+                                value="Complete"
+                                class="btn-primary-custom"
+                                style="font-size:0.72rem; padding:0.35rem 0.8rem;"
+                                title="Mark Complete">
+                            <i class="fas fa-check"></i>
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="submit" name="status"
+                                value="Pending"
+                                class="btn-outline-custom"
+                                style="font-size:0.72rem; padding:0.35rem 0.8rem;"
+                                title="Mark Pending">
+                            <i class="fas fa-undo"></i>
+                        </button>
+                    }
+                }
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="empty-state">
+        <div class="empty-state-icon">
+            <i class="fas fa-calendar-check"></i>
+        </div>
+        <h5>No tasks for this day</h5>
+        <p>
+            @if (isToday)
+            { <text>You have nothing due today. Enjoy your day!</text> }
+            else
+            { <text>No tasks were due on this day.</text> }
+        </p>
+        @if (isToday)
+        {
+            <a href="@Url.Action("CreateTask","Employee")"
+               class="btn-primary-custom">
+                <i class="fas fa-plus"></i> Add Task
+            </a>
+        }
+    </div>
+}

@@ -1,5 +1,119 @@
-﻿@{
-    ViewBag.Title = "Page Title";
+﻿@using ESTAFF.Controllers
+@model List<DayTaskGroup>
+@{
+    ViewBag.Title = "Weekly View";
     Layout = "~/Views/Shared/_EmployeeLayout.cshtml";
+    DateTime weekStart = (DateTime)ViewBag.WeekStart;
+    DateTime weekEnd   = (DateTime)ViewBag.WeekEnd;
+    bool isThisWeek    = (bool)ViewBag.IsThisWeek;
 }
-<p class="text-muted">Coming soon...</p>
+
+<!-- WEEKLY HEADER -->
+<div class="weekly-header">
+    <div class="d-flex align-items-center gap-1">
+        <a href="@Url.Action("WeeklyView","Employee",
+               new { weekStart = ((DateTime)ViewBag.PrevWeek)
+                   .ToString("yyyy-MM-dd") })"
+           class="date-nav-btn">
+            <i class="fas fa-chevron-left"></i>
+        </a>
+        <span class="weekly-range" style="margin:0 0.75rem;">
+            @weekStart.ToString("MMM dd")
+            -
+            @weekEnd.ToString("MMM dd, yyyy")
+        </span>
+        <a href="@Url.Action("WeeklyView","Employee",
+               new { weekStart = ((DateTime)ViewBag.NextWeek)
+                   .ToString("yyyy-MM-dd") })"
+           class="date-nav-btn">
+            <i class="fas fa-chevron-right"></i>
+        </a>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+        @if (isThisWeek)
+        {
+            <span class="today-badge">This Week</span>
+        }
+        else
+        {
+            <a href="@Url.Action("WeeklyView","Employee")"
+               class="btn-outline-custom"
+               style="font-size:0.775rem; padding:0.4rem 1rem;">
+                This Week
+            </a>
+        }
+        <a href="@Url.Action("CreateTask","Employee")"
+           class="btn-primary-custom"
+           style="font-size:0.8rem; padding:0.45rem 1rem;">
+            <i class="fas fa-plus"></i> Add Task
+        </a>
+    </div>
+</div>
+
+<!-- WEEKLY GRID -->
+<div class="weekly-grid">
+    @foreach (var day in Model)
+    {
+        bool isToday = day.Date.Date == DateTime.Today;
+        <div class="week-col @(isToday ? "today-col" : "")">
+
+            
+            <div class="week-col-header">
+                <span class="week-day-name">
+                    @day.Date.ToString("ddd")
+                </span>
+                @if (isToday)
+                {
+                    <div class="week-day-num">
+                        @day.Date.Day
+                    </div>
+                }
+                else
+                {
+                    <span class="week-day-num">
+                        @day.Date.Day
+                    </span>
+                }
+            </div>
+
+            
+            <div class="week-col-body">
+                @if (day.Tasks.Any())
+                {
+                    foreach (var task in day.Tasks)
+                    {
+                        var sc = task.Status ==
+                            ESTAFF.Models.Data.TaskStatus.InProgress
+                            ? "inprogress"
+                            : task.Status.ToString().ToLower();
+
+                        <a href="@Url.Action("EditTask","Employee",
+                               new { id = task.TaskId })"
+                           class="week-task-chip @sc"
+                           style="display:block; text-decoration:none;">
+                            <span class="week-chip-title">
+                                @task.Title
+                            </span>
+                            <span class="week-chip-badge"
+                                  style="color:@(sc == "overdue" ?
+                                      "var(--danger)" :
+                                      sc == "complete" ?
+                                      "var(--primary)" :
+                                      "var(--text-muted)");">
+                                @task.Status
+                            </span>
+                        </a>
+                    }
+                }
+                else
+                {
+                    <div class="week-col-empty">
+                        No tasks
+                    </div>
+                }
+            </div>
+
+        </div>
+    }
+</div>
