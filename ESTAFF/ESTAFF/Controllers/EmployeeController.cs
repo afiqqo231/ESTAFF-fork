@@ -142,6 +142,28 @@ namespace ESTAFF.Controllers
             return View(tasks);
         }
 
+        // Helper method to populate the optional COF dropdown
+        // with certificates for the current user's assigned plants
+        private void PopulateCOFList(int? selectedId = null)
+        {
+            var userId = User.Identity.GetUserId();
+
+            var plantIds = _db.UserPlants
+                .Where(up => up.UserId == userId)
+                .Select(up => up.PlantId)
+                .ToList();
+
+            var cofs = new TaskService(_db).GetCOFsForPlants(plantIds);
+
+            ViewBag.COFList = new SelectList(
+                cofs.Select(c => new
+                {
+                    Value = c.Id,
+                    Text = $"{c.RegistrationNo} — {c.MachineName} ({c.Status})"
+                }),
+                "Value", "Text", selectedId);
+        }
+
         // ===========
         // Create Task - Get
         // ===========
@@ -150,6 +172,7 @@ namespace ESTAFF.Controllers
             SetLayoutData();
             ViewBag.PageTitle = "Create Task";
             ViewBag.PageSubtitle = "Add a new task to your list.";
+            PopulateCOFList();
             return View(new CreateTaskViewModel());
         }
         // ===========
@@ -164,7 +187,10 @@ namespace ESTAFF.Controllers
             ViewBag.PageSubtitle = "Add a new task to your list.";
 
             if (!ModelState.IsValid)
+            {
+                PopulateCOFList(model.COFId);
                 return View(model);
+            }
 
             var userId = User.Identity.GetUserId();
 
@@ -176,10 +202,11 @@ namespace ESTAFF.Controllers
                 CreatedByUserId = userId,
                 DueDate = model.DueDate,
                 Priority = model.Priority,
+                COFId = model.COFId,
                 Status = TaskStatus.Pending,
                 CreatedDate = DateTime.Now,
                 LastModifiedDate = DateTime.UtcNow
-            }; 
+            };
 
             _db.TaskItems.Add(task);
             _db.SaveChanges();

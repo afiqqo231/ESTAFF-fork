@@ -25,6 +25,9 @@ namespace ESTAFF.Models.Data
         [Required]
         public DateTime DueDate { get; set; }
 
+        // Link to COF if applicable
+        public int? COFId { get; set; }
+
         [Required]
         [ForeignKey("AssignedToUser")]
         public string AssignedToUserId { get; set; }

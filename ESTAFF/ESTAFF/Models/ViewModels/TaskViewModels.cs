@@ -119,6 +119,9 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Due Date")]
         public DateTime DueDate { get; set; } = DateTime.Today.AddDays(1);
 
+        [Display(Name = "Certificate Of Fitness (COF)")]
+        public int? COFId { get; set; }
+
         [Display(Name = "Priority")]
         public TaskPriority? Priority { get; set; }
     }

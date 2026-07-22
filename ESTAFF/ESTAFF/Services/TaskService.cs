@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data.Entity;
 using System.Linq;
 using ESTAFF.Models.Data;
@@ -12,6 +13,20 @@ namespace ESTAFF.Services
         public TaskService(ApplicationDbContext db)
         {
             _db = db;
+        }
+
+        public List<COF> GetCOF(int plantId)
+        {
+            return _db.COFs
+                .Where(c => c.PlantId == plantId)
+                .ToList();
+        }
+
+        public List<COF> GetCOFsForPlants(IEnumerable<int> plantIds)
+        {
+            return _db.COFs
+                .Where(c => plantIds.Contains(c.PlantId))
+                .ToList();
         }
 
         // Auto-flag overdue tasks

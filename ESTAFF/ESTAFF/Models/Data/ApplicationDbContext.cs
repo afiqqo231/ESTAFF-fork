@@ -1,4 +1,8 @@
-﻿using System.Data.Entity;
+﻿using System;
+using System.Data.Entity;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.AspNet.Identity.EntityFramework;
 
 namespace ESTAFF.Models.Data
@@ -13,6 +17,12 @@ namespace ESTAFF.Models.Data
         public virtual DbSet<TaskHistory> TaskHistories { get; set; }
         public virtual DbSet<Report> Reports { get; set; }
         public virtual DbSet<ReportApproval> ReportApprovals { get; set; }
+
+        // Read-only projections of tables owned/created by EHS_PORTAL's CLIP module (same CLIP schema/DB).
+        // Never write through these - see PreventClipReadOnlyWrites().
+        public virtual DbSet<COF> COFs { get; set; }
+        public virtual DbSet<Plant> Plants { get; set; }
+        public virtual DbSet<UserPlant> UserPlants { get; set; }
 
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
@@ -94,6 +104,57 @@ namespace ESTAFF.Models.Data
                 .WithMany()
                 .HasForeignKey(r => r.UserId)
                 .WillCascadeOnDelete(false);
+
+            // Read-only CLIP tables (owned by EHS_PORTAL - do not CreateTable/AddColumn for these in migrations)
+            modelBuilder.Entity<COF>().ToTable("CertificateOfFitness", "CLIP");
+            modelBuilder.Entity<Plant>().ToTable("Plants", "CLIP");
+            modelBuilder.Entity<UserPlant>().ToTable("UserPlants", "CLIP");
+
+            modelBuilder.Entity<COF>()
+                .HasRequired(c => c.Plant)
+                .WithMany()
+                .HasForeignKey(c => c.PlantId)
+                .WillCascadeOnDelete(false);
+
+            modelBuilder.Entity<UserPlant>()
+                .HasRequired(up => up.User)
+                .WithMany()
+                .HasForeignKey(up => up.UserId)
+                .WillCascadeOnDelete(false);
+
+            modelBuilder.Entity<UserPlant>()
+                .HasRequired(up => up.Plant)
+                .WithMany(p => p.UserPlants)
+                .HasForeignKey(up => up.PlantId)
+                .WillCascadeOnDelete(false);
+        }
+
+        public override int SaveChanges()
+        {
+            PreventClipReadOnlyWrites();
+            return base.SaveChanges();
+        }
+
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken)
+        {
+            PreventClipReadOnlyWrites();
+            return base.SaveChangesAsync(cancellationToken);
+        }
+
+        // COF/Plant/UserPlant mirror tables that EHS_PORTAL's CLIP module owns and writes to.
+        // Blocking writes here at the SaveChanges level guards against silently corrupting
+        // EHS_PORTAL's data if a future ESTAFF change accidentally Add/Update/Removes one.
+        private void PreventClipReadOnlyWrites()
+        {
+            var hasClipWrites = ChangeTracker.Entries()
+                .Any(e => e.State != EntityState.Unchanged &&
+                          (e.Entity is COF || e.Entity is Plant || e.Entity is UserPlant));
+
+            if (hasClipWrites)
+            {
+                throw new InvalidOperationException(
+                    "COF, Plant, and UserPlant are read-only projections of EHS_PORTAL's CLIP schema and cannot be written from ESTAFF.");
+            }
         }
 
         public static ApplicationDbContext Create()
