@@ -133,9 +133,9 @@
                             <i class="fas fa-edit"></i>
                         </a>
 
-                        if (isSelfCreated)
+                        @if (isSelfCreated)
                         {
-                            @using (Html.BeginForm("DeleteTask", "Employee",
+                            using (Html.BeginForm("DeleteTask", "Employee",
                                 new { id = task.TaskId }, FormMethod.Post,
                                 new { style = "display:contents;" }))
 
