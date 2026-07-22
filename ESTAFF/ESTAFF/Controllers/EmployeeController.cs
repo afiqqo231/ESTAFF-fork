@@ -380,7 +380,7 @@ namespace ESTAFF.Controllers
             return View(days);
         }
         
-        public ActionResult Profile()
+        public new ActionResult Profile()
         {
             SetLayoutData();
             ViewBag.PageTitle = "My Profile";
