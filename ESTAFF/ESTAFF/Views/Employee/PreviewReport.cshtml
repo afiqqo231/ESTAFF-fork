@@ -1,0 +1,165 @@
+﻿@model ESTAFF.Models.ViewModels.GenerateReportViewModel
+@{
+    ViewBag.Title = "Preview Report";
+    Layout = "~/Views/Shared/_EmployeeLayout.cshtml";
+    int completed = Model.Tasks.Count(t =>
+        t.Status == ESTAFF.Models.Data.TaskStatus.Complete);
+    decimal rate = Model.Tasks.Count > 0
+        ? Math.Round((decimal)completed / Model.Tasks.Count * 100, 1)
+        : 0;
+}
+
+<!-- Stats -->
+<div class="report-stats-row mb-4">
+    <div class="report-stat-card">
+        <div class="report-stat-value">@Model.Tasks.Count</div>
+        <div class="report-stat-label">Total Tasks</div>
+    </div>
+    <div class="report-stat-card completed">
+        <div class="report-stat-value">@completed</div>
+        <div class="report-stat-label">Completed</div>
+    </div>
+    <div class="report-stat-card pending">
+        <div class="report-stat-value">
+            @Model.Tasks.Count(t =>
+                t.Status == ESTAFF.Models.Data.TaskStatus.Pending
+                || t.Status == ESTAFF.Models.Data.TaskStatus.InProgress)
+        </div>
+        <div class="report-stat-label">Pending</div>
+    </div>
+    <div class="report-stat-card overdue">
+        <div class="report-stat-value">
+            @Model.Tasks.Count(t =>
+                t.Status == ESTAFF.Models.Data.TaskStatus.Overdue)
+        </div>
+        <div class="report-stat-label">Overdue</div>
+    </div>
+</div>
+
+<!-- Completion Rate -->
+<div class="completion-bar-wrap">
+    <span class="completion-bar-label">Completion Rate</span>
+    <div class="completion-bar-track">
+        <div class="completion-bar-fill"
+             style="width:@rate%">
+        </div>
+    </div>
+    <span class="completion-bar-value">@rate%</span>
+</div>
+
+<!-- Task Table -->
+<div class="report-table-card mb-4">
+    <div class="report-table-header">
+        <h6>
+            <i class="fas fa-list-check"></i>
+            Tasks for @Model.PeriodStart.ToString("MMM dd")
+            – @Model.PeriodEnd.ToString("MMM dd, yyyy")
+        </h6>
+        <span class="badge-pill badge-submitted">
+            @Model.ReportType Report
+        </span>
+    </div>
+
+    @if (Model.Tasks.Any())
+    {
+        <table class="data-table" style="width:100%">
+            <thead>
+                <tr>
+                    <th style="padding-left:1.5rem">Task</th>
+                    <th>Priority</th>
+                    <th>Due Date</th>
+                    <th style="padding-right:1.5rem">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var task in Model.Tasks)
+                {
+                    var sc = task.Status ==
+                        ESTAFF.Models.Data.TaskStatus.InProgress
+                        ? "inprogress"
+                        : task.Status.ToString().ToLower();
+
+                    <tr>
+                        <td style="padding-left:1.5rem">
+                            <div style="font-weight:600;
+                                        color:var(--text-primary);
+                                        font-size:0.845rem;">
+                                @task.Title
+                            </div>
+                            @if (!string.IsNullOrEmpty(task.Description))
+                            {
+                                <div style="font-size:0.72rem;
+                                            color:var(--text-muted);">
+                                    @task.Description
+                                </div>
+                            }
+                        </td>
+                        <td>
+                            @if (task.Priority.HasValue)
+                            {
+                                var pc = task.Priority.ToString()
+                                    .ToLower();
+                                <span class="badge-pill badge-@pc">
+                                    @task.Priority
+                                </span>
+                            }
+                            else
+                            {
+                                <span style="color:var(--text-muted);
+                                             font-size:0.78rem;">—</span>
+                            }
+                        </td>
+                        <td>
+                            <span style="font-size:0.82rem;
+                                         color:var(--text-secondary);">
+                                @task.DueDate.ToString("MMM dd, yyyy")
+                            </span>
+                        </td>
+                        <td style="padding-right:1.5rem">
+                            <span class="badge-pill badge-@sc">
+                                @task.Status
+                            </span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <div class="empty-state" style="padding:2.5rem 1rem;">
+            <div class="empty-state-icon">
+                <i class="fas fa-inbox"></i>
+            </div>
+            <h5>No tasks for this period</h5>
+            <p>
+                No tasks were due between
+                @Model.PeriodStart.ToString("MMM dd") and
+                @Model.PeriodEnd.ToString("MMM dd, yyyy").
+            </p>
+        </div>
+    }
+</div>
+
+<!-- Submit Form -->
+@using (Html.BeginForm("SubmitReport", "Employee", FormMethod.Post))
+{
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="ReportType"
+           value="@((int)Model.ReportType)" />
+    <input type="hidden" name="PeriodStart"
+           value="@Model.PeriodStart.ToString("yyyy-MM-dd")" />
+    <input type="hidden" name="PeriodEnd"
+           value="@Model.PeriodEnd.ToString("yyyy-MM-dd")" />
+
+    <div class="d-flex justify-content-end gap-2">
+        <a href="@Url.Action("GenerateReport","Employee")"
+           class="btn-cancel">
+            <i class="fas fa-arrow-left me-1"></i>Back
+        </a>
+        <button type="submit" class="btn-submit">
+            <i class="fas fa-paper-plane me-1"></i>
+            Submit for Approval
+        </button>
+    </div>
+}

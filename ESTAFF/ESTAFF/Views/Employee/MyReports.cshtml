@@ -1,5 +1,139 @@
-﻿@{
-    ViewBag.Title = "Page Title";
+﻿@model List<ESTAFF.Models.ViewModels.ReportListItemViewModel>
+@{
+    ViewBag.Title = "My Reports";
     Layout = "~/Views/Shared/_EmployeeLayout.cshtml";
 }
-<p class="text-muted">Coming soon...</p>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <p class="text-muted mb-0" style="font-size:0.845rem;">
+        You have <strong>@Model.Count</strong>
+        report@(Model.Count != 1 ? "s" : "")
+    </p>
+    <a href="@Url.Action("GenerateReport","Employee")"
+       class="btn-primary-custom">
+        <i class="fas fa-plus"></i> Generate Report
+    </a>
+</div>
+
+@if (Model.Count > 0)
+{
+    <div class="report-table-card">
+        <div class="report-table-header">
+            <h6>
+                <i class="fas fa-file-alt"></i>
+                My Reports
+            </h6>
+            <span class="task-count-badge">
+                @Model.Count reports
+            </span>
+        </div>
+
+        <table class="data-table" style="width:100%">
+            <thead>
+                <tr>
+                    <th style="padding-left:1.5rem">Type</th>
+                    <th>Period</th>
+                    <th>Status</th>
+                    <th>Submitted</th>
+                    <th style="padding-right:1.5rem">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model)
+                {
+                    var sc = r.Status.ToString().ToLower();
+
+                    <tr>
+                        <td style="padding-left:1.5rem">
+                            <div style="font-weight:600;
+                                        color:var(--text-primary);
+                                        font-size:0.845rem;">
+                                @r.ReportType Report
+                            </div>
+                        </td>
+                        <td>
+                            <span style="font-size:0.82rem;
+                                         color:var(--text-secondary);
+                                         font-weight:500;">
+                                @r.PeriodStart.ToString("MMM dd")
+                                –
+                                @r.PeriodEnd.ToString("MMM dd, yyyy")
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge-pill badge-@sc">
+                                @r.Status
+                            </span>
+                        </td>
+                        <td>
+                            <span style="font-size:0.78rem;
+                                         color:var(--text-muted);">
+                                @(r.SubmittedDate.HasValue
+                                    ? r.SubmittedDate.Value
+                                        .ToString("MMM dd, yyyy")
+                                    : "—")
+                            </span>
+                        </td>
+                        <td style="padding-right:1.5rem;">
+                            <div class="task-actions">
+
+                                <a href="@Url.Action("ViewReport",
+                                       "Employee", new { id=r.ReportId })"
+                                   class="btn-task-action edit"
+                                   title="View Report">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+
+                                <a href="@Url.Action("DownloadReport",
+                                       "Employee", new { id=r.ReportId })"
+                                   class="btn-task-action edit"
+                                   title="Download PDF">
+                                    <i class="fas fa-download"></i>
+                                </a>
+
+                                @if (r.Status == ESTAFF.Models.Data
+                                    .ReportStatus.Rejected)
+                                {
+                                    using (Html.BeginForm(
+                                        "ResubmitReport", "Employee",
+                                        new { id = r.ReportId },
+                                        FormMethod.Post,
+                                        new { style = "display:inline" }))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit"
+                                                class="btn-task-action edit"
+                                                title="Resubmit"
+                                                style="color:var(--primary);"
+                                                onclick="return confirm(
+                                                    'Resubmit this report?')">
+                                            <i class="fas fa-redo"></i>
+                                        </button>
+                                    }
+                                }
+
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="empty-state">
+        <div class="empty-state-icon">
+            <i class="fas fa-file-alt"></i>
+        </div>
+        <h5>No reports yet</h5>
+        <p>
+            Generate your first weekly or monthly
+            report to get started.
+        </p>
+        <a href="@Url.Action("GenerateReport","Employee")"
+           class="btn-primary-custom">
+            <i class="fas fa-plus"></i> Generate Report
+        </a>
+    </div>
+}

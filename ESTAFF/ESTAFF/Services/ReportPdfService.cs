@@ -124,8 +124,8 @@ namespace ESTAFF.Services
                     infoTable.AddCell(cell);
                 }
 
-                AddInfoCell("Employee", vm.EmployeeName);
-                AddInfoCell("Employee No.", vm.EmployeeNumber,
+                AddInfoCell("Employee", vm.EmpName);
+                AddInfoCell("Employee No.", vm.EmpNumber,
                     true);
                 AddInfoCell("Period",
                     vm.PeriodStart.ToString("MMM dd") +
@@ -254,13 +254,15 @@ namespace ESTAFF.Services
                     var rowBg = alt ? ColorLight : ColorWhite;
                     alt = !alt;
 
-                    var statusColor = task.Status switch
-                    {
-                        TaskStatus.Complete   => ColorPrimary,
-                        TaskStatus.Overdue    => ColorDanger,
-                        TaskStatus.InProgress => new BaseColor(59,130,246),
-                        _                     => ColorWarning
-                    };
+                    BaseColor statusColor;
+                    if (task.Status == TaskStatus.Complete)
+                        statusColor = ColorPrimary;
+                    else if (task.Status == TaskStatus.Overdue)
+                        statusColor = ColorDanger;
+                    else if (task.Status == TaskStatus.InProgress)
+                        statusColor = new BaseColor(59,130,246);
+                    else
+                        statusColor = ColorWarning;
 
                     void AddTd(string text,
                         BaseColor fg = null, bool bold = false)

@@ -1,5 +1,151 @@
-﻿@{
-    ViewBag.Title = "Page Title";
+﻿@model ESTAFF.Models.ViewModels.GenerateReportViewModel
+@{
+    ViewBag.Title = "Generate Report";
     Layout = "~/Views/Shared/_EmployeeLayout.cshtml";
 }
-<p class="text-muted">Coming soon...</p>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="form-card">
+            <h5 class="form-card-title">
+                <i class="fas fa-file-alt"></i>
+                Generate Report
+            </h5>
+
+            @using (Html.BeginForm("PreviewReport", "Employee",
+                FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                @Html.ValidationSummary(true, "",
+                    new { @class = "alert alert-danger py-2 small" })
+
+                <!-- Report Type -->
+                <div class="mb-4">
+                    <label class="form-label">Report Type</label>
+                    <div class="report-type-grid">
+
+                        <label class="report-type-option"
+                               id="opt-weekly">
+                            <input type="radio"
+                                   name="ReportType"
+                                   value="1"
+                                   onchange="selectType('weekly')" />
+                            <div class="report-type-icon">
+                                <i class="fas fa-calendar-week"></i>
+                            </div>
+                            <span class="report-type-label">Weekly</span>
+                            <span class="report-type-hint">
+                                7-day period
+                            </span>
+                        </label>
+
+                        <label class="report-type-option"
+                               id="opt-monthly">
+                            <input type="radio"
+                                   name="ReportType"
+                                   value="2"
+                                   onchange="selectType('monthly')" />
+                            <div class="report-type-icon">
+                                <i class="fas fa-calendar-alt"></i>
+                            </div>
+                            <span class="report-type-label">Monthly</span>
+                            <span class="report-type-hint">
+                                Full month period
+                            </span>
+                        </label>
+
+                    </div>
+                    @Html.ValidationMessageFor(m => m.ReportType, "",
+                        new { @class = "text-danger small" })
+                </div>
+
+                <!-- Period -->
+                <div class="row g-3 mb-4">
+                    <div class="col-6">
+                        @Html.LabelFor(m => m.PeriodStart,
+                            new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.PeriodStart,
+                            "{0:yyyy-MM-dd}",
+                            new {
+                                @class = "form-control",
+                                type = "date",
+                                id = "periodStart",
+                                onchange = "updatePeriod()"
+                            })
+                        @Html.ValidationMessageFor(m => m.PeriodStart, "",
+                            new { @class = "text-danger small" })
+                    </div>
+                    <div class="col-6">
+                        @Html.LabelFor(m => m.PeriodEnd,
+                            new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.PeriodEnd,
+                            "{0:yyyy-MM-dd}",
+                            new {
+                                @class = "form-control",
+                                type = "date",
+                                id = "periodEnd"
+                            })
+                        @Html.ValidationMessageFor(m => m.PeriodEnd, "",
+                            new { @class = "text-danger small" })
+                    </div>
+                </div>
+
+                <hr style="border-color:var(--border-subtle);
+                           margin:1.25rem 0;" />
+
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="@Url.Action("MyReports","Employee")"
+                       class="btn-cancel">
+                        Cancel
+                    </a>
+                    <button type="submit" class="btn-submit">
+                        <i class="fas fa-eye me-1"></i>
+                        Preview Report
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section PageScripts {
+    <script>
+        function selectType(type) {
+            document.querySelectorAll('.report-type-option')
+                .forEach(function (el) {
+                    el.classList.remove('selected');
+                });
+
+            document.getElementById('opt-' + type)
+                .classList.add('selected');
+
+            if (type === 'weekly') {
+                // Set to current week Mon-Sun
+                var today = new Date();
+                var day   = today.getDay();
+                var diff  = day === 0 ? -6 : 1 - day;
+                var mon   = new Date(today);
+                mon.setDate(today.getDate() + diff);
+                var sun = new Date(mon);
+                sun.setDate(mon.getDate() + 6);
+
+                document.getElementById('periodStart').value =
+                    mon.toISOString().split('T')[0];
+                document.getElementById('periodEnd').value =
+                    sun.toISOString().split('T')[0];
+            } else {
+                // Set to current month
+                var now   = new Date();
+                var first = new Date(
+                    now.getFullYear(), now.getMonth(), 1);
+                var last  = new Date(
+                    now.getFullYear(), now.getMonth() + 1, 0);
+
+                document.getElementById('periodStart').value =
+                    first.toISOString().split('T')[0];
+                document.getElementById('periodEnd').value =
+                    last.toISOString().split('T')[0];
+            }
+        }
+    </script>
+}

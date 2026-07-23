@@ -1,0 +1,262 @@
+﻿@model ESTAFF.Models.ViewModels.ReportDetailViewModel
+@{
+    ViewBag.Title = "Report Details";
+    Layout = "~/Views/Shared/_EmployeeLayout.cshtml";
+    var sc = Model.Status.ToString().ToLower();
+}
+
+<div class="report-detail-layout">
+
+    <!-- LEFT: Report Content -->
+    <div>
+
+        <!-- Report Header -->
+        <div class="report-header-card">
+            <div class="report-header-banner"></div>
+            <div class="report-header-body">
+                <div class="d-flex justify-content-between
+                            align-items-start">
+                    <div>
+                        <h5 style="font-size:1.1rem; font-weight:800;
+                                   color:var(--text-primary);
+                                   margin:0 0 0.3rem;
+                                   letter-spacing:-0.3px;">
+                            @Model.ReportType Report
+                        </h5>
+                        <p style="font-size:0.82rem;
+                                  color:var(--text-muted); margin:0;">
+                            @Model.PeriodStart.ToString("MMMM dd") –
+                            @Model.PeriodEnd.ToString("MMMM dd, yyyy")
+                        </p>
+                    </div>
+                    <span class="badge-pill badge-@sc">
+                        @Model.Status
+                    </span>
+                </div>
+
+                <div class="report-meta-grid">
+                    <div class="report-meta-item">
+                        <span class="report-meta-label">Employee</span>
+                        <span class="report-meta-value">
+                            @Model.EmpName
+                        </span>
+                    </div>
+                    <div class="report-meta-item">
+                        <span class="report-meta-label">
+                            Employee No.
+                        </span>
+                        <span class="report-meta-value">
+                            @Model.EmpNumber
+                        </span>
+                    </div>
+                    <div class="report-meta-item">
+                        <span class="report-meta-label">Submitted</span>
+                        <span class="report-meta-value">
+                            @(Model.SubmittedDate.HasValue
+                                ? Model.SubmittedDate.Value
+                                    .ToString("MMM dd, yyyy")
+                                : "—")
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rejection Banner -->
+        @if (Model.Status == ESTAFF.Models.Data.ReportStatus.Rejected
+            && !string.IsNullOrEmpty(Model.RejectionReason))
+        {
+            <div class="rejection-banner">
+                <i class="fas fa-exclamation-circle"></i>
+                <div class="rejection-banner-text">
+                    <h6>Report Rejected</h6>
+                    <p>@Model.RejectionReason</p>
+                </div>
+            </div>
+        }
+
+        <!-- Stats -->
+        <div class="report-stats-row">
+            <div class="report-stat-card">
+                <div class="report-stat-value">
+                    @Model.TotalTasks
+                </div>
+                <div class="report-stat-label">Total</div>
+            </div>
+            <div class="report-stat-card completed">
+                <div class="report-stat-value">
+                    @Model.CompletedTasks
+                </div>
+                <div class="report-stat-label">Completed</div>
+            </div>
+            <div class="report-stat-card pending">
+                <div class="report-stat-value">
+                    @Model.PendingTasks
+                </div>
+                <div class="report-stat-label">Pending</div>
+            </div>
+            <div class="report-stat-card overdue">
+                <div class="report-stat-value">
+                    @Model.OverdueTasks
+                </div>
+                <div class="report-stat-label">Overdue</div>
+            </div>
+        </div>
+
+        <!-- Completion Rate -->
+        <div class="completion-bar-wrap">
+            <span class="completion-bar-label">
+                Completion Rate
+            </span>
+            <div class="completion-bar-track">
+                <div class="completion-bar-fill"
+                     style="width:@Model.CompletionRate%">
+                </div>
+            </div>
+            <span class="completion-bar-value">
+                @Model.CompletionRate%
+            </span>
+        </div>
+
+        <!-- Task Table -->
+        <div class="report-table-card">
+            <div class="report-table-header">
+                <h6>
+                    <i class="fas fa-list-check"></i>
+                    Task Details
+                </h6>
+                <span class="task-count-badge">
+                    @Model.Tasks.Count tasks
+                </span>
+            </div>
+
+            @if (Model.Tasks.Any())
+            {
+                <table class="data-table" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th style="padding-left:1.5rem">Task</th>
+                            <th>Priority</th>
+                            <th>Due Date</th>
+                            <th>Completed</th>
+                            <th style="padding-right:1.5rem">
+                                Status
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var task in Model.Tasks)
+                        {
+                            var tsc = task.Status ==
+                                ESTAFF.Models.Data.TaskStatus.InProgress
+                                ? "inprogress"
+                                : task.Status.ToString().ToLower();
+
+                            <tr>
+                                <td style="padding-left:1.5rem">
+                                    <div style="font-weight:600;
+                                                color:var(--text-primary);
+                                                font-size:0.845rem;">
+                                        @task.Title
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (task.Priority.HasValue)
+                                    {
+                                        var pc = task.Priority
+                                            .ToString().ToLower();
+                                        <span class="badge-pill badge-@pc">
+                                            @task.Priority
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span style="color:var(--text-muted);
+                                                     font-size:0.78rem;">
+                                            —
+                                        </span>
+                                    }
+                                </td>
+                                <td>
+                                    <span style="font-size:0.82rem;
+                                                 color:var(--text-secondary);">
+                                        @task.DueDate.ToString("MMM dd")
+                                    </span>
+                                </td>
+                                <td>
+                                    <span style="font-size:0.78rem;
+                                                 color:var(--text-muted);">
+                                        @(task.CompletedDate.HasValue
+                                            ? task.CompletedDate.Value
+                                                .ToString("MMM dd")
+                                            : "—")
+                                    </span>
+                                </td>
+                                <td style="padding-right:1.5rem">
+                                    <span class="badge-pill badge-@tsc">
+                                        @task.Status
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div class="empty-state" style="padding:2rem 1rem;">
+                    <i class="fas fa-inbox"
+                       style="font-size:1.5rem; opacity:0.2;
+                              display:block; margin-bottom:0.5rem;"></i>
+                    <p style="margin:0; font-size:0.82rem;">
+                        No tasks found for this period
+                    </p>
+                </div>
+            }
+        </div>
+
+    </div>
+
+    <!-- RIGHT: Actions Panel -->
+    <div>
+        <div class="report-side-panel">
+            <div class="report-side-header">
+                <i class="fas fa-bolt"></i> Actions
+            </div>
+            <div class="report-side-body">
+
+                <a href="@Url.Action("DownloadReport","Employee",
+                       new { id = Model.ReportId })"
+                   class="report-action-btn download">
+                    <i class="fas fa-download"></i>
+                    Download PDF
+                </a>
+
+                @if (Model.Status ==
+                    ESTAFF.Models.Data.ReportStatus.Rejected)
+                {
+                    using (Html.BeginForm("ResubmitReport","Employee",
+                        new { id = Model.ReportId }, FormMethod.Post))
+                    {
+                        @Html.AntiForgeryToken()
+                        <button type="submit"
+                                class="report-action-btn approve"
+                                onclick="return confirm(
+                                    'Resubmit this report?')">
+                            <i class="fas fa-redo"></i>
+                            Resubmit Report
+                        </button>
+                    }
+                }
+
+                <a href="@Url.Action("MyReports","Employee")"
+                   class="report-action-btn back">
+                    <i class="fas fa-arrow-left"></i>
+                    Back to Reports
+                </a>
+
+            </div>
+        </div>
+    </div>
+
+</div>
