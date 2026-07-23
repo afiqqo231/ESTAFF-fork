@@ -182,9 +182,11 @@
     <Compile Include="Models\Data\TaskHistory.cs" />
     <Compile Include="Models\Data\TaskItem.cs" />
     <Compile Include="Models\ViewModels\AccountViewModels.cs" />
+    <Compile Include="Models\ViewModels\ReportViewModels.cs" />
     <Compile Include="Models\ViewModels\StaffViewModels.cs" />
     <Compile Include="Models\ViewModels\TaskViewModels.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\ReportPdfService.cs" />
     <Compile Include="Services\TaskService.cs" />
     <Compile Include="Startup.cs" />
   </ItemGroup>

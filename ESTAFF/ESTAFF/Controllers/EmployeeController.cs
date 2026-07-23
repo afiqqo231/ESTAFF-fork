@@ -391,22 +391,279 @@ namespace ESTAFF.Controllers
         }
 
         // ===========
-        // PlaceHolder for future features
+        // My Reports - LIST
         // ===========
         public ActionResult MyReports()
         {
             SetLayoutData();
             ViewBag.PageTitle = "My Reports";
             ViewBag.PageSubtitle = "View all your submitted reports.";
-            return View();
+
+            var userId = User.Identity.GetUserId();
+
+            var reports = _db.Reports
+                .Where(r => r.UserId == userId)
+                .OrderByDescending(r => r.CreatedDate)
+                .ToList()
+                .Select(r => new ReportListItemViewModel
+                {
+                    ReportId = r.ReportId,
+                    EmpName = r.User?.FullName ?? "-",
+                    EmpNumber = r.User?.EmpNumber ?? "-",
+                    ReportType = r.ReportType,    
+                    PeriodStart = r.PeriodStart,
+                    PeriodEnd = r.PeriodEnd,
+                    Status = r.Status,
+                    CreatedDate = r.CreatedDate,
+                    SubmittedDate = r.SubmittedDate,
+                    ApprovedDate = r.ApprovedDate,
+                    RejectionReason = r.RejectionReason
+                })
+                .ToList();
+
+            return View(reports);
         }
 
+        // ===========
+        // Generate Report - GET
+        // ===========
         public ActionResult GenerateReport()
         {
             SetLayoutData();
             ViewBag.PageTitle = "Generate Report";
             ViewBag.PageSubtitle = "Create a weekly or monthly report.";
-            return View();
+
+            // Default to current week
+            var today = DateTime.Today;
+            var weekStart = today.AddDays(
+                -(int)today.DayOfWeek + (int)DayOfWeek.Monday);
+            if (today.DayOfWeek == DayOfWeek.Sunday)
+                weekStart = today.AddDays(-6);
+            
+            var vm = new GenerateReportViewModel
+            {
+                PeriodStart = weekStart,
+                PeriodEnd = today
+            };
+
+            return View(vm);
+        }
+
+        // ===========
+        // Generate Report - POST
+        // ===========
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult PreviewReport(GenerateReportViewModel model)
+        {
+            SetLayoutData();
+            ViewBag.PageTitle = "Preview Report";
+            ViewBag.PageSubtitle = "Review before submitting.";
+
+            if (!ModelState.IsValid)
+                return View("GenerateReport", model);
+
+            var userId = User.Identity.GetUserId();
+            var endOfDay = model.PeriodEnd.AddDays(1).AddTicks(-1);
+
+            var tasks = _db.Tasks
+                .Where(t => t.AssignedToUserId == userId
+                         && t.DueDate >= model.PeriodStart
+                         && t.DueDate <= endOfDay)
+                .OrderBy(t => t.DueDate)
+                .ToList();
+
+            model.Tasks = tasks;
+            return View("PreviewReport", model);
+        }
+
+        // ===========
+        // Submit Report - POST
+        // ===========
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult SubmitReport(GenerateReportViewModel model)
+        {
+            SetLayoutData();
+            var userId = User.Identity.GetUserId();
+
+            // Check if a report already exists for this period
+            var existingReport = _db.Reports.FirstOrDefault(r =>
+                r.UserId == userId
+                && r.PeriodStart == model.PeriodStart
+                && r.PeriodEnd == model.PeriodEnd
+                && r.Status != ReportStatus.Rejected);
+
+            if (existingReport != null)
+            {
+                TempData["ErrorMessage"] = 
+                    "A report for this period has already been submitted.";
+                return RedirectToAction("MyReports");
+            }
+
+            var report = new Report
+            {
+                UserId = userId,
+                ReportType = model.ReportType,
+                PeriodStart = model.PeriodStart,
+                PeriodEnd = model.PeriodEnd,
+                Status = ReportStatus.Submitted,
+                SubmittedDate = DateTime.Now,
+                CreatedDate = DateTime.Now,
+                LastModifiedDate = DateTime.Now
+            };
+
+            _db.Reports.Add(report);
+            _db.SaveChanges();
+
+            TempData["SuccessMessage"] = 
+                "Report submitted successfully! " + 
+                "Awaiting manager approval.";
+            return RedirectToAction("MyReports");
+        }
+
+        // ===========
+        // View Report - GET
+        // ===========
+        public ActionResult ViewReport(int id)
+        {
+            SetLayoutData();
+            ViewBag.PageTitle = "Report Details";
+            ViewBag.PageSubtitle = "View your report details.";
+
+            var userId = User.Identity.GetUserId();
+            var report = _db.Reports.Find(id);
+
+            if (report == null || report.UserId != userId)
+                return HttpNotFound();
+
+            var endOfDay = report.PeriodEnd.AddDays(1).AddTicks(-1);
+
+            var tasks = _db.Tasks
+                .Where(t => t.AssignedToUserId == userId
+                         && t.DueDate >= report.PeriodStart
+                         && t.DueDate <= endOfDay)
+                .OrderBy(t => t.DueDate)
+                .ToList();
+
+            var completed = tasks.Count(t =>
+                t.Status == TaskStatus.Complete);
+
+            var vm = new ReportDetailViewModel
+            {
+                ReportId = report.ReportId,
+                EmpName = report.User?.FullName ?? "-",
+                EmpNumber = report.User?.EmpNumber ?? "-",
+                EmpEmail = report.User?.Email ?? "-",
+                ReportType = report.ReportType,
+                PeriodStart = report.PeriodStart,
+                PeriodEnd = report.PeriodEnd,
+                Status = report.Status,
+                CreatedDate = report.CreatedDate,
+                SubmittedDate = report.SubmittedDate,
+                ApprovedDate = report.ApprovedDate,
+                RejectionReason = report.RejectionReason,
+                Tasks = tasks,
+                TotalTasks = tasks.Count,
+                CompletedTasks = completed,
+                PendingTasks = tasks.Count(t =>
+                    t.Status == TaskStatus.Pending ||
+                    t.Status == TaskStatus.InProgress),
+                OverdueTasks = tasks.Count(t =>
+                    t.Status == TaskStatus.Overdue),
+                CompletionRate = tasks.Count > 0 
+                    ? Math.Round(
+                        (decimal)completed / tasks.Count * 100, 1)
+                    : 0
+            };
+
+            return View(vm);
+        }
+
+        // ===========
+        // Download Report Pdf
+        // ===========
+        public ActionResult DownloadReportPdf(int id)
+        {
+            var userId = User.Identity.GetUserId();
+            var report = _db.Reports.Find(id);
+
+            if (report == null || report.UserId != userId)
+                return HttpNotFound();
+
+            var endOfDay = report.PeriodEnd.AddDays(1).AddTicks(-1);
+            var tasks = _db.Tasks
+                .Where(t => t.AssignedToUserId == userId
+                         && t.DueDate >= report.PeriodStart
+                         && t.DueDate <= endOfDay)
+                .OrderBy(t => t.DueDate)
+                .ToList();
+
+            var completed = tasks.Count(t =>
+                t.Status == TaskStatus.Complete);
+
+            var vm = new ReportDetailViewModel
+            {
+                ReportId = report.ReportId,
+                EmpName = report.User?.FullName ?? "-",
+                EmpNumber = report.User?.EmpNumber ?? "-",
+                EmpEmail = report.User?.Email ?? "-",
+                ReportType = report.ReportType,
+                PeriodStart = report.PeriodStart,
+                PeriodEnd = report.PeriodEnd,
+                Status = report.Status,
+                CreatedDate = report.CreatedDate,
+                SubmittedDate = report.SubmittedDate,
+                ApprovedDate = report.ApprovedDate,
+                RejectionReason = report.RejectionReason,
+                Tasks = tasks,
+                TotalTasks = tasks.Count,
+                CompletedTasks = completed,
+                PendingTasks = tasks.Count(t =>
+                    t.Status == TaskStatus.Pending ||
+                    t.Status == TaskStatus.InProgress),
+                OverdueTasks = tasks.Count(t =>
+                    t.Status == TaskStatus.Overdue),
+                CompletionRate = tasks.Count > 0
+                    ? Math.Round(
+                        (decimal)completed / tasks.Count * 100, 1)
+                    : 0
+            };
+
+            var pdfService = new ReportPdfService();
+            var bytes = pdfService.GeneratePdf(vm);
+            var fileName = 
+                $"Report_{vm.EmpNumber}_" +
+                $"{vm.PeriodStart:yyyMMdd}_" +
+                $"{vm.PeriodEnd:yyyMMdd}.pdf";
+
+            return File(bytes, "application/pdf", fileName);
+        }
+
+        // ===========
+        // Resubmit Rejected Report - Post
+        // ===========
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult ResubmitReport(int id)
+        {
+            var userId = User.Identity.GetUserId();
+            var report = _db.Reports.Find(id);
+
+            if (report == null 
+                || report.UserId != userId
+                || report.Status != ReportStatus.Rejected)
+                return HttpNotFound();
+
+            report.Status = ReportStatus.Submitted;
+            report.SubmittedDate = DateTime.Now;
+            report.RejectionReason = null;
+            report.LastModifiedDate = DateTime.Now;
+            _db.SaveChanges();
+
+            TempData["SuccessMessage"] = 
+                "Report resubmitted successfully!";
+            return RedirectToAction("MyReports");
         }
 
         protected override void Dispose(bool disposing)
