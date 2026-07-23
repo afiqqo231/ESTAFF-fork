@@ -113,6 +113,7 @@ namespace ESTAFF.Controllers
                     TaskId = t.TaskId,
                     Title = t.Title,
                     Description = t.Description,
+                    COFId = t.COFId,
                     Status = t.Status,
                     Priority = t.Priority,
                     DueDate = t.DueDate,

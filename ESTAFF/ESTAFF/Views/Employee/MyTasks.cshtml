@@ -54,6 +54,8 @@
             var pc = task.Priority.HasValue
                 ? task.Priority.ToString().ToLower()
                 : "";
+
+            var classificationColor = task.COFId.HasValue ? "COF" : "other";
             
             var isOD = task.DueDate.Date < DateTime.Today
                     && task.Status != ESTAFF.Models.Data.TaskStatus.Complete;
@@ -64,9 +66,24 @@
             <div class="my-task-card anim-fade-up">
 
                 <div class="my-task-card-top">
-                    <span class="badge-pill badge-@sc">
-                        @task.Status
-                    </span>
+                    <div>
+                        <span class="badge-pill badge-@sc">
+                            @task.Status
+                        </span>
+                        @if (task.COFId.HasValue){
+                            
+                            <span class="badge-pill badge-@classificationColor">
+                                Certificate of Fitness
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge-pill badge-@pc">
+                                Others
+                            </span>
+                        }
+                    </div>
+
                     @if (task.Priority.HasValue)
                     {
                         <span class="badge-pill badge-@pc">

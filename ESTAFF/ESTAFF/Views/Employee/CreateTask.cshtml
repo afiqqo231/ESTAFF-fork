@@ -25,9 +25,18 @@
                             new { @class = "form-label" })
                         @Html.TextBoxFor(m => m.Title,
                             new { @class = "form-control",
-                                  placeholder = "What needs to be done?" })
+                                placeholder = "What needs to be done?" })
                         @Html.ValidationMessageFor(m => m.Title, "",
                             new { @class = "text-danger small" })
+                    </div>
+                    
+                    <div class="col-12">
+                        @Html.LabelFor(m => m.COFId,
+                            new { @class = "form-label" })
+                        @Html.DropDownListFor(m => m.COFId,
+                            (SelectList)ViewBag.COFList,
+                            "— None —",
+                            new { @class = "form-control" })
                     </div>
 
                     <div class="col-12">
