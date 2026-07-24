@@ -519,8 +519,6 @@
     border-top: 1px solid var(--border-subtle);
 }
 
-.report-meta-item { }
-
 .report-meta-label {
     font-size: 0.62rem;
     font-weight: 700;
