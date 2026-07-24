@@ -104,14 +104,7 @@
     <div class="sidebar-footer">
         <div class="sidebar-user">
             <div class="sidebar-avatar">
-                @if (!string.IsNullOrEmpty(appUser?.ProfilePicturePath))
-                {
-                    <img src="@Url.Content(appUser.ProfilePicturePath)" alt="@fullName" />
-                }
-                else
-                {
-                    @initials
-                }
+                <i class="fas fa-user"></i>
             </div>
             <div class="sidebar-user-info">
                 <p>@fullName</p>

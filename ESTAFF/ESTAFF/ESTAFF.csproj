@@ -45,11 +45,20 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="BouncyCastle.Crypto, Version=1.8.9.0, Culture=neutral, PublicKeyToken=0e99375e54769942">
+      <HintPath>..\packages\BouncyCastle.1.8.9\lib\BouncyCastle.Crypto.dll</HintPath>
+    </Reference>
+    <Reference Include="BouncyCastle.Cryptography, Version=2.0.0.0, Culture=neutral, PublicKeyToken=072edcf4a5328938, processorArchitecture=MSIL">
+      <HintPath>..\packages\BouncyCastle.Cryptography.2.4.0\lib\net461\BouncyCastle.Cryptography.dll</HintPath>
+    </Reference>
     <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
       <HintPath>..\packages\EntityFramework.6.5.2\lib\net45\EntityFramework.dll</HintPath>
     </Reference>
     <Reference Include="EntityFramework.SqlServer, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
       <HintPath>..\packages\EntityFramework.6.5.2\lib\net45\EntityFramework.SqlServer.dll</HintPath>
+    </Reference>
+    <Reference Include="itextsharp, Version=5.5.13.4, Culture=neutral, PublicKeyToken=8354ae6d2174ddca, processorArchitecture=MSIL">
+      <HintPath>..\packages\iTextSharp.5.5.13.4\lib\net461\itextsharp.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.AspNet.Identity.Core, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.AspNet.Identity.Core.2.2.4\lib\net45\Microsoft.AspNet.Identity.Core.dll</HintPath>
@@ -229,6 +238,10 @@
     <Compile Include="Migrations\202607240845258_addPlantMonitoringModelFromCLIP.Designer.cs">
       <DependentUpon>202607240845258_addPlantMonitoringModelFromCLIP.cs</DependentUpon>
     </Compile>
+    <Compile Include="Migrations\202607240254353_RemoveProfilePicturePath.cs" />
+    <Compile Include="Migrations\202607240254353_RemoveProfilePicturePath.Designer.cs">
+      <DependentUpon>202607240254353_RemoveProfilePicturePath.cs</DependentUpon>
+    </Compile>
     <Compile Include="Migrations\Configuration.cs" />
     <Compile Include="Models\Data\ApplicationDbContext.cs" />
     <Compile Include="Models\Data\ApplicationIdentity.cs" />
@@ -244,9 +257,11 @@
     <Compile Include="Models\Data\TaskItem.cs" />
     <Compile Include="Models\Data\UserPlant.cs" />
     <Compile Include="Models\ViewModels\AccountViewModels.cs" />
+    <Compile Include="Models\ViewModels\ReportViewModels.cs" />
     <Compile Include="Models\ViewModels\StaffViewModels.cs" />
     <Compile Include="Models\ViewModels\TaskViewModels.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\ReportPdfService.cs" />
     <Compile Include="Services\TaskService.cs" />
     <Compile Include="Startup.cs" />
   </ItemGroup>
@@ -344,10 +359,13 @@
     <Content Include="Views\Employee\Profile.cshtml" />
     <Content Include="Views\Admin\EditTask.cshtml" />
     <Content Include="Views\Admin\EditEmployee.cshtml" />
+    <Content Include="Views\Employee\EditTask.cshtml" />
+    <Content Include="Views\Employee\PreviewReport.cshtml" />
+    <Content Include="Views\Employee\ViewReport.cshtml" />
+    <Content Include="Views\Admin\ReviewReport.cshtml" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="App_Data\" />
-    <Folder Include="Content\webfonts\" />
+    <Folder Include="App_Data\profiles\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -366,6 +384,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Migrations\202607240845258_addPlantMonitoringModelFromCLIP.resx">
       <DependentUpon>202607240845258_addPlantMonitoringModelFromCLIP.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202607240254353_RemoveProfilePicturePath.resx">
+      <DependentUpon>202607240254353_RemoveProfilePicturePath.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <PropertyGroup>

@@ -38,7 +38,6 @@ namespace ESTAFF.Models.ViewModels
         public string UserName { get; set; }
         public string EmpID { get; set; }
         public string Email { get; set; }
-        public string ProfilePicturePath { get; set; }
         public bool IsActive { get; set; }
         public DateTime HireDate { get; set; }
         public int TotalTasks { get; set; }
@@ -72,8 +71,7 @@ namespace ESTAFF.Models.ViewModels
 
         [Display(Name = "Active")]
         public bool IsActive { get; set; } 
-
-        public string ProfilePicturePath { get; set; }
+        
         // Stats
         public int TotalTasks { get; set; }
         public int CompletedTasks { get; set; }
