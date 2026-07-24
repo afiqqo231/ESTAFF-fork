@@ -164,6 +164,28 @@ namespace ESTAFF.Controllers
                 }),
                 "Value", "Text", selectedId);
         }
+        
+        // Helper method to populate the optional PlantMonitoring dropdown
+        // for the current user's assigned plants
+        private void PopulatePlantMonitoringList(int? selectedId = null)
+        {
+            var userId = User.Identity.GetUserId();
+
+            var plantIds = _db.UserPlants
+                .Where(up => up.UserId == userId)
+                .Select(up => up.PlantId)
+                .ToList();
+
+            var plantMonitoring = new TaskService(_db).GetCOFsForPlants(plantIds);
+
+            ViewBag.plantMonitoringList = new SelectList(
+                plantMonitoring.Select(c => new
+                {
+                    Value = c.Id,
+                    Text = $"{c.RegistrationNo} — {c.MachineName} ({c.Status})"
+                }),
+                "Value", "Text", selectedId);
+        }
 
         // ===========
         // Create Task - Get

@@ -187,6 +187,25 @@
     border: 1px solid #FECACA;
 }
 
+/* ── Task Classification ──────────────────────────────────────── */
+.badge-COF {
+    background: var(--primary-light);
+    color: #065F46;
+    border: 1px solid var(--border);
+}
+
+.badge-FETS {
+    background: #FEF2F2;
+    color: #991B1B;
+    border: 1px solid #FECACA;
+}
+
+.badge-other {
+    background: #FFFBEB;
+    color: #92400E;
+    border: 1px solid #FDE68A;
+}
+
 /* ── Buttons ──────────────────────────────────────────────── */
 .btn-primary-custom {
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));

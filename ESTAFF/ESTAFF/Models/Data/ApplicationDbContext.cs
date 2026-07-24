@@ -23,6 +23,8 @@ namespace ESTAFF.Models.Data
         public virtual DbSet<COF> COFs { get; set; }
         public virtual DbSet<Plant> Plants { get; set; }
         public virtual DbSet<UserPlant> UserPlants { get; set; }
+        public virtual DbSet<PlantMonitoring> PlantMonitoring { get; set; }
+        public virtual DbSet<Monitoring> Monitoring {get; set; }
 
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
@@ -109,6 +111,8 @@ namespace ESTAFF.Models.Data
             modelBuilder.Entity<COF>().ToTable("CertificateOfFitness", "CLIP");
             modelBuilder.Entity<Plant>().ToTable("Plants", "CLIP");
             modelBuilder.Entity<UserPlant>().ToTable("UserPlants", "CLIP");
+            modelBuilder.Entity<PlantMonitoring>().ToTable("PlantMonitorings", "CLIP");
+            modelBuilder.Entity<Monitoring>().ToTable("Monitorings", "CLIP");
 
             modelBuilder.Entity<COF>()
                 .HasRequired(c => c.Plant)
@@ -126,6 +130,18 @@ namespace ESTAFF.Models.Data
                 .HasRequired(up => up.Plant)
                 .WithMany(p => p.UserPlants)
                 .HasForeignKey(up => up.PlantId)
+                .WillCascadeOnDelete(false);
+            
+            modelBuilder.Entity<PlantMonitoring>()
+                .HasRequired(up => up.Plant)
+                .WithMany()
+                .HasForeignKey(up => up.PlantID)
+                .WillCascadeOnDelete(false);
+            
+            modelBuilder.Entity<PlantMonitoring>()
+                .HasRequired(up => up.Monitoring)
+                .WithMany()
+                .HasForeignKey(up => up.MonitoringID)
                 .WillCascadeOnDelete(false);
         }
 
