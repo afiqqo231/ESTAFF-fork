@@ -175,6 +175,10 @@
     <Compile Include="Migrations\202607090259382_InitialCreate.Designer.cs">
       <DependentUpon>202607090259382_InitialCreate.cs</DependentUpon>
     </Compile>
+    <Compile Include="Migrations\202607240254353_RemoveProfilePicturePath.cs" />
+    <Compile Include="Migrations\202607240254353_RemoveProfilePicturePath.Designer.cs">
+      <DependentUpon>202607240254353_RemoveProfilePicturePath.cs</DependentUpon>
+    </Compile>
     <Compile Include="Migrations\Configuration.cs" />
     <Compile Include="Models\Data\ApplicationDbContext.cs" />
     <Compile Include="Models\Data\ApplicationIdentity.cs" />
@@ -293,8 +297,7 @@
     <Content Include="Views\Admin\ReviewReport.cshtml" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="App_Data\" />
-    <Folder Include="Content\webfonts\" />
+    <Folder Include="App_Data\profiles\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -304,6 +307,9 @@
   <ItemGroup>
     <EmbeddedResource Include="Migrations\202607090259382_InitialCreate.resx">
       <DependentUpon>202607090259382_InitialCreate.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202607240254353_RemoveProfilePicturePath.resx">
+      <DependentUpon>202607240254353_RemoveProfilePicturePath.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <PropertyGroup>
