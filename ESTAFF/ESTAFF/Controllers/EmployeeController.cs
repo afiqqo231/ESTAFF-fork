@@ -387,8 +387,39 @@ namespace ESTAFF.Controllers
             ViewBag.PageSubtitle = "View and update your profile.";
 
             var user = CurrentUser;
+            if (user == null) return HttpNotFound();
+
+            var userId = User.Identity.GetUserId();
+
+            ViewBag.TotalTasks = _db.Tasks
+                .Count(t => t.AssignedToUserId == userId);
+            ViewBag.CompletedTasks = _db.Tasks
+                .Count(t => t.AssignedToUserId == userId
+                         && t.Status == TaskStatus.Complete);
+            ViewBag.PendingTasks = _db.Tasks
+                .Count(t => t.AssignedToUserId == userId
+                         && (t.Status == TaskStatus.Pending
+                         || t.Status == TaskStatus.InProgress));
+            ViewBag.OverdueTasks = _db.Tasks
+                .Count(t => t.AssignedToUserId == userId
+                         && t.Status == TaskStatus.Overdue);
+
+            var completed = _db.Tasks
+                .Where(t => t.AssignedToUserId == userId
+                         && t.Status == TaskStatus.Complete)
+                .ToList();
+
+            var onTime = completed
+                .Count(t => t.CompletedDate.HasValue
+                    && t.CompletedDate <= t.DueDate);
+            ViewBag.OnTimeRate = completed.Count > 0 
+                ? Math.Round(
+                    (decimal)onTime / completed.Count * 100, 1)
+                : 0;
+
             return View(user);
         }
+
 
         // ===========
         // My Reports - LIST

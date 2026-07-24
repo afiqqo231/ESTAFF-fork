@@ -57,15 +57,7 @@
                     <!-- Avatar -->
                     <div class="emp-avatar-wrap">
                         <div class="emp-avatar">
-                            @if (!string.IsNullOrEmpty(emp.ProfilePicturePath))
-                            {
-                                <img src="@Url.Content(emp.ProfilePicturePath)"
-                                     alt="@emp.FullName" />
-                            }
-                            else
-                            {
-                                @initials
-                            }
+                            <i class="fas fa-user"></i>
                         </div>
                     </div>
 

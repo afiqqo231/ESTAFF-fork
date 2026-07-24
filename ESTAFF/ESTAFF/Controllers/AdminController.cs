@@ -92,7 +92,6 @@ namespace ESTAFF.Controllers
                     FullName           = u.FullName,
                     EmpNumber          = u.EmpNumber,
                     Email              = u.Email,
-                    ProfilePicturePath = u.ProfilePicturePath,
                     IsActive           = u.IsActive,
                     HireDate           = u.HireDate ?? DateTime.Now,
                     TotalTasks         = _db.Tasks
@@ -213,7 +212,6 @@ namespace ESTAFF.Controllers
                 Email              = user.Email,
                 HireDate           = user.HireDate ?? DateTime.Now,
                 IsActive           = user.IsActive,
-                ProfilePicturePath = user.ProfilePicturePath,
                 TotalTasks         = _db.Tasks.Count(t => t.AssignedToUserId == id),
                 CompletedTasks     = completedTasks.Count,
                 PendingTasks       = _db.Tasks.Count(t => t.AssignedToUserId == id

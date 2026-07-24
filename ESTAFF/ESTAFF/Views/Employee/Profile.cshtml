@@ -1,99 +1,315 @@
 ﻿@model ESTAFF.Models.Data.ApplicationUser
 @{
-    ViewBag.Title = "My Profile";
-    Layout = "~/Views/Shared/_EmployeeLayout.cshtml";
-    var initials = string.Concat(
-        Model.FullName.Split(' ')
-             .Where(w => w.Length > 0)
-             .Select(w => w[0].ToString().ToUpper()));
+    ViewBag.Title    = "My Profile";
+    Layout           = "~/Views/Shared/_EmployeeLayout.cshtml";
+    decimal onTime   = (decimal)(ViewBag.OnTimeRate ?? 0m);
+    double gaugeCirc  = 2 * Math.PI * 54;
+    double gaugeFill  = gaugeCirc * (double)onTime / 100;
+    double gaugeEmpty = gaugeCirc - gaugeFill;
 }
 
-<div class="row justify-content-center">
-    <div class="col-lg-6">
-        <div class="form-card" style="text-align:center;">
-            <div class="profile-upload-wrap">
-                <div class="profile-upload-avatar">
-                    @if (!string.IsNullOrEmpty(Model.ProfilePicturePath))
-                    {
-                        <img src="@Url.Content(Model.ProfilePicturePath)"
-                             alt="@Model.FullName" />
-                    }
-                    else
-                    {
-                        @initials
-                    }
+<div class="profile-layout">
+
+    <!-- ── LEFT: Profile Card ──────────────── -->
+    <div>
+        <div class="profile-card">
+
+            <div class="profile-card-banner"></div>
+
+            <div class="profile-avatar-section">
+
+                <!-- Default Avatar -->
+                <div class="profile-avatar-circle">
+                    <i class="fas fa-user"></i>
                 </div>
-                <div class="profile-upload-btn"
-                     title="Upload photo (coming soon)">
-                    <i class="fas fa-camera"></i>
-                </div>
-            </div>
 
-            <h4 style="font-weight:800; color:var(--text-primary);
-                       margin:0 0 0.25rem; letter-spacing:-0.5px;">
-                @Model.FullName
-            </h4>
+                <!-- Name -->
+                <h5 class="profile-name">@Model.FullName</h5>
 
-            <span class="emp-card-number">
-                <i class="fas fa-id-badge"></i>
-                @Model.EmpNumber
-            </span>
-
-            <hr style="border-color:var(--border-subtle);
-                       margin:1.5rem 0;" />
-
-            <div style="text-align:left;">
-
-                <div style="display:flex; justify-content:space-between;
-                            align-items:center; padding:0.75rem 0;
-                            border-bottom:1px solid var(--border-subtle);">
-                    <span style="font-size:0.78rem; font-weight:600;
-                                 color:var(--text-muted); text-transform:uppercase;
-                                 letter-spacing:0.5px;">
-                        Email
-                    </span>
-                    <span style="font-size:0.875rem; font-weight:600;
-                                 color:var(--text-primary);">
-                        @Model.Email
+                <!-- Employee Number -->
+                <div style="margin-bottom:0.5rem;">
+                    <span class="profile-emp-number">
+                        <i class="fas fa-id-badge"></i>
+                        @Model.EmpNumber
                     </span>
                 </div>
 
-                <div style="display:flex; justify-content:space-between;
-                            align-items:center; padding:0.75rem 0;
-                            border-bottom:1px solid var(--border-subtle);">
-                    <span style="font-size:0.78rem; font-weight:600;
-                                 color:var(--text-muted); text-transform:uppercase;
-                                 letter-spacing:0.5px;">
-                        Hire Date
-                    </span>
-                    <span style="font-size:0.875rem; font-weight:600;
-                                 color:var(--text-primary);">
-                        @(Model.HireDate.HasValue
-                            ? Model.HireDate.Value.ToString("MMMM dd, yyyy")
-                            : "—")
-                    </span>
+                <!-- Email -->
+                <p class="profile-email">
+                    <i class="fas fa-envelope"></i>
+                    @Model.Email
+                </p>
+
+                <!-- Hire Date -->
+                @if (Model.HireDate.HasValue)
+                {
+                    <div class="profile-hire-date">
+                        <i class="fas fa-calendar-alt"></i>
+                        Hired @(Model.HireDate.Value.ToString("MMMM dd, yyyy"))
+                    </div>
+                }
+
+                <!-- Task Stats -->
+                <div class="profile-stats">
+                    <div class="profile-stat-item">
+                        <span class="profile-stat-value">
+                            @ViewBag.TotalTasks
+                        </span>
+                        <span class="profile-stat-label">Total</span>
+                    </div>
+                    <div class="profile-stat-item">
+                        <span class="profile-stat-value"
+                              style="color:var(--primary)">
+                            @ViewBag.CompletedTasks
+                        </span>
+                        <span class="profile-stat-label">Done</span>
+                    </div>
+                    <div class="profile-stat-item">
+                        <span class="profile-stat-value"
+                              style="color:#F59E0B">
+                            @ViewBag.PendingTasks
+                        </span>
+                        <span class="profile-stat-label">Pending</span>
+                    </div>
                 </div>
 
-                <div style="display:flex; justify-content:space-between;
-                            align-items:center; padding:0.75rem 0;">
-                    <span style="font-size:0.78rem; font-weight:600;
-                                 color:var(--text-muted); text-transform:uppercase;
-                                 letter-spacing:0.5px;">
-                        Status
-                    </span>
-                    <span class="badge-pill badge-complete">
-                        <i class="fas fa-circle"
-                           style="font-size:0.45rem; vertical-align:middle;"></i>
-                        Active
-                    </span>
-                </div>
+                <!-- Status Badge -->
+                <span class="badge-pill badge-complete">
+                    <i class="fas fa-circle"
+                       style="font-size:0.45rem;
+                              vertical-align:middle;
+                              margin-right:0.2rem;"></i>
+                    Active Employee
+                </span>
 
             </div>
-
-            <p style="font-size:0.72rem; color:var(--text-muted);
-                      margin:1.25rem 0 0; font-style:italic;">
-                Profile photo upload coming soon.
-            </p>
         </div>
     </div>
+
+    <!-- ── RIGHT: Info + Performance ─────────── -->
+    <div>
+
+        <!-- Account Details Card -->
+        <div class="form-card">
+            <h5 class="form-card-title">
+                <i class="fas fa-id-card"></i>
+                Account Details
+            </h5>
+
+            <!-- Full Name -->
+            <div style="display:flex;
+                        justify-content:space-between;
+                        align-items:center;
+                        padding:0.85rem 0;
+                        border-bottom:1px solid var(--border-subtle);">
+                <div style="display:flex; align-items:center;
+                            gap:0.6rem; font-size:0.78rem;
+                            font-weight:600; color:var(--text-muted);">
+                    <i class="fas fa-user"
+                       style="color:var(--primary); width:14px;
+                              text-align:center; font-size:0.75rem;">
+                    </i>
+                    Full Name
+                </div>
+                <span style="font-size:0.845rem; font-weight:600;
+                             color:var(--text-primary);">
+                    @Model.FullName
+                </span>
+            </div>
+
+            <!-- Employee Number -->
+            <div style="display:flex;
+                        justify-content:space-between;
+                        align-items:center;
+                        padding:0.85rem 0;
+                        border-bottom:1px solid var(--border-subtle);">
+                <div style="display:flex; align-items:center;
+                            gap:0.6rem; font-size:0.78rem;
+                            font-weight:600; color:var(--text-muted);">
+                    <i class="fas fa-id-badge"
+                       style="color:var(--primary); width:14px;
+                              text-align:center; font-size:0.75rem;">
+                    </i>
+                    Employee Number
+                </div>
+                <span style="font-size:0.845rem; font-weight:600;
+                             color:var(--text-primary);">
+                    @(Model.EmpNumber ?? "—")
+                </span>
+            </div>
+
+            <!-- Email -->
+            <div style="display:flex;
+                        justify-content:space-between;
+                        align-items:center;
+                        padding:0.85rem 0;
+                        border-bottom:1px solid var(--border-subtle);">
+                <div style="display:flex; align-items:center;
+                            gap:0.6rem; font-size:0.78rem;
+                            font-weight:600; color:var(--text-muted);">
+                    <i class="fas fa-envelope"
+                       style="color:var(--primary); width:14px;
+                              text-align:center; font-size:0.75rem;">
+                    </i>
+                    Email Address
+                </div>
+                <span style="font-size:0.845rem; font-weight:600;
+                             color:var(--text-primary);">
+                    @Model.Email
+                </span>
+            </div>
+
+            <!-- Hire Date -->
+            <div style="display:flex;
+                        justify-content:space-between;
+                        align-items:center;
+                        padding:0.85rem 0;
+                        border-bottom:1px solid var(--border-subtle);">
+                <div style="display:flex; align-items:center;
+                            gap:0.6rem; font-size:0.78rem;
+                            font-weight:600; color:var(--text-muted);">
+                    <i class="fas fa-calendar-alt"
+                       style="color:var(--primary); width:14px;
+                              text-align:center; font-size:0.75rem;">
+                    </i>
+                    Hire Date
+                </div>
+                <span style="font-size:0.845rem; font-weight:600;
+                             color:var(--text-primary);">
+                    @(Model.HireDate.HasValue
+                        ? Model.HireDate.Value
+                            .ToString("MMMM dd, yyyy")
+                        : "—")
+                </span>
+            </div>
+
+            <!-- Status -->
+            <div style="display:flex;
+                        justify-content:space-between;
+                        align-items:center;
+                        padding:0.85rem 0;">
+                <div style="display:flex; align-items:center;
+                            gap:0.6rem; font-size:0.78rem;
+                            font-weight:600; color:var(--text-muted);">
+                    <i class="fas fa-shield-alt"
+                       style="color:var(--primary); width:14px;
+                              text-align:center; font-size:0.75rem;">
+                    </i>
+                    Account Status
+                </div>
+                <span class="badge-pill badge-complete">
+                    <i class="fas fa-circle"
+                       style="font-size:0.45rem;
+                              vertical-align:middle;"></i>
+                    Active
+                </span>
+            </div>
+
+        </div>
+
+        <!-- Performance Card -->
+        <div class="form-card">
+            <h5 class="form-card-title">
+                <i class="fas fa-chart-line"></i>
+                My Performance
+            </h5>
+
+            <!-- Stat Grid -->
+            <div class="perf-stat-grid">
+                <div class="perf-stat-item">
+                    <div class="perf-stat-value">
+                        @ViewBag.TotalTasks
+                    </div>
+                    <div class="perf-stat-label">Total Tasks</div>
+                </div>
+                <div class="perf-stat-item completed">
+                    <div class="perf-stat-value">
+                        @ViewBag.CompletedTasks
+                    </div>
+                    <div class="perf-stat-label">Completed</div>
+                </div>
+                <div class="perf-stat-item pending">
+                    <div class="perf-stat-value">
+                        @ViewBag.PendingTasks
+                    </div>
+                    <div class="perf-stat-label">Pending</div>
+                </div>
+                <div class="perf-stat-item overdue">
+                    <div class="perf-stat-value">
+                        @ViewBag.OverdueTasks
+                    </div>
+                    <div class="perf-stat-label">Overdue</div>
+                </div>
+            </div>
+
+            <!-- On-Time Rate Gauge -->
+            <div style="text-align:center; margin-top:1.25rem;">
+
+                <p style="font-size:0.72rem; font-weight:600;
+                           color:var(--text-muted); text-transform:uppercase;
+                           letter-spacing:0.6px; margin-bottom:0.75rem;">
+                    On-Time Completion Rate
+                </p>
+
+                <div class="gauge-wrapper">
+                    <svg viewBox="0 0 120 120"
+                         width="140" height="140">
+                        <!-- Track -->
+                        <circle cx="60" cy="60" r="54"
+                                fill="none"
+                                stroke="#F1F5F9"
+                                stroke-width="10"
+                                stroke-linecap="round" />
+                        <!-- Fill -->
+                        <circle cx="60" cy="60" r="54"
+                                fill="none"
+                                stroke="url(#gaugeGreenProfile)"
+                                stroke-width="10"
+                                stroke-linecap="round"
+                                stroke-dasharray="@gaugeFill.ToString("F1") @gaugeEmpty.ToString("F1")"
+                                transform="rotate(-90 60 60)" />
+                        <defs>
+                            <linearGradient
+                                id="gaugeGreenProfile"
+                                x1="0%" y1="0%"
+                                x2="100%" y2="0%">
+                                <stop offset="0%"
+                                      stop-color="#10B981" />
+                                <stop offset="100%"
+                                      stop-color="#34D399" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <div class="gauge-center">
+                        <div class="gauge-value">@onTime%</div>
+                        <div class="gauge-label">On-Time</div>
+                    </div>
+                </div>
+
+                <div class="success-card"
+                     style="margin-top:0.75rem;">
+                    <i class="fas fa-trophy"></i>
+                    <p>
+                        @if (onTime >= 80)
+                        {
+                            <text>Excellent Performance!</text>
+                        }
+                        else if (onTime >= 50)
+                        {
+                            <text>Good Progress</text>
+                        }
+                        else
+                        {
+                            <text>Keep It Up!</text>
+                        }
+                    </p>
+                    <span>Based on your completed tasks</span>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
 </div>
