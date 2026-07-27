@@ -238,9 +238,9 @@
     <Compile Include="Migrations\202607240845258_addPlantMonitoringModelFromCLIP.Designer.cs">
       <DependentUpon>202607240845258_addPlantMonitoringModelFromCLIP.cs</DependentUpon>
     </Compile>
-    <Compile Include="Migrations\202607240254353_RemoveProfilePicturePath.cs" />
-    <Compile Include="Migrations\202607240254353_RemoveProfilePicturePath.Designer.cs">
-      <DependentUpon>202607240254353_RemoveProfilePicturePath.cs</DependentUpon>
+    <Compile Include="Migrations\202607270147037_removeProfilePicturePath.cs" />
+    <Compile Include="Migrations\202607270147037_removeProfilePicturePath.Designer.cs">
+      <DependentUpon>202607270147037_removeProfilePicturePath.cs</DependentUpon>
     </Compile>
     <Compile Include="Migrations\Configuration.cs" />
     <Compile Include="Models\Data\ApplicationDbContext.cs" />
@@ -385,8 +385,8 @@
     <EmbeddedResource Include="Migrations\202607240845258_addPlantMonitoringModelFromCLIP.resx">
       <DependentUpon>202607240845258_addPlantMonitoringModelFromCLIP.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\202607240254353_RemoveProfilePicturePath.resx">
-      <DependentUpon>202607240254353_RemoveProfilePicturePath.cs</DependentUpon>
+    <EmbeddedResource Include="Migrations\202607270147037_removeProfilePicturePath.resx">
+      <DependentUpon>202607270147037_removeProfilePicturePath.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <PropertyGroup>
