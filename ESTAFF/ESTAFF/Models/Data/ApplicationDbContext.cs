@@ -41,10 +41,6 @@ namespace ESTAFF.Models.Data
                 .HasColumnName("IsAdmin");
 
             modelBuilder.Entity<ApplicationUser>()
-                .Property(u => u.ProfilePicturePath)
-                .HasColumnName("ProfilePicturePath");
-
-            modelBuilder.Entity<ApplicationUser>()
                 .Property(u => u.HireDate)
                 .HasColumnName("HireDate");
 

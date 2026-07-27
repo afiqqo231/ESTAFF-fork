@@ -441,20 +441,20 @@ namespace ESTAFF.Controllers
 
             var userId = User.Identity.GetUserId();
 
-            ViewBag.TotalTasks = _db.Tasks
+            ViewBag.TotalTasks = _db.TaskItems
                 .Count(t => t.AssignedToUserId == userId);
-            ViewBag.CompletedTasks = _db.Tasks
+            ViewBag.CompletedTasks = _db.TaskItems
                 .Count(t => t.AssignedToUserId == userId
                          && t.Status == TaskStatus.Complete);
-            ViewBag.PendingTasks = _db.Tasks
+            ViewBag.PendingTasks = _db.TaskItems
                 .Count(t => t.AssignedToUserId == userId
                          && (t.Status == TaskStatus.Pending
                          || t.Status == TaskStatus.InProgress));
-            ViewBag.OverdueTasks = _db.Tasks
+            ViewBag.OverdueTasks = _db.TaskItems
                 .Count(t => t.AssignedToUserId == userId
                          && t.Status == TaskStatus.Overdue);
 
-            var completed = _db.Tasks
+            var completed = _db.TaskItems
                 .Where(t => t.AssignedToUserId == userId
                          && t.Status == TaskStatus.Complete)
                 .ToList();
@@ -489,8 +489,8 @@ namespace ESTAFF.Controllers
                 .Select(r => new ReportListItemViewModel
                 {
                     ReportId = r.ReportId,
-                    EmpName = r.User?.FullName ?? "-",
-                    EmpNumber = r.User?.EmpNumber ?? "-",
+                    EmpName = r.User?.UserName ?? "-",
+                    EmpNumber = r.User?.EmpID ?? "-",
                     ReportType = r.ReportType,    
                     PeriodStart = r.PeriodStart,
                     PeriodEnd = r.PeriodEnd,
@@ -547,7 +547,7 @@ namespace ESTAFF.Controllers
             var userId = User.Identity.GetUserId();
             var endOfDay = model.PeriodEnd.AddDays(1).AddTicks(-1);
 
-            var tasks = _db.Tasks
+            var tasks = _db.TaskItems
                 .Where(t => t.AssignedToUserId == userId
                          && t.DueDate >= model.PeriodStart
                          && t.DueDate <= endOfDay)
@@ -620,7 +620,7 @@ namespace ESTAFF.Controllers
 
             var endOfDay = report.PeriodEnd.AddDays(1).AddTicks(-1);
 
-            var tasks = _db.Tasks
+            var tasks = _db.TaskItems
                 .Where(t => t.AssignedToUserId == userId
                          && t.DueDate >= report.PeriodStart
                          && t.DueDate <= endOfDay)
@@ -633,8 +633,8 @@ namespace ESTAFF.Controllers
             var vm = new ReportDetailViewModel
             {
                 ReportId = report.ReportId,
-                EmpName = report.User?.FullName ?? "-",
-                EmpNumber = report.User?.EmpNumber ?? "-",
+                EmpName = report.User?.UserName ?? "-",
+                EmpNumber = report.User?.EmpID ?? "-",
                 EmpEmail = report.User?.Email ?? "-",
                 ReportType = report.ReportType,
                 PeriodStart = report.PeriodStart,
@@ -673,7 +673,7 @@ namespace ESTAFF.Controllers
                 return HttpNotFound();
 
             var endOfDay = report.PeriodEnd.AddDays(1).AddTicks(-1);
-            var tasks = _db.Tasks
+            var tasks = _db.TaskItems
                 .Where(t => t.AssignedToUserId == userId
                          && t.DueDate >= report.PeriodStart
                          && t.DueDate <= endOfDay)
@@ -686,8 +686,8 @@ namespace ESTAFF.Controllers
             var vm = new ReportDetailViewModel
             {
                 ReportId = report.ReportId,
-                EmpName = report.User?.FullName ?? "-",
-                EmpNumber = report.User?.EmpNumber ?? "-",
+                EmpName = report.User?.UserName ?? "-",
+                EmpNumber = report.User?.EmpID ?? "-",
                 EmpEmail = report.User?.Email ?? "-",
                 ReportType = report.ReportType,
                 PeriodStart = report.PeriodStart,

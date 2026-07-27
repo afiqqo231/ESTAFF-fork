@@ -211,7 +211,6 @@ namespace ESTAFF.Controllers
                 Email              = user.Email,
                 HireDate           = user.HireDate ?? DateTime.Now,
                 IsActive           = user.IsActive,
-                ProfilePicturePath = user.ProfilePicturePath,
                 TotalTasks         = _db.TaskItems.Count(t => t.AssignedToUserId == id),
                 CompletedTasks     = completedTasks.Count,
                 PendingTasks       = _db.TaskItems.Count(t => t.AssignedToUserId == id
@@ -597,8 +596,8 @@ namespace ESTAFF.Controllers
                 .Select(r => new ReportListItemViewModel
                 {
                     ReportId = r.ReportId,
-                    EmpName = r.User?.FullName ?? "-",
-                    EmpNumber = r.User?.EmpNumber ?? "-",
+                    EmpName = r.User?.UserName ?? "-",
+                    EmpNumber = r.User?.EmpID ?? "-",
                     ReportType = r.ReportType,
                     PeriodStart = r.PeriodStart,
                     PeriodEnd = r.PeriodEnd,
@@ -628,8 +627,8 @@ namespace ESTAFF.Controllers
                 .Select(r => new ReportListItemViewModel
                 {
                     ReportId = r.ReportId,
-                    EmpName = r.User?.FullName ?? "-",
-                    EmpNumber = r.User?.EmpNumber ?? "-",
+                    EmpName = r.User?.UserName ?? "-",
+                    EmpNumber = r.User?.EmpID ?? "-",
                     ReportType = r.ReportType,
                     PeriodStart = r.PeriodStart,
                     PeriodEnd = r.PeriodEnd,
@@ -659,7 +658,7 @@ namespace ESTAFF.Controllers
             var userId = report.UserId;
             var endOfDay = report.PeriodEnd.AddDays(1).AddTicks(-1);
 
-            var tasks = _db.Tasks
+            var tasks = _db.TaskItems
                 .Where(t => t.AssignedToUserId == userId
                          && t.CreatedDate >= report.PeriodStart
                          && t.CreatedDate <= endOfDay)
@@ -672,8 +671,8 @@ namespace ESTAFF.Controllers
             var vm = new ReportDetailViewModel
             {
                 ReportId = report.ReportId,
-                EmpName = report.User?.FullName ?? "-",
-                EmpNumber = report.User?.EmpNumber ?? "-",
+                EmpName = report.User?.UserName ?? "-",
+                EmpNumber = report.User?.EmpID ?? "-",
                 EmpEmail = report.User?.Email ?? "-",
                 ReportType = report.ReportType,
                 PeriodStart = report.PeriodStart,
@@ -718,7 +717,7 @@ namespace ESTAFF.Controllers
             _db.SaveChanges();
 
             TempData["SuccessMessage"] =
-                $"{report.User?.FullName}'s report approved!";
+                $"{report.User?.UserName}'s report approved!";
             return RedirectToAction("PendingReports");
         }
 
@@ -748,7 +747,7 @@ namespace ESTAFF.Controllers
             _db.SaveChanges();
 
             TempData["SuccessMessage"] = 
-                $"{report.User?.FullName}'s report rejected.";
+                $"{report.User?.UserName}'s report rejected.";
             return RedirectToAction("PendingReports");
         }
 
@@ -764,7 +763,7 @@ namespace ESTAFF.Controllers
             var userId = report.UserId;
             var endOfDay = report.PeriodEnd.AddDays(1).AddTicks(-1);
 
-            var tasks = _db.Tasks
+            var tasks = _db.TaskItems
                 .Where(t => t.AssignedToUserId == userId
                          && t.CreatedDate >= report.PeriodStart
                          && t.CreatedDate <= endOfDay)
@@ -777,8 +776,8 @@ namespace ESTAFF.Controllers
             var vm = new ReportDetailViewModel
             {
                 ReportId = report.ReportId,
-                EmpName = report.User?.FullName ?? "-",
-                EmpNumber = report.User?.EmpNumber ?? "-",
+                EmpName = report.User?.UserName ?? "-",
+                EmpNumber = report.User?.EmpID ?? "-",
                 EmpEmail = report.User?.Email ?? "-",
                 ReportType = report.ReportType,
                 PeriodStart = report.PeriodStart,

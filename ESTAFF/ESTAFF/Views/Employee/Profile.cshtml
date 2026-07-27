@@ -24,13 +24,13 @@
                 </div>
 
                 <!-- Name -->
-                <h5 class="profile-name">@Model.FullName</h5>
+                <h5 class="profile-name">@Model.UserName</h5>
 
                 <!-- Employee Number -->
                 <div style="margin-bottom:0.5rem;">
                     <span class="profile-emp-number">
                         <i class="fas fa-id-badge"></i>
-                        @Model.EmpNumber
+                        @Model.EmpID
                     </span>
                 </div>
 
@@ -113,7 +113,7 @@
                 </div>
                 <span style="font-size:0.845rem; font-weight:600;
                              color:var(--text-primary);">
-                    @Model.FullName
+                    @Model.UserName
                 </span>
             </div>
 
@@ -134,7 +134,7 @@
                 </div>
                 <span style="font-size:0.845rem; font-weight:600;
                              color:var(--text-primary);">
-                    @(Model.EmpNumber ?? "—")
+                    @(Model.EmpID ?? "—")
                 </span>
             </div>
 
