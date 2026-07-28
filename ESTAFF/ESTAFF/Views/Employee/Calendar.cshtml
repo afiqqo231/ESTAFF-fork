@@ -1,0 +1,574 @@
+﻿@using ESTAFF.Controllers
+@model List<DayTaskGroup>
+@{
+    ViewBag.Title    = "Calendar";
+    Layout           = "~/Views/Shared/_EmployeeLayout.cshtml";
+    string curView   = ViewBag.CurrentView as string ?? "weekly";
+    DateTime target  = (DateTime)ViewBag.TargetDate;
+    DateTime pStart  = (DateTime)ViewBag.PeriodStart;
+    DateTime pEnd    = (DateTime)ViewBag.PeriodEnd;
+    DateTime prev    = (DateTime)ViewBag.PrevDate;
+    DateTime next    = (DateTime)ViewBag.NextDate;
+
+    // Period label
+    string periodLabel = curView switch {
+        "daily"   => target.ToString("dddd, MMMM dd yyyy"),
+        "monthly" => target.ToString("MMMM yyyy"),
+        _         => pStart.ToString("MMM dd") + " – " +
+                     pEnd.ToString("MMM dd, yyyy")
+    };
+}
+
+<!-- ── DRAG GHOST ─────────────────────────── -->
+<div class="drag-ghost" id="dragGhost">
+    <i class="fas fa-grip-vertical me-1"></i>
+    <span id="dragGhostText"></span>
+</div>
+
+<!-- ── TOAST ──────────────────────────────── -->
+<div class="cal-toast" id="calToast">
+    <i class="fas fa-check-circle"></i>
+    <span id="calToastMsg"></span>
+</div>
+
+<!-- ── TOOLBAR ────────────────────────────── -->
+<div class="cal-toolbar">
+
+    <!-- Navigation -->
+    <div class="cal-nav">
+        <a href="@Url.Action("Calendar","Employee",
+               new { view = curView,
+                     date = prev.ToString("yyyy-MM-dd") })"
+           class="cal-nav-btn">
+            <i class="fas fa-chevron-left"></i>
+        </a>
+
+        <span class="cal-period-label">@periodLabel</span>
+
+        <a href="@Url.Action("Calendar","Employee",
+               new { view = curView,
+                     date = next.ToString("yyyy-MM-dd") })"
+           class="cal-nav-btn">
+            <i class="fas fa-chevron-right"></i>
+        </a>
+    </div>
+
+    <!-- Today + View Switcher -->
+    <div class="cal-view-switcher">
+        <a href="@Url.Action("Calendar","Employee",
+               new { view = curView })"
+           class="cal-today-btn">
+            Today
+        </a>
+
+        <select class="cal-view-select"
+                onchange="switchView(this.value)">
+            <option value="daily"
+                @(curView == "daily" ? "selected" : "")>
+                Day
+            </option>
+            <option value="weekly"
+                @(curView == "weekly" ? "selected" : "")>
+                Week
+            </option>
+            <option value="monthly"
+                @(curView == "monthly" ? "selected" : "")>
+                Month
+            </option>
+        </select>
+
+        <a href="@Url.Action("CreateTask","Employee")"
+           class="btn-primary-custom cal-add-btn">
+            <i class="fas fa-plus"></i> Add Task
+        </a>
+    </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════
+     DAILY VIEW
+═══════════════════════════════════════════ -->
+@if (curView == "daily")
+{
+    var day = Model.FirstOrDefault();
+    bool isToday = day?.Date.Date == DateTime.Today;
+
+    <div class="cal-daily-wrapper">
+
+        
+        <div class="cal-day-header">
+            <div>
+                <div class="cal-day-title">
+                    @target.ToString("dddd")
+                    @if (isToday)
+                    {
+                        <span class="cal-today-btn ms-2"
+                              style="font-size:0.65rem;">
+                            Today
+                        </span>
+                    }
+                </div>
+                <div class="cal-day-subtitle">
+                    @target.ToString("MMMM dd, yyyy")
+                    · @(day?.Tasks.Count ?? 0) task@(day?.Tasks.Count != 1 ? "s" : "")
+                </div>
+            </div>
+        </div>
+
+        
+        <div class="cal-drop-zone"
+             id="drop-@target.ToString("yyyy-MM-dd")"
+             data-date="@target.ToString("yyyy-MM-dd")"
+             ondragover="onDragOver(event)"
+             ondragleave="onDragLeave(event)"
+             ondrop="onDrop(event)">
+
+            @if (day != null && day.Tasks.Any())
+            {
+                foreach (var task in day.Tasks)
+                {
+                    var sc = task.Status ==
+                        ESTAFF.Models.Data.TaskStatus.InProgress
+                        ? "inprogress"
+                        : task.Status.ToString().ToLower();
+
+                    var isOD = task.DueDate.Date < DateTime.Today
+                        && task.Status !=
+                           ESTAFF.Models.Data.TaskStatus.Complete;
+
+                    <div class="cal-task-card @sc"
+                         draggable="true"
+                         data-task-id="@task.TaskId"
+                         data-task-title="@task.Title"
+                         ondragstart="onDragStart(event)">
+
+                        
+                        <div class="cal-task-drag-handle">
+                            <i class="fas fa-grip-vertical"></i>
+                        </div>
+
+                        
+                        <div class="cal-task-info">
+                            <h6 class="cal-task-title">
+                                @task.Title
+                            </h6>
+                            <div class="cal-task-meta">
+                                <span class="cal-task-meta-item @(isOD ? "overdue" : "")">
+                                    <i class="fas fa-calendar-alt"></i>
+                                    @task.DueDate.ToString("MMM dd")
+                                    @if (isOD) { <text>· Overdue</text> }
+                                </span>
+                                @if (task.Priority.HasValue)
+                                {
+                                    <span class="cal-task-meta-item">
+                                        <i class="fas fa-flag"></i>
+                                        @task.Priority
+                                    </span>
+                                }
+                                <span class="badge-pill badge-@sc"
+                                      style="font-size:0.6rem;">
+                                    @task.Status
+                                </span>
+                            </div>
+                        </div>
+
+                        
+                        <div class="cal-task-actions">
+                            @using (Html.BeginForm(
+                                "UpdateStatus", "Employee",
+                                FormMethod.Post,
+                                new { style = "display:contents" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                <input type="hidden"
+                                       name="taskId"
+                                       value="@task.TaskId" />
+
+                                if (task.Status !=
+                                    ESTAFF.Models.Data.TaskStatus.Complete)
+                                {
+                                    <button type="submit"
+                                            name="status"
+                                            value="Complete"
+                                            class="cal-task-action-btn complete"
+                                            title="Mark Complete">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button type="submit"
+                                            name="status"
+                                            value="Pending"
+                                            class="cal-task-action-btn complete"
+                                            title="Reopen"
+                                            style="color:var(--text-muted)">
+                                        <i class="fas fa-undo"></i>
+                                    </button>
+                                }
+                            }
+
+                            <a href="@Url.Action("EditTask",
+                                   "Employee",
+                                   new { id = task.TaskId })"
+                               class="cal-task-action-btn edit"
+                               title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                        </div>
+
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="cal-day-empty"
+                     id="empty-@target.ToString("yyyy-MM-dd")">
+                    <i class="fas fa-calendar-check"
+                       style="font-size:1.5rem; opacity:0.2;
+                              display:block; margin-bottom:0.5rem;"></i>
+                    <p style="margin:0; font-size:0.8rem;">
+                        No tasks for this day.
+                        Drag tasks here or
+                        <a href="@Url.Action("CreateTask","Employee")"
+                           style="color:var(--primary);">
+                            add one.
+                        </a>
+                    </p>
+                </div>
+            }
+
+        </div>
+
+    </div>
+}
+
+<!-- ══════════════════════════════════════════
+     WEEKLY VIEW
+═══════════════════════════════════════════ -->
+@if (curView == "weekly")
+{
+    <div class="cal-week-grid">
+        @foreach (var day in Model)
+        {
+            bool isToday = day.Date.Date == DateTime.Today;
+
+            <div class="cal-week-col @(isToday ? "today-col" : "")"
+                 id="col-@day.Date.ToString("yyyy-MM-dd")"
+                 ondragover="onDragOver(event)"
+                 ondragleave="onDragLeave(event)"
+                 ondrop="onDrop(event)"
+                 data-date="@day.Date.ToString("yyyy-MM-dd")">
+
+                
+                <div class="cal-week-col-header">
+                    <span class="cal-week-day-name">
+                        @day.Date.ToString("ddd")
+                    </span>
+                    <div class="cal-week-day-num">
+                        @day.Date.Day
+                    </div>
+                    @if (day.Tasks.Any())
+                    {
+                        <span style="font-size:0.55rem;
+                                     color:var(--primary);
+                                     font-weight:700;
+                                     display:block;
+                                     margin-top:0.2rem;">
+                            @day.Tasks.Count task@(day.Tasks.Count != 1 ? "s" : "")
+                        </span>
+                    }
+                </div>
+
+                
+                <div class="cal-week-col-body">
+                    @if (day.Tasks.Any())
+                    {
+                        foreach (var task in day.Tasks)
+                        {
+                            var sc = task.Status ==
+                                ESTAFF.Models.Data.TaskStatus.InProgress
+                                ? "inprogress"
+                                : task.Status.ToString().ToLower();
+
+                            <a href="@Url.Action("EditTask",
+                                   "Employee",
+                                   new { id = task.TaskId })"
+                               class="cal-week-chip @sc"
+                               draggable="true"
+                               data-task-id="@task.TaskId"
+                               data-task-title="@task.Title"
+                               ondragstart="onDragStart(event)"
+                               style="text-decoration:none;
+                                      display:block;">
+                                <span class="cal-chip-title">
+                                    @task.Title
+                                </span>
+                                <span class="cal-chip-status">
+                                    @task.Status
+                                </span>
+                            </a>
+                        }
+                    }
+                    else
+                    {
+                        <div class="cal-week-empty">
+                            No tasks
+                        </div>
+                    }
+                </div>
+
+            </div>
+        }
+    </div>
+}
+
+<!-- ══════════════════════════════════════════
+     MONTHLY VIEW
+═══════════════════════════════════════════ -->
+@if (curView == "monthly")
+{
+    // Build full 6-week grid
+    var firstDay   = new DateTime(target.Year, target.Month, 1);
+    var startOfGrid = firstDay.AddDays(
+        -((int)firstDay.DayOfWeek == 0
+          ? 6
+          : (int)firstDay.DayOfWeek - 1));
+    var endOfGrid  = startOfGrid.AddDays(41);
+
+    // Task lookup
+    var tasksByDate = Model
+        .ToDictionary(d => d.Date.Date, d => d.Tasks);
+    
+    <div class="cal-month-grid">
+
+        
+        @foreach (var dName in new[] {
+            "Mon","Tue","Wed","Thu","Fri","Sat","Sun" })
+        {
+            <div class="cal-month-day-header">@dName</div>
+        }
+
+        
+        @for (var d = startOfGrid; d <= endOfGrid;
+              d = d.AddDays(1))
+        {
+            bool isCurrentMonth = d.Month == target.Month;
+            bool isTodayCell    = d.Date == DateTime.Today;
+            var cellTasks = tasksByDate.ContainsKey(d.Date)
+                ? tasksByDate[d.Date]
+                : new List<ESTAFF.Models.Data.TaskItem>();
+
+            <div class="cal-month-cell
+                @(!isCurrentMonth ? "other-month" : "")
+                @(isTodayCell ? "today-cell" : "")"
+                 ondragover="onDragOver(event)"
+                 ondragleave="onDragLeave(event)"
+                 ondrop="onDrop(event)"
+                 data-date="@d.ToString("yyyy-MM-dd")">
+
+                
+                <div class="cal-month-day-num">@d.Day</div>
+
+                
+                @{
+                    var shown = cellTasks.Take(3).ToList();
+                    var more  = cellTasks.Count - shown.Count;
+                }
+
+                @foreach (var task in shown)
+                {
+                    var sc = task.Status ==
+                        ESTAFF.Models.Data.TaskStatus.InProgress
+                        ? "inprogress"
+                        : task.Status.ToString().ToLower();
+
+                    <div class="cal-month-chip @sc"
+                         draggable="true"
+                         data-task-id="@task.TaskId"
+                         data-task-title="@task.Title"
+                         ondragstart="onDragStart(event)"
+                         title="@task.Title">
+                        @task.Title
+                    </div>
+                }
+
+                @if (more > 0)
+                {
+                    <div class="cal-month-more">
+                        +@more more
+                    </div>
+                }
+
+            </div>
+        }
+
+    </div>
+}
+
+@section PageScripts {
+<script>
+// ── Anti-Forgery Token ─────────────────────
+var antiForgeryToken = '@Html.AntiForgeryToken()'
+    .match(/value="([^"]+)"/)[1];
+
+// ── Drag State ─────────────────────────────
+var draggedTaskId    = null;
+var draggedTaskTitle = null;
+var dragGhost        = document.getElementById('dragGhost');
+var ghostText        = document.getElementById('dragGhostText');
+
+// ── Drag Start ─────────────────────────────
+function onDragStart(e) {
+    var el = e.currentTarget;
+    draggedTaskId    = el.getAttribute('data-task-id');
+    draggedTaskTitle = el.getAttribute('data-task-title');
+
+    ghostText.textContent = draggedTaskTitle;
+    dragGhost.style.display = 'block';
+
+    el.classList.add('dragging');
+
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', draggedTaskId);
+
+    // Use invisible drag image
+    var ghost = document.createElement('div');
+    ghost.style.position = 'absolute';
+    ghost.style.top      = '-9999px';
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, 0, 0);
+
+    setTimeout(function () {
+        document.body.removeChild(ghost);
+    }, 0);
+
+    document.addEventListener('dragend', onDragEnd);
+}
+
+// ── Drag Move (Ghost follows mouse) ───────
+document.addEventListener('dragover', function (e) {
+    dragGhost.style.left = (e.clientX + 16) + 'px';
+    dragGhost.style.top  = (e.clientY - 10) + 'px';
+});
+
+// ── Drag End ───────────────────────────────
+function onDragEnd(e) {
+    dragGhost.style.display = 'none';
+    document.querySelectorAll('.dragging')
+        .forEach(function (el) {
+            el.classList.remove('dragging');
+        });
+    document.removeEventListener('dragend', onDragEnd);
+}
+
+// ── Drag Over (highlight drop zone) ───────
+function onDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    var zone = getDropZone(e.target);
+    if (zone) zone.classList.add('drag-over');
+}
+
+// ── Drag Leave ─────────────────────────────
+function onDragLeave(e) {
+    var zone = getDropZone(e.target);
+    if (zone && !zone.contains(e.relatedTarget))
+        zone.classList.remove('drag-over');
+}
+
+// ── Drop ───────────────────────────────────
+function onDrop(e) {
+    e.preventDefault();
+    var zone = getDropZone(e.target);
+    if (zone) zone.classList.remove('drag-over');
+
+    var newDate = getDropDate(e.target);
+    if (!newDate || !draggedTaskId) return;
+
+    // Call server
+    rescheduleTask(draggedTaskId, newDate);
+}
+
+// ── Get Drop Zone ──────────────────────────
+function getDropZone(el) {
+    while (el) {
+        if (el.hasAttribute && (
+            el.classList.contains('cal-drop-zone') ||
+            el.classList.contains('cal-week-col') ||
+            el.classList.contains('cal-month-cell')))
+            return el;
+        el = el.parentElement;
+    }
+    return null;
+}
+
+// ── Get Drop Date ──────────────────────────
+function getDropDate(el) {
+    while (el) {
+        var d = el.getAttribute && el.getAttribute('data-date');
+        if (d) return d;
+        el = el.parentElement;
+    }
+    return null;
+}
+
+// ── Reschedule API Call ────────────────────
+function rescheduleTask(taskId, newDate) {
+    fetch('@Url.Action("RescheduleTask", "Employee")', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: '__RequestVerificationToken=' +
+              encodeURIComponent(antiForgeryToken) +
+              '&taskId=' + encodeURIComponent(taskId) +
+              '&newDate=' + encodeURIComponent(newDate)
+    })
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
+        if (data.success) {
+            showToast(data.message, 'success');
+            // Reload after short delay
+            setTimeout(function () {
+                window.location.reload();
+            }, 800);
+        } else {
+            showToast(data.message, 'error');
+        }
+    })
+    .catch(function () {
+        showToast('Something went wrong.', 'error');
+    });
+}
+
+// ── View Switcher ──────────────────────────
+function switchView(view) {
+    var currentDate = '@target.ToString("yyyy-MM-dd")';
+    window.location.href =
+        '@Url.Action("Calendar", "Employee")' +
+        '?view=' + encodeURIComponent(view) +
+        '&date=' + encodeURIComponent(currentDate);
+}
+
+// ── Toast ──────────────────────────────────
+function showToast(msg, type) {
+    var toast = document.getElementById('calToast');
+    var icon  = toast.querySelector('i');
+
+    document.getElementById('calToastMsg').textContent = msg;
+
+    toast.className = 'cal-toast ' + type;
+    toast.classList.add('show');
+
+    icon.className = type === 'success'
+        ? 'fas fa-check-circle'
+        : 'fas fa-exclamation-circle';
+
+    setTimeout(function () {
+        toast.classList.remove('show');
+    }, 3000);
+}
+</script>
+}

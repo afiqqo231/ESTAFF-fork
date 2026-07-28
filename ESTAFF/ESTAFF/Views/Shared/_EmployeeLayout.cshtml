@@ -74,15 +74,10 @@
            class="nav-link @(action == "CreateTask" ? "active" : "")">
             <i class="fas fa-plus-circle"></i> Create Task
         </a>
-        <a href="@Url.Action("DailyView", "Employee")"
-           class="nav-link @(action == "DailyView" ? "active" : "")">
-            <i class="fas fa-calendar-day"></i> Daily View
+        <a href="@Url.Action("Calendar", "Employee")"
+           class="nav-link @(action == "Calendar" ? "active" : "")">
+            <i class="fas fa-calendar-alt"></i> Calendar
         </a>
-        <a href="@Url.Action("WeeklyView", "Employee")"
-           class="nav-link @(action == "WeeklyView" ? "active" : "")">
-            <i class="fas fa-calendar-week"></i> Weekly View
-        </a>
-
         <p class="nav-section-label">Reports</p>
         <a href="@Url.Action("MyReports", "Employee")"
            class="nav-link @(action == "MyReports" ? "active" : "")">

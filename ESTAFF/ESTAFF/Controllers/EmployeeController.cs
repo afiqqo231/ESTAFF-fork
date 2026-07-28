@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web.Mvc;
@@ -345,131 +345,173 @@ namespace ESTAFF.Controllers
             
         }
         
-        // ===========
-        // Daily Views
-        // ===========
-        public ActionResult DailyView(DateTime? date = null)
+       // ============
+       // Calendar - Unified View
+       // ============
+        public ActionResult Calendar(
+            string view = "weekly",
+            DateTime? date = null)
         {
             SetLayoutData();
-            ViewBag.PageTitle    = "Daily View";
-            ViewBag.PageSubtitle = "Your tasks for today.";
-
-            var userId      = User.Identity.GetUserId();
-            var targetDate  = date?.Date ?? DateTime.Today;
-
-            new TaskService(_db).UpdateOverdueTasks();
-
-            var tasks = _db.TaskItems
-                .Where(t => t.AssignedToUserId == userId
-                         && t.DueDate.Year  == targetDate.Year
-                         && t.DueDate.Month == targetDate.Month
-                         && t.DueDate.Day   == targetDate.Day)
-                .OrderBy(t => t.Priority)
-                .ToList();
-
-            ViewBag.TargetDate = targetDate;
-            ViewBag.PrevDate   = targetDate.AddDays(-1);
-            ViewBag.NextDate   = targetDate.AddDays(1);
-            ViewBag.IsToday    = targetDate == DateTime.Today;
-
-            return View(tasks);
-        }
-
-        // ===========
-        // Weekly Views
-        // ===========
-
-        public ActionResult WeeklyView(DateTime? weekStart = null)
-        {
-            SetLayoutData();
-            ViewBag.PageTitle    = "Weekly View";
-            ViewBag.PageSubtitle = "Your tasks for this week.";
+            ViewBag.PageTitle = "Calendar";
+            ViewBag.PageSubtitle = "Manage your tasks in a calendar view.";
 
             var userId = User.Identity.GetUserId();
-
-            // Get Monday of the target week
-            var today  = DateTime.Today;
-            var start  = weekStart?.Date ?? today.AddDays(
-                -(int)today.DayOfWeek + (int)DayOfWeek.Monday);
-
-            if (start.DayOfWeek == DayOfWeek.Sunday)
-                start = start.AddDays(-6);
-
-            var end = start.AddDays(6);
+            var targetDate = date?.Date ?? DateTime.Today;
 
             new TaskService(_db).UpdateOverdueTasks();
 
-            var tasks = _db.TaskItems
-                .Where(t => t.AssignedToUserId == userId
-                         && t.DueDate >= start
-                         && t.DueDate <= end)
-                .OrderBy(t => t.DueDate)
-                .ThenBy(t => t.Priority)
-                .ToList();
+            // Calculate period based on view
+            DateTime periodStart;
+            DateTime periodEnd;
 
-            // Group by day
-            var days = new List<DayTaskGroup>();
-            for (int i = 0; i < 7; i++)
+            switch (view.ToLower())
             {
-                var day = start.AddDays(i);
-                days.Add(new DayTaskGroup
-                {
-                    Date  = day,
-                    Tasks = tasks.Where(t =>
-                        t.DueDate.Date == day.Date).ToList()
-                });
+                case "daily":
+                    periodStart = targetDate;
+                    periodEnd = targetDate;
+                    break;
 
+                case "monthly":
+                    periodStart = new DateTime(
+                        targetDate.Year, targetDate.Month, 1);
+                    periodEnd = periodStart
+                        .AddMonths(1).AddDays(-1);
+                    break;
+
+                default: // weekly
+                    int diff = (int)targetDate.DayOfWeek 
+                        - (int)DayOfWeek.Monday;
+                    if (diff < 0) diff += 7;
+                    periodStart = targetDate.AddDays(-diff);
+                    periodEnd = periodStart.AddDays(6);
+                    break;
             }
 
-            ViewBag.WeekStart = start;
-            ViewBag.WeekEnd   = end;
-            ViewBag.PrevWeek  = start.AddDays(-7);
-            ViewBag.NextWeek  = start.AddDays(7);
-            ViewBag.IsThisWeek = start <= today && today <= end;
+            var endOfDay = periodEnd.AddDays(1).AddTicks(-1);
+
+            var tasks = _db.TaskItems
+                .Where(t => t.AssignedToUserId == userId
+                         && t.DueDate >= periodStart
+                         && t.DueDate <= endOfDay)
+                .OrderBy(t => t.DueDate)
+                .ToList();
+
+            // Build day groups
+            var days = new List<DayTaskGroup>();
+            for (var d = periodStart; d <= periodEnd;
+                d = d.AddDays(1))
+            {
+                days.Add(new DayTaskGroup
+                {
+                    Date = d,
+                    Tasks = tasks.Where(t => 
+                        t.DueDate.Date == d.Date).ToList()
+                });
+            }
+
+            // Navigaiton dates
+            switch (view.ToLower())
+            {
+                case "daily":
+                    ViewBag.PrevDate = targetDate.AddDays(-1);
+                    ViewBag.NextDate = targetDate.AddDays(1);
+                    break;
+                case "monthly":
+                    ViewBag.PrevDate = targetDate.AddMonths(-1);
+                    ViewBag.NextDate = targetDate.AddMonths(1);
+                    break;
+                default: // weekly
+                    ViewBag.PrevDate = targetDate.AddDays(-7);
+                    ViewBag.NextDate = targetDate.AddDays(7);
+                    break;
+            }
+
+            ViewBag.CurrentView = view.ToLower();
+            ViewBag.TargetDate = targetDate;
+            ViewBag.PeriodStart = periodStart;
+            ViewBag.PeriodEnd = periodEnd;
+            ViewBag.IsToday = targetDate == DateTime.Today ||
+                (periodStart <= DateTime.Today && 
+                DateTime.Today <= periodEnd);
+
+            // All tasks for this employee (drag drop)
+            ViewBag.TotalTaskCount = _db.TaskItems
+                .Count(t => t.AssignedToUserId == userId);
 
             return View(days);
         }
-        
-        public new ActionResult Profile()
+
+        // ===========
+        // Reschedule Task - POST (Drag & Drop)
+        // ===========
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult RescheduleTask(
+            int taskId, string newDate)
         {
-            SetLayoutData();
-            ViewBag.PageTitle = "My Profile";
-            ViewBag.PageSubtitle = "View and update your profile.";
-
-            var user = CurrentUser;
-            if (user == null) return HttpNotFound();
-
             var userId = User.Identity.GetUserId();
+            var task = _db.TaskItems.Find(taskId);
 
-            ViewBag.TotalTasks = _db.TaskItems
-                .Count(t => t.AssignedToUserId == userId);
-            ViewBag.CompletedTasks = _db.TaskItems
-                .Count(t => t.AssignedToUserId == userId
-                         && t.Status == TaskStatus.Complete);
-            ViewBag.PendingTasks = _db.TaskItems
-                .Count(t => t.AssignedToUserId == userId
-                         && (t.Status == TaskStatus.Pending
-                         || t.Status == TaskStatus.InProgress));
-            ViewBag.OverdueTasks = _db.TaskItems
-                .Count(t => t.AssignedToUserId == userId
-                         && t.Status == TaskStatus.Overdue);
+            if (task == null || task.AssignedToUserId != userId)
+                return Json(new
+                {
+                    success = false,
+                    message = "Task not found."
+                });
 
-            var completed = _db.TaskItems
-                .Where(t => t.AssignedToUserId == userId
-                         && t.Status == TaskStatus.Complete)
-                .ToList();
+            if (!DateTime.TryParse(newDate, out var parsedDate))
+                return Json(new
+                {
+                    success = false,
+                    message = "Invalid date."
+                });
 
-            var onTime = completed
-                .Count(t => t.CompletedDate.HasValue
-                    && t.CompletedDate <= t.DueDate);
-            ViewBag.OnTimeRate = completed.Count > 0 
-                ? Math.Round(
-                    (decimal)onTime / completed.Count * 100, 1)
-                : 0;
+            var oldDate = task.DueDate;
+            task.DueDate = parsedDate;
+            task.LastModifiedDate = DateTime.Now;
 
-            return View(user);
+            // overdue and new date is future, reset to pending
+            if (task.Status == TaskStatus.Overdue
+                && parsedDate >= DateTime.Today)
+            {
+                task.Status = TaskStatus.Pending;
+            }
+
+            _db.SaveChanges();
+
+            new TaskService(_db).LogHistory(
+                task.TaskId, 
+                "Updated",
+                $"Due: {oldDate:MMM dd, yyyy}",
+                $"Due: {parsedDate:MMM dd, yyyy} (rescheduled)",
+                userId);
+            
+            return Json(new
+            {
+                success = true,
+                message = $"Task resecheduled to " +
+                    $"{parsedDate:MMM dd, yyyy}."
+            });
+            
         }
 
+        public ActionResult DailyView(DateTime? date = null)
+        {
+            return RedirectToAction("Calendar",
+                new { view = "daily",
+                    date = (date ?? DateTime.Today)
+                        .ToString("yyyy-MM-dd") });
+        }
+
+        public ActionResult WeeklyView(DateTime? weekStart = null)
+        {
+            return RedirectToAction("Calendar",
+                new { view = "weekly",
+                    date = (weekStart ?? DateTime.Today)
+                        .ToString("yyyy-MM-dd") });
+        }
+        
 
         // ===========
         // My Reports - LIST
