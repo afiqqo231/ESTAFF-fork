@@ -212,10 +212,8 @@
     <Compile Include="App_Start\FilterConfig.cs" />
     <Compile Include="App_Start\RouteConfig.cs" />
     <Compile Include="App_Start\Startup.Auth.cs" />
-    <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Controllers\AccountController.cs" />
     <Compile Include="Controllers\AdminController.cs" />
-    <Compile Include="Controllers\Api\TaskApiController.cs" />
     <Compile Include="Controllers\EmployeeController.cs" />
     <Compile Include="Filters\AdminOnlyAttribute.cs" />
     <Compile Include="Filters\EmployeeOnlyAttribute.cs" />
@@ -366,6 +364,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\profiles\" />
+    <Folder Include="Controllers\Api\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

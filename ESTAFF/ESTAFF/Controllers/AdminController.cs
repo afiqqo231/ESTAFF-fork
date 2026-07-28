@@ -256,7 +256,6 @@ namespace ESTAFF.Controllers
             user.UserName           = model.UserName;
             user.EmpID          = model.EmpID;
             user.Email              = model.Email;
-            user.UserName           = model.Email;
             user.HireDate           = model.HireDate;
             user.IsActive           = model.IsActive;
             user.LastModifiedDate   = DateTime.Now;
