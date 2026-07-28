@@ -90,7 +90,7 @@ namespace ESTAFF.Controllers
                 {
                     UserId             = u.Id,
                     UserName           = u.UserName,
-                    EmpID          = u.EmpID,
+                    EmpID              = u.EmpID,
                     Email              = u.Email,
                     IsActive           = u.IsActive,
                     HireDate           = u.HireDate ?? DateTime.Now,
@@ -159,7 +159,7 @@ namespace ESTAFF.Controllers
             {
                 Email            = model.Email,
                 UserName         = model.UserName,
-                EmpID        = model.EmpID,
+                EmpID              = model.EmpID,
                 IsAdmin          = false,
                 IsActive         = true,
                 HireDate         = model.HireDate,
@@ -207,7 +207,7 @@ namespace ESTAFF.Controllers
             {
                 UserId             = user.Id,
                 UserName           = user.UserName,
-                EmpID          = user.EmpID,
+                EmpID              = user.EmpID,
                 Email              = user.Email,
                 HireDate           = user.HireDate ?? DateTime.Now,
                 IsActive           = user.IsActive,
@@ -254,7 +254,7 @@ namespace ESTAFF.Controllers
             }
 
             user.UserName           = model.UserName;
-            user.EmpID          = model.EmpID;
+            user.EmpID              = model.EmpID;
             user.Email              = model.Email;
             user.HireDate           = model.HireDate;
             user.IsActive           = model.IsActive;
