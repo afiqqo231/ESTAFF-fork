@@ -55,7 +55,7 @@
                 ? task.Priority.ToString().ToLower()
                 : "";
 
-            var classificationColor = task.COFId.HasValue ? "COF" : "other";
+            var classificationColor = task.SubTaskId.HasValue ? "COF" : "other";
             
             var isOD = task.DueDate.Date < DateTime.Today
                     && task.Status != ESTAFF.Models.Data.TaskStatus.Complete;
@@ -71,7 +71,7 @@
                         <span class="badge-pill badge-@sc">
                             @task.Status
                         </span>
-                        @if (task.COFId.HasValue){
+                        @if (task.SubTaskId.HasValue){
                             
                             <span class="badge-pill badge-@classificationColor">
                                 Certificate of Fitness

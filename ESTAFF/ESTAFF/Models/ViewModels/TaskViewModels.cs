@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using ESTAFF.Models.Data;
+using Newtonsoft.Json;
 
 namespace ESTAFF.Models.ViewModels
 {
@@ -26,6 +27,14 @@ namespace ESTAFF.Models.ViewModels
 
         [Display(Name = "Priority")]
         public TaskPriority? Priority { get; set; }
+
+        [Required(ErrorMessage = "Please select a task classification")]
+        [Display(Name = "Task Classification")]
+        public int TaskClassificationId { get; set; }
+
+        [Required(ErrorMessage = "Please select a task")]
+        [Display(Name = "Task")]
+        public int TaskListId { get; set; }
 
         // Dropdown List of Employees
         public List<EmployeeSelectItem> Employees { get; set; } 
@@ -69,7 +78,7 @@ namespace ESTAFF.Models.ViewModels
         public int TaskId { get; set; }
         public string Title { get; set; }
         public string Description { get; set; }
-        public int? COFId { get; set; }
+        public int? SubTaskId { get; set; }
         public TaskStatus Status { get; set; }
         public TaskPriority? Priority { get; set; }
         public DateTime DueDate { get; set; }
@@ -121,8 +130,16 @@ namespace ESTAFF.Models.ViewModels
         public DateTime DueDate { get; set; } = DateTime.Today.AddDays(1);
 
         [Display(Name = "Certificate Of Fitness (COF)")]
-        public int? COFId { get; set; }
+        public int? SubTaskId { get; set; }
+        
+        [Required(ErrorMessage = "Please select a task classification")]
+        [Display(Name = "Task Classification")]
+        public int TaskClassificationId { get; set; }
 
+        [Required(ErrorMessage = "Please select a task")]
+        [Display(Name = "Task List")]
+        public int TaskListId { get; set; }
+        
         [Display(Name = "Priority")]
         public TaskPriority? Priority { get; set; }
     }

@@ -7,10 +7,13 @@
     {
         public override void Up()
         {
+            DropColumn("CLIP.AspNetUsers", "ProfilePicturePath");
+
         }
         
         public override void Down()
         {
+            AddColumn("CLIP.AspNetUsers", "ProfilePicturePath", c => c.String());
         }
     }
 }

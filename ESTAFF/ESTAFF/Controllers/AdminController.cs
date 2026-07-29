@@ -358,6 +358,8 @@ namespace ESTAFF.Controllers
             ViewBag.PageTitle    = "Assign Task";
             ViewBag.PageSubtitle = "Create and assign a task to an employee.";
 
+            PopulateTaskClassification();
+
             var vm = new AssignTaskViewModel
             {
                 Employees = GetEmployeeSelectList()
@@ -377,6 +379,8 @@ namespace ESTAFF.Controllers
             ViewBag.PageSubtitle = "Create and assign a task to an employee.";
 
             model.Employees = GetEmployeeSelectList();
+            PopulateTaskClassification();
+            PopulateTaskList(model.TaskClassificationId, model.TaskListId);
 
             if (!ModelState.IsValid)
                 return View(model);
@@ -390,6 +394,7 @@ namespace ESTAFF.Controllers
                 Description = model.Description,
                 AssignedToUserId = model.AssignedToUserId,
                 CreatedByUserId = adminId,
+                TaskClassificationId = model.TaskClassificationId,
                 DueDate = model.DueDate,
                 Priority = model.Priority,
                 Status = TaskStatus.Pending,
@@ -810,8 +815,48 @@ namespace ESTAFF.Controllers
         }
 
         // ══════════════════════════════════════════
+        // AJAX — Get Task Lists by Classification
+        // ══════════════════════════════════════════
+        [HttpGet]
+        public JsonResult GetTasksByClassification(int classificationId)
+        {
+            var taskService = new TaskService(_db);
+            var tasks = taskService.GetTaskList(classificationId);
+            var result = tasks.Select(t => new
+            {
+                value = t.TaskListId,
+                text = t.Name
+            });
+            return Json(result, JsonRequestBehavior.AllowGet);
+        }
+
+        // ══════════════════════════════════════════
         // HELPER
         // ══════════════════════════════════════════
+
+        private void PopulateTaskClassification(int? selectedId = null)
+        {
+            var taskService = new TaskService(_db);
+            var classifications = taskService.GetTaskClassification();
+            ViewBag.ClassificationList = new SelectList(
+                classifications.Select(c => new
+                {
+                    Value = c.TaskClassificationId,
+                    Text = c.Name
+                }), "Value", "Text", selectedId);
+        }
+
+        private void PopulateTaskList(int classificationId, int? selectedId = null)
+        {
+            var taskService = new TaskService(_db);
+            var tasks = taskService.GetTaskList(classificationId);
+            ViewBag.TaskList = new SelectList(
+                tasks.Select(t => new
+                {
+                    Value = t.TaskListId,
+                    Text = t.Name
+                }), "Value", "Text", selectedId);
+        }
 
         private List<EmployeeSelectItem> GetEmployeeSelectList()
         {

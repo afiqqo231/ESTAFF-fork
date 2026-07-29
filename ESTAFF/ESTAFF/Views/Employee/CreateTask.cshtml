@@ -30,13 +30,20 @@
                             new { @class = "text-danger small" })
                     </div>
                     
-                    <div class="col-12">
-                        @Html.LabelFor(m => m.COFId,
-                            new { @class = "form-label" })
-                        @Html.DropDownListFor(m => m.COFId,
-                            (SelectList)ViewBag.COFList,
-                            "— None —",
-                            new { @class = "form-control" })
+                    <div class="col-g-12">
+                        @Html.LabelFor(m => m.TaskClassificationId,
+                            new { @class = "form-label"})
+                        @Html.DropDownListFor(m => m.TaskClassificationId,
+                            ViewBag.classificationList as SelectList, 
+                            "- Select Classification -",
+                            new
+                            {
+                                @class = "form-control text-muted", 
+                                id = "classificationDropdown",
+                                onchange = "this.classList.toggle('text-muted', !this.value)"
+                            })
+                        @Html.ValidationMessageFor(m => m.TaskClassificationId, "",
+                            new { @class = "text-danger small"})
                     </div>
 
                     <div class="col-12">
@@ -44,9 +51,9 @@
                             new { @class = "form-label" })
                         @Html.TextAreaFor(m => m.Description,
                             new { @class = "form-control",
-                                  placeholder = "Add details (optional)...",
-                                  rows = 3,
-                                  style = "resize:none;" })
+                                placeholder = "Add details (optional)...",
+                                rows = 3,
+                                style = "resize:none;" })
                     </div>
 
                     <div class="col-md-6">
@@ -55,7 +62,7 @@
                         @Html.TextBoxFor(m => m.DueDate,
                             "{0:yyyy-MM-dd}",
                             new { @class = "form-control",
-                                  type = "date" })
+                                type = "date" })
                         @Html.ValidationMessageFor(m => m.DueDate, "",
                             new { @class = "text-danger small" })
                     </div>
@@ -66,12 +73,12 @@
                         @Html.DropDownListFor(m => m.Priority,
                             new SelectList(
                                 Enum.GetValues(
-                                    typeof(ESTAFF.Models.Data.TaskPriority))
-                                .Cast<ESTAFF.Models.Data.TaskPriority>()
-                                .Select(p => new {
-                                    Value = (int)p,
-                                    Text  = p.ToString()
-                                }),
+                                        typeof(ESTAFF.Models.Data.TaskPriority))
+                                    .Cast<ESTAFF.Models.Data.TaskPriority>()
+                                    .Select(p => new {
+                                        Value = (int)p,
+                                        Text  = p.ToString()
+                                    }),
                                 "Value", "Text"),
                             "— No Priority —",
                             new { @class = "form-control" })
@@ -96,3 +103,10 @@
         </div>
     </div>
 </div>
+
+@section PageScripts {
+    <script>
+</script>
+
+}
+
