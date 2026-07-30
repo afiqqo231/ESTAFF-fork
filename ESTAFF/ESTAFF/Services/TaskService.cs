@@ -29,6 +29,30 @@ namespace ESTAFF.Services
                 .ToList();
         }
 
+        public List<PlantMonitoring> GetPlantMonitoringList(int plantId)
+        {
+            return _db.PlantMonitoring
+                .Where(m => m.PlantID == plantId)
+                .ToList();
+        }
+
+        public List<COF> GetCOFList(int plantId)
+        {
+            return _db.COFs
+                .Where(c => c.PlantId == plantId)
+                .ToList();
+        }
+        
+        public List<TaskClassification> GetTaskClassification()
+        {
+            return _db.TaskClassifications.ToList();
+        }
+
+        public List<TaskList> GetTaskList(int classificationId)
+        {
+            return _db.TaskLists.Where(t => t.TaskClassificationId == classificationId).ToList();
+        }
+
         // Auto-flag overdue tasks
         public void UpdateOverdueTasks()
         {

@@ -21,6 +21,32 @@
 
             <div class="row g-3">
 
+                <!-- Task Classification -->
+                <div class="col-md-6">
+                    @Html.LabelFor(m => m.TaskClassificationId,
+                        new { @class = "form-label" })
+                    @Html.DropDownListFor(m => m.TaskClassificationId,
+                        ViewBag.ClassificationList as SelectList,
+                        "— Select Classification —",
+                        new { @class = "form-control",
+                              id = "classificationDropdown" })
+                    @Html.ValidationMessageFor(m => m.TaskClassificationId, "",
+                        new { @class = "text-danger small" })
+                </div>
+
+                <!-- Task List (filtered by classification) -->
+                <div class="col-md-6">
+                    @Html.LabelFor(m => m.TaskListId,
+                        new { @class = "form-label" })
+                    @Html.DropDownListFor(m => m.TaskListId,
+                        new SelectList(Enumerable.Empty<SelectListItem>()),
+                        "— Select Task —",
+                        new { @class = "form-control",
+                              id = "taskListDropdown" })
+                    @Html.ValidationMessageFor(m => m.TaskListId, "",
+                        new { @class = "text-danger small" })
+                </div>
+
                 <!-- Title -->
                 <div class="col-12">
                     @Html.LabelFor(m => m.Title,
@@ -187,6 +213,32 @@
 
 @section PageScripts {
     <script>
+    // Cascading: Classification → Task List
+    $('#classificationDropdown').on('change', function () {
+        var classificationId = $(this).val();
+        var $taskList = $('#taskListDropdown');
+        $taskList.empty().append('<option value="">— Loading... —</option>');
+
+        if (!classificationId) {
+            $taskList.empty().append('<option value="">— Select Task —</option>');
+            return;
+        }
+
+        $.getJSON('@Url.Action("GetTasksByClassification", "Admin")',
+            { classificationId: classificationId },
+            function (data) {
+                $taskList.empty().append('<option value="">— Select Task —</option>');
+                $.each(data, function (_, item) {
+                    $taskList.append(
+                        $('<option>').val(item.value).text(item.text));
+                });
+            }
+        ).fail(function () {
+            $taskList.empty().append(
+                '<option value="">— Error loading tasks —</option>');
+        });
+    });
+
     // Priority radio visual
     document.querySelectorAll('.priority-radio').forEach(function (radio) {
         radio.addEventListener('change', function () {

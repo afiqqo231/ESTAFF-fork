@@ -25,6 +25,9 @@ namespace ESTAFF.Models.Data
         public virtual DbSet<UserPlant> UserPlants { get; set; }
         public virtual DbSet<PlantMonitoring> PlantMonitoring { get; set; }
         public virtual DbSet<Monitoring> Monitoring {get; set; }
+        public virtual DbSet<TaskList> TaskLists { get; set; }
+        public virtual DbSet<TaskClassification> TaskClassifications { get; set; }
+    
 
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
@@ -58,6 +61,8 @@ namespace ESTAFF.Models.Data
             modelBuilder.Entity<Staff>().ToTable("Staffs", "ESTAFF");
             modelBuilder.Entity<TaskItem>().ToTable("TaskItems", "ESTAFF");
             modelBuilder.Entity<TaskHistory>().ToTable("TaskHistories", "ESTAFF");
+            modelBuilder.Entity<TaskList>().ToTable("TaskLists", "ESTAFF");
+            modelBuilder.Entity<TaskClassification>().ToTable("TaskClassifications", "ESTAFF");
 
             // TaskItem relationships
             modelBuilder.Entity<Staff>()
@@ -84,6 +89,11 @@ namespace ESTAFF.Models.Data
                 .HasForeignKey(t => t.CreatedByUserId)
                 .WillCascadeOnDelete(false);
 
+            modelBuilder.Entity<TaskItem>()
+                .HasRequired(t => t.TaskClassification)
+                .WithMany(tl => tl.TaskItems)
+                .HasForeignKey(t => t.TaskClassificationId)
+                .WillCascadeOnDelete(false);
 
             modelBuilder.Entity<TaskHistory>()
                 .HasRequired(h => h.Task)
@@ -101,6 +111,12 @@ namespace ESTAFF.Models.Data
                 .HasRequired(r => r.User)
                 .WithMany()
                 .HasForeignKey(r => r.UserId)
+                .WillCascadeOnDelete(false);
+            
+            modelBuilder.Entity<TaskList>()
+                .HasRequired(t => t.TaskClassification)
+                .WithMany(tc => tc.TaskLists)
+                .HasForeignKey(t => t.TaskClassificationId)
                 .WillCascadeOnDelete(false);
 
             // Read-only CLIP tables (owned by EHS_PORTAL - do not CreateTable/AddColumn for these in migrations)
@@ -136,7 +152,7 @@ namespace ESTAFF.Models.Data
             
             modelBuilder.Entity<PlantMonitoring>()
                 .HasRequired(up => up.Monitoring)
-                .WithMany()
+                .WithMany(m => m.PlantMonitorings)
                 .HasForeignKey(up => up.MonitoringID)
                 .WillCascadeOnDelete(false);
         }

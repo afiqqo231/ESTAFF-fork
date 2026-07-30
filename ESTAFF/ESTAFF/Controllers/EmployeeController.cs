@@ -113,7 +113,7 @@ namespace ESTAFF.Controllers
                     TaskId = t.TaskId,
                     Title = t.Title,
                     Description = t.Description,
-                    COFId = t.COFId,
+                    SubTaskId = t.SubTaskId,
                     Status = t.Status,
                     Priority = t.Priority,
                     DueDate = t.DueDate,
@@ -143,48 +143,65 @@ namespace ESTAFF.Controllers
             return View(tasks);
         }
 
-        // Helper method to populate the optional COF dropdown
-        // with certificates for the current user's assigned plants
-        private void PopulateCOFList(int? selectedId = null)
+
+        private void PopulateTaskClassification(int? selectedId = null)
         {
-            var userId = User.Identity.GetUserId();
-
-            var plantIds = _db.UserPlants
-                .Where(up => up.UserId == userId)
-                .Select(up => up.PlantId)
-                .ToList();
-
-            var cofs = new TaskService(_db).GetCOFsForPlants(plantIds);
-
-            ViewBag.COFList = new SelectList(
-                cofs.Select(c => new
+            var classification = new TaskService(_db).GetTaskClassification();
+            ViewBag.classificationList = new SelectList(
+                classification.Select(c => new
                 {
-                    Value = c.Id,
-                    Text = $"{c.RegistrationNo} — {c.MachineName} ({c.Status})"
-                }),
-                "Value", "Text", selectedId);
+                    Value = c.TaskClassificationId,
+                    Text = c.Name
+                }), "Value", "Text", selectedId);
+
         }
-        
-        // Helper method to populate the optional PlantMonitoring dropdown
-        // for the current user's assigned plants
-        private void PopulatePlantMonitoringList(int? selectedId = null)
+
+        private void PopulateTaskList(int classificationId, int? selectedId)
         {
-            var userId = User.Identity.GetUserId();
-
-            var plantIds = _db.UserPlants
-                .Where(up => up.UserId == userId)
-                .Select(up => up.PlantId)
-                .ToList();
-
-            var plantMonitoring = new TaskService(_db).GetCOFsForPlants(plantIds);
-
-            ViewBag.plantMonitoringList = new SelectList(
-                plantMonitoring.Select(c => new
+            var task = new TaskService(_db).GetTaskList(classificationId);
+            ViewBag.taskList = new SelectList(
+                task.Select(t => new
                 {
-                    Value = c.Id,
-                    Text = $"{c.RegistrationNo} — {c.MachineName} ({c.Status})"
-                }),
-                "Value", "Text", selectedId);
+                    Value = t.TaskListId,
+                    Text = t.Name
+                }), "Value", "Text", selectedId);
+
+            if (selectedId == 24 || selectedId == 25)
+            {
+                var userId = User.Identity.GetUserId();
+                var plantId = _db.UserPlants
+                    .Where(up => up.UserId == userId)
+                    .Select(up => up.PlantId)
+                    .FirstOrDefault();
+                if (selectedId == 24)
+                {
+                    var cofs = new TaskService(_db).GetCOFList(plantId);
+                    ViewBag.SubTaskList = new SelectList(
+                        cofs.Select(c => new
+                        {
+                            Value = c.Id,
+                            Text = c.MachineName + " (" + c.RegistrationNo + ")"
+                        }),
+                        "Value", "Text", selectedId);
+                }
+                else if (selectedId == 25)
+                {
+                    var monitoring = new TaskService(_db).GetPlantMonitoringList(plantId);
+                    ViewBag.SubTaskList = new SelectList(
+                        monitoring.Select(m => new
+                        {
+                            Value = m.Id,
+                            Text = m.Area + " (Status: " + (m.ProcStatus ?? "N/A") + ")"
+                        }),
+                        "Value", "Text", selectedId);
+                }
+                else
+                {
+                    ViewBag.SubTaskList = new SelectList(
+                        Enumerable.Empty<SelectListItem>());
+                }
+            }
+
         }
 
         // ===========
@@ -195,9 +212,30 @@ namespace ESTAFF.Controllers
             SetLayoutData();
             ViewBag.PageTitle = "Create Task";
             ViewBag.PageSubtitle = "Add a new task to your list.";
-            PopulateCOFList();
+            PopulateTaskClassification();
+            ViewBag.COFList = new SelectList(Enumerable.Empty<SelectListItem>());
             return View(new CreateTaskViewModel());
         }
+        
+        // ===========
+        // Populate TaskList based on selected TaskClassification
+        //============
+        [HttpGet]
+        public JsonResult GetTaskByClassification(int classificationId)
+        {
+            if (classificationId == 4)
+            {
+                
+            }
+            var tasks = new TaskService(_db).GetTaskList(classificationId);
+            var result = tasks.Select(t => new
+            {
+                value = t.TaskListId,
+                text = t.Name
+            });
+            return Json(result, JsonRequestBehavior.AllowGet);
+        }
+
         // ===========
         // Create Task - Post
         // ===========
@@ -211,7 +249,8 @@ namespace ESTAFF.Controllers
 
             if (!ModelState.IsValid)
             {
-                PopulateCOFList(model.COFId);
+                PopulateTaskClassification(model.TaskClassificationId);
+                PopulateTaskList(model.TaskClassificationId, model.TaskListId);
                 return View(model);
             }
 
@@ -225,10 +264,11 @@ namespace ESTAFF.Controllers
                 CreatedByUserId = userId,
                 DueDate = model.DueDate,
                 Priority = model.Priority,
-                COFId = model.COFId,
+                SubTaskId = model.SubTaskId,
                 Status = TaskStatus.Pending,
                 CreatedDate = DateTime.Now,
-                LastModifiedDate = DateTime.UtcNow
+                LastModifiedDate = DateTime.UtcNow,
+                TaskClassificationId = model.TaskClassificationId
             };
 
             _db.TaskItems.Add(task);

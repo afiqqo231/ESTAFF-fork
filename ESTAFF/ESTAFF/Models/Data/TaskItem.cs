@@ -25,8 +25,12 @@ namespace ESTAFF.Models.Data
         [Required]
         public DateTime DueDate { get; set; }
 
-        // Link to COF if applicable
-        public int? COFId { get; set; }
+        // Link to subtask for CLIP if applicable
+        public int? SubTaskId { get; set; }
+        
+        [Required]
+            [ForeignKey("TaskClassification")]
+        public int TaskClassificationId { get; set; }
 
         [Required]
         [ForeignKey("AssignedToUser")]
@@ -47,6 +51,7 @@ namespace ESTAFF.Models.Data
 
         public virtual ApplicationUser AssignedToUser { get; set; }
         public virtual ApplicationUser CreatedByUser { get; set; }
+        public virtual TaskClassification TaskClassification { get; set; }
         public virtual ICollection<TaskHistory> Histories { get; set; } = new List<TaskHistory>();
     }   
 
