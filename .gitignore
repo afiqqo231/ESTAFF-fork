@@ -458,6 +458,8 @@ App_Data/
 
 # OS
 .DS_Store
+._.DS_Store
+IDEA.md
 Thumbs.db
 
 # Environment Variables
