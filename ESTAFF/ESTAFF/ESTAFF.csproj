@@ -220,25 +220,9 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
-    <Compile Include="Migrations\202607210731133_newInitialMigration.cs" />
-    <Compile Include="Migrations\202607210731133_newInitialMigration.Designer.cs">
-      <DependentUpon>202607210731133_newInitialMigration.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\202607210935062_readOnlyCLIPSchema.cs" />
-    <Compile Include="Migrations\202607210935062_readOnlyCLIPSchema.Designer.cs">
-      <DependentUpon>202607210935062_readOnlyCLIPSchema.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\202607220249436_addCOFId.cs" />
-    <Compile Include="Migrations\202607220249436_addCOFId.Designer.cs">
-      <DependentUpon>202607220249436_addCOFId.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\202607240845258_addPlantMonitoringModelFromCLIP.cs" />
-    <Compile Include="Migrations\202607240845258_addPlantMonitoringModelFromCLIP.Designer.cs">
-      <DependentUpon>202607240845258_addPlantMonitoringModelFromCLIP.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\202607270147037_removeProfilePicturePath.cs" />
-    <Compile Include="Migrations\202607270147037_removeProfilePicturePath.Designer.cs">
-      <DependentUpon>202607270147037_removeProfilePicturePath.cs</DependentUpon>
+    <Compile Include="Migrations\202607300217099_InitialCreate.cs" />
+    <Compile Include="Migrations\202607300217099_InitialCreate.Designer.cs">
+      <DependentUpon>202607300217099_InitialCreate.cs</DependentUpon>
     </Compile>
     <Compile Include="Migrations\Configuration.cs" />
     <Compile Include="Models\Data\ApplicationDbContext.cs" />
@@ -373,20 +357,8 @@
     <Content Include="Scripts\jquery-3.7.1.min.map" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Migrations\202607210731133_newInitialMigration.resx">
-      <DependentUpon>202607210731133_newInitialMigration.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\202607210935062_readOnlyCLIPSchema.resx">
-      <DependentUpon>202607210935062_readOnlyCLIPSchema.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\202607220249436_addCOFId.resx">
-      <DependentUpon>202607220249436_addCOFId.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\202607240845258_addPlantMonitoringModelFromCLIP.resx">
-      <DependentUpon>202607240845258_addPlantMonitoringModelFromCLIP.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\202607270147037_removeProfilePicturePath.resx">
-      <DependentUpon>202607270147037_removeProfilePicturePath.cs</DependentUpon>
+    <EmbeddedResource Include="Migrations\202607300217099_InitialCreate.resx">
+      <DependentUpon>202607300217099_InitialCreate.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <PropertyGroup>
