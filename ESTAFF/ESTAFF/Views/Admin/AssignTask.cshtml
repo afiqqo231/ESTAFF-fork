@@ -16,36 +16,14 @@
         @using (Html.BeginForm("AssignTask", "Admin", FormMethod.Post))
         {
             @Html.AntiForgeryToken()
-            @Html.ValidationSummary(true, "",
+            @* Header text matters: MVC still renders this box whenever
+               ModelState is invalid, so without a message an all-property-error
+               postback shows an empty red band. *@
+            @Html.ValidationSummary(true,
+                "This task could not be assigned — see the messages below.",
                 new { @class = "alert alert-danger py-2 small" })
 
             <div class="row g-3">
-
-                <!-- Task Classification -->
-                <div class="col-md-6">
-                    @Html.LabelFor(m => m.TaskClassificationId,
-                        new { @class = "form-label" })
-                    @Html.DropDownListFor(m => m.TaskClassificationId,
-                        ViewBag.ClassificationList as SelectList,
-                        "— Select Classification —",
-                        new { @class = "form-control",
-                              id = "classificationDropdown" })
-                    @Html.ValidationMessageFor(m => m.TaskClassificationId, "",
-                        new { @class = "text-danger small" })
-                </div>
-
-                <!-- Task List (filtered by classification) -->
-                <div class="col-md-6">
-                    @Html.LabelFor(m => m.TaskListId,
-                        new { @class = "form-label" })
-                    @Html.DropDownListFor(m => m.TaskListId,
-                        new SelectList(Enumerable.Empty<SelectListItem>()),
-                        "— Select Task —",
-                        new { @class = "form-control",
-                              id = "taskListDropdown" })
-                    @Html.ValidationMessageFor(m => m.TaskListId, "",
-                        new { @class = "text-danger small" })
-                </div>
 
                 <!-- Title -->
                 <div class="col-12">

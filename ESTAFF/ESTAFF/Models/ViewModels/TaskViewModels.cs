@@ -34,9 +34,11 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Task Classification")]
         public int TaskClassificationId { get; set; }
 
-        [Required(ErrorMessage = "Please select a task")]
+        // Nullable, and required only for non-CLIP work (checked in the
+        // controller): a CLIP task takes its task type from the picked CLIP
+        // record, so the form deliberately posts no value for it.
         [Display(Name = "Task")]
-        public int TaskListId { get; set; }
+        public int? TaskListId { get; set; }
 
         // Posted by the CLIP picker on the admin form as "COF:14" / "PM:3".
         [Display(Name = "CLIP Item")]
@@ -103,6 +105,7 @@ namespace ESTAFF.Models.ViewModels
         public string Title { get; set; }
         public string Description { get; set; }
         public int? SubTaskId { get; set; }
+        public string TaskClassificationName { get; set; }
         public TaskStatus Status { get; set; }
         public TaskPriority? Priority { get; set; }
         public DateTime DueDate { get; set; }
@@ -164,7 +167,8 @@ namespace ESTAFF.Models.ViewModels
     }
 
 
-    // Employee Side
+    // Employee Side. Carries the same classification/task-type/CLIP trio as the
+    // admin forms so both routes can render _ClassificationField.
     public class CreateTaskViewModel
     {
         [Required(ErrorMessage = "Title is required")]
@@ -180,19 +184,23 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Due Date")]
         public DateTime DueDate { get; set; } = DateTime.Today.AddDays(1);
 
-        [Display(Name = "Certificate Of Fitness (COF)")]
-        public int? SubTaskId { get; set; }
-        
         [Required(ErrorMessage = "Please select a task classification")]
         [Display(Name = "Task Classification")]
         public int TaskClassificationId { get; set; }
 
-        [Required(ErrorMessage = "Please select a task")]
-        [Display(Name = "Task List")]
-        public int TaskListId { get; set; }
-        
+        // Nullable for the same reason as AssignTaskViewModel.TaskListId: a CLIP
+        // task takes its task type from the picked record, so nothing is posted.
+        [Display(Name = "Task")]
+        public int? TaskListId { get; set; }
+
+        // Posted by the CLIP picker as "COF:14" / "PM:3".
+        [Display(Name = "CLIP Item")]
+        public string ClipItemKey { get; set; }
+
         [Display(Name = "Priority")]
         public TaskPriority? Priority { get; set; }
+
+        public TaskFormOptions Options { get; set; } = new TaskFormOptions();
     }
 
     public class UpdateTaskStatusViewModel
@@ -335,6 +343,22 @@ namespace ESTAFF.Models.ViewModels
                 TaskListId = m.TaskListId,
                 ClipItemKey = m.ClipItemKey,
                 Options = m.Options
+            };
+        }
+
+        // Employee forms need no reload wiring: the assignee is always the
+        // signed-in user, so the CLIP list is final at render time.
+        public static TaskFormFieldsViewModel From(CreateTaskViewModel m)
+        {
+            return new TaskFormFieldsViewModel
+            {
+                TaskClassificationId = m.TaskClassificationId,
+                TaskListId = m.TaskListId,
+                ClipItemKey = m.ClipItemKey,
+                Options = m.Options,
+                ClipHint =
+                    "Certificates of fitness and plant monitoring records for "
+                    + "your plants. Expired items are listed first."
             };
         }
     }

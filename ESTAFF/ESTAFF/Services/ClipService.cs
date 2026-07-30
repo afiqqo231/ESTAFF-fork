@@ -367,6 +367,60 @@ namespace ESTAFF.Services
             return true;
         }
 
+        // Sets TaskListId/SubTaskId from what a task form posted. For CLIP the
+        // picked record decides both; every other classification picks a task
+        // type directly and links no record. False only when the CLIP item is
+        // not one the task's owner may use — the caller reports that.
+        //
+        // Shared by the admin and employee forms so the rule cannot drift.
+        public bool TryApplyClassificationLink(TaskItem task,
+            int? classificationId, int? taskListId, string clipItemKey,
+            string ownerUserId, bool isClip)
+        {
+            if (isClip)
+                return ApplyKeyToTask(task, clipItemKey, ownerUserId);
+
+            task.SubTaskId = null;
+            task.TaskListId = null;
+
+            // Only accept a task type that actually belongs to the chosen
+            // classification, so a stale or hand-edited post cannot cross them.
+            if (taskListId.HasValue && classificationId.HasValue)
+            {
+                var belongs = _db.TaskLists.Any(l =>
+                    l.TaskListId == taskListId.Value
+                    && l.TaskClassificationId == classificationId.Value);
+
+                if (belongs) task.TaskListId = taskListId;
+            }
+
+            return true;
+        }
+
+        // "CLIP / Plant Monitoring / #12" — a stable string for the audit trail.
+        public string DescribeClassification(TaskItem task)
+        {
+            var classification = _db.TaskClassifications
+                .FirstOrDefault(c =>
+                    c.TaskClassificationId == task.TaskClassificationId);
+
+            var parts = new List<string>
+            {
+                classification?.Name ?? task.TaskClassificationId.ToString()
+            };
+
+            if (task.TaskListId.HasValue)
+            {
+                var list = _db.TaskLists
+                    .FirstOrDefault(l => l.TaskListId == task.TaskListId.Value);
+                parts.Add(list?.Name ?? ("#" + task.TaskListId.Value));
+            }
+
+            if (task.SubTaskId.HasValue) parts.Add("#" + task.SubTaskId.Value);
+
+            return string.Join(" / ", parts);
+        }
+
         // ══════════════════════════════════════════
         // MAPPING
         // ══════════════════════════════════════════

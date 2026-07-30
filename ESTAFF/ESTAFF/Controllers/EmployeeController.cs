@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web.Mvc;
@@ -14,9 +14,12 @@ namespace ESTAFF.Controllers
     public class EmployeeController : Controller
     {
         private ApplicationDbContext _db = new ApplicationDbContext();
+        private ClipDbContext _clip = new ClipDbContext();
+
+        private ClipService Clip => new ClipService(_db, _clip);
 
         // Helper method to get current user empnumber
-        private ApplicationUser CurrentUser => 
+        private ApplicationUser CurrentUser =>
             _db.Users.Find(User.Identity.GetUserId());
 
         // Helper method to set layout variables
@@ -98,6 +101,7 @@ namespace ESTAFF.Controllers
             new TaskService(_db).UpdateOverdueTasks();
 
             var query = _db.TaskItems
+                .Include("TaskClassification")
                 .Where(t => t.AssignedToUserId == userId)
                 .AsQueryable();
 
@@ -114,6 +118,8 @@ namespace ESTAFF.Controllers
                     Title = t.Title,
                     Description = t.Description,
                     SubTaskId = t.SubTaskId,
+                    TaskClassificationId = t.TaskClassificationId,
+                    TaskClassificationName = t.TaskClassification?.Name,
                     Status = t.Status,
                     Priority = t.Priority,
                     DueDate = t.DueDate,
@@ -144,64 +150,66 @@ namespace ESTAFF.Controllers
         }
 
 
-        private void PopulateTaskClassification(int? selectedId = null)
+        // Classifications, task types, and the CLIP records for the signed-in
+        // employee's own plants. The admin equivalent takes an employee id
+        // because an admin picks the assignee; here it is always the caller.
+        private TaskFormOptions GetFormOptions()
         {
-            var classification = new TaskService(_db).GetTaskClassification();
-            ViewBag.classificationList = new SelectList(
-                classification.Select(c => new
-                {
-                    Value = c.TaskClassificationId,
-                    Text = c.Name
-                }), "Value", "Text", selectedId);
+            var clip = Clip;
 
+            return new TaskFormOptions
+            {
+                Classifications = TaskDisplay.ToOptions(
+                    _db.TaskClassifications
+                        .OrderBy(c => c.TaskClassificationId)
+                        .ToList()),
+                TaskLists = TaskDisplay.ToOptions(_db.TaskLists
+                    .OrderBy(l => l.Name)
+                    .ToList()),
+                ClipItems = clip.GetItemsForUser(User.Identity.GetUserId()),
+                ClipClassificationId =
+                    clip.GetClipClassification()?.TaskClassificationId
+            };
         }
 
-        private void PopulateTaskList(int classificationId, int? selectedId)
+        private bool IsClipClassification(CreateTaskViewModel model)
         {
-            var task = new TaskService(_db).GetTaskList(classificationId);
-            ViewBag.taskList = new SelectList(
-                task.Select(t => new
-                {
-                    Value = t.TaskListId,
-                    Text = t.Name
-                }), "Value", "Text", selectedId);
+            return model.TaskClassificationId > 0
+                && model.TaskClassificationId
+                    == model.Options.ClipClassificationId;
+        }
 
-            if (selectedId == 24 || selectedId == 25)
+        // Both employee task forms need the same two conditional checks, which
+        // the data annotations cannot express: CLIP work needs a picked record,
+        // anything else needs a task type.
+        private void ValidateClassification(CreateTaskViewModel model, bool isClip)
+        {
+            if (isClip && string.IsNullOrWhiteSpace(model.ClipItemKey))
             {
-                var userId = User.Identity.GetUserId();
-                var plantId = _db.UserPlants
-                    .Where(up => up.UserId == userId)
-                    .Select(up => up.PlantId)
-                    .FirstOrDefault();
-                if (selectedId == 24)
-                {
-                    var cofs = new TaskService(_db).GetCOFList(plantId);
-                    ViewBag.SubTaskList = new SelectList(
-                        cofs.Select(c => new
-                        {
-                            Value = c.Id,
-                            Text = c.MachineName + " (" + c.RegistrationNo + ")"
-                        }),
-                        "Value", "Text", selectedId);
-                }
-                else if (selectedId == 25)
-                {
-                    var monitoring = new TaskService(_db).GetPlantMonitoringList(plantId);
-                    ViewBag.SubTaskList = new SelectList(
-                        monitoring.Select(m => new
-                        {
-                            Value = m.Id,
-                            Text = m.Area + " (Status: " + (m.ProcStatus ?? "N/A") + ")"
-                        }),
-                        "Value", "Text", selectedId);
-                }
-                else
-                {
-                    ViewBag.SubTaskList = new SelectList(
-                        Enumerable.Empty<SelectListItem>());
-                }
+                ModelState.AddModelError("ClipItemKey",
+                    "Select the COF or plant monitoring record this task covers.");
             }
 
+            if (!isClip && !model.TaskListId.HasValue)
+            {
+                ModelState.AddModelError("TaskListId",
+                    "Select the task type this task covers.");
+            }
+        }
+
+        // Mirrors AdminController.ApplyClassificationLink: the rule itself lives
+        // in ClipService, the controller only reports the rejection.
+        private bool ApplyClassificationLink(TaskItem task,
+            int? classificationId, int? taskListId, string clipItemKey,
+            string ownerUserId, bool isClip)
+        {
+            if (Clip.TryApplyClassificationLink(task, classificationId,
+                    taskListId, clipItemKey, ownerUserId, isClip))
+                return true;
+
+            ModelState.AddModelError("ClipItemKey",
+                "That CLIP item is not available for your plants.");
+            return false;
         }
 
         // ===========
@@ -212,21 +220,19 @@ namespace ESTAFF.Controllers
             SetLayoutData();
             ViewBag.PageTitle = "Create Task";
             ViewBag.PageSubtitle = "Add a new task to your list.";
-            PopulateTaskClassification();
-            ViewBag.COFList = new SelectList(Enumerable.Empty<SelectListItem>());
-            return View(new CreateTaskViewModel());
+
+            return View(new CreateTaskViewModel
+            {
+                Options = GetFormOptions()
+            });
         }
-        
+
         // ===========
         // Populate TaskList based on selected TaskClassification
         //============
         [HttpGet]
         public JsonResult GetTaskByClassification(int classificationId)
         {
-            if (classificationId == 4)
-            {
-                
-            }
             var tasks = new TaskService(_db).GetTaskList(classificationId);
             var result = tasks.Select(t => new
             {
@@ -247,12 +253,13 @@ namespace ESTAFF.Controllers
             ViewBag.PageTitle = "Create Task";
             ViewBag.PageSubtitle = "Add a new task to your list.";
 
+            model.Options = GetFormOptions();
+
+            var isClip = IsClipClassification(model);
+            ValidateClassification(model, isClip);
+
             if (!ModelState.IsValid)
-            {
-                PopulateTaskClassification(model.TaskClassificationId);
-                PopulateTaskList(model.TaskClassificationId, model.TaskListId);
                 return View(model);
-            }
 
             var userId = User.Identity.GetUserId();
 
@@ -264,17 +271,17 @@ namespace ESTAFF.Controllers
                 CreatedByUserId = userId,
                 DueDate = model.DueDate,
                 Priority = model.Priority,
-                SubTaskId = model.SubTaskId,
-                // Without the task list, SubTaskId is ambiguous - nothing can
-                // tell whether it points at a COF or a plant monitoring record.
-                TaskListId = model.TaskListId > 0
-                    ? model.TaskListId
-                    : (int?)null,
                 Status = TaskStatus.Pending,
                 CreatedDate = DateTime.Now,
                 LastModifiedDate = DateTime.Now,
                 TaskClassificationId = model.TaskClassificationId
             };
+
+            // Sets TaskListId/SubTaskId. The CLIP item must belong to one of the
+            // employee's own plants — they are the assignee here.
+            if (!ApplyClassificationLink(task, model.TaskClassificationId,
+                    model.TaskListId, model.ClipItemKey, userId, isClip))
+                return View(model);
 
             _db.TaskItems.Add(task);
             _db.SaveChanges();
@@ -313,7 +320,11 @@ namespace ESTAFF.Controllers
                 Title = task.Title,
                 Description = task.Description,
                 DueDate = task.DueDate,
-                Priority = task.Priority
+                Priority = task.Priority,
+                TaskClassificationId = task.TaskClassificationId,
+                TaskListId = task.TaskListId,
+                ClipItemKey = Clip.BuildKeyForTask(task),
+                Options = GetFormOptions()
             };
 
             ViewBag.TaskId = id;
@@ -339,11 +350,15 @@ namespace ESTAFF.Controllers
             if (task == null || task.AssignedToUserId != userId)
                 return HttpNotFound();
 
+            ViewBag.Status = task.Status;
+
+            model.Options = GetFormOptions();
+
+            var isClip = IsClipClassification(model);
+            ValidateClassification(model, isClip);
+
             if (!ModelState.IsValid)
-            {
-                ViewBag.Status = task.Status;
                 return View(model);
-            }
 
             var changes = new System.Text.StringBuilder();
 
@@ -368,10 +383,22 @@ namespace ESTAFF.Controllers
 
             if (task.Priority != model.Priority)
             {
-                changes.Append($"Priority: '{task.Priority}'" + 
+                changes.Append($"Priority: '{task.Priority}'" +
                     $" -> '{model.Priority}'. ");
                 task.Priority = model.Priority;
             }
+
+            var before = Clip.DescribeClassification(task);
+
+            task.TaskClassificationId = model.TaskClassificationId;
+
+            if (!ApplyClassificationLink(task, model.TaskClassificationId,
+                    model.TaskListId, model.ClipItemKey, userId, isClip))
+                return View(model);
+
+            var after = Clip.DescribeClassification(task);
+            if (before != after)
+                changes.Append($"Classification: '{before}' -> '{after}'. ");
 
             task.LastModifiedDate = DateTime.Now;
             _db.SaveChanges();
@@ -387,9 +414,88 @@ namespace ESTAFF.Controllers
             
             TempData["SuccessMessage"] = "Task updated successfully!";
             return RedirectToAction("MyTasks");
-            
+
         }
-        
+
+        // ===========
+        // Update Task Status - POST
+        // ===========
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult UpdateStatus(
+            int taskId, TaskStatus status,
+            string actionTaken, string returnUrl = null)
+        {
+            var userId = User.Identity.GetUserId();
+            var task = _db.TaskItems.Find(taskId);
+
+            // only allow to update own tasks
+            if (task == null || task.AssignedToUserId != userId)
+                return HttpNotFound();
+
+            // In Progress / Complete must say what was actually done
+            if (RequiresActionTaken(status)
+                && string.IsNullOrWhiteSpace(actionTaken))
+            {
+                TempData["ErrorMessage"] =
+                    $"Please describe the action taken before moving " +
+                    $"'{task.Title}' to {StatusLabel(status)}.";
+                return RedirectBack(returnUrl);
+            }
+
+            if (task.Status == status)
+                return RedirectBack(returnUrl);
+
+            var oldStatus = task.Status;
+
+            task.Status = status;
+            task.CompletedDate = status == TaskStatus.Complete
+                ? DateTime.Now
+                : (DateTime?)null;
+            task.LastModifiedDate = DateTime.Now;
+            _db.SaveChanges();
+
+            var detail = $"Status: {StatusLabel(oldStatus)}" +
+                $" -> {StatusLabel(status)}.";
+
+            if (!string.IsNullOrWhiteSpace(actionTaken))
+                detail += $" Action taken: {actionTaken.Trim()}";
+
+            new TaskService(_db).LogHistory(
+                task.TaskId,
+                "StatusChanged",
+                StatusLabel(oldStatus),
+                detail,
+                userId);
+
+            TempData["SuccessMessage"] =
+                $"'{task.Title}' marked as {StatusLabel(status)}.";
+            return RedirectBack(returnUrl);
+        }
+
+        private static bool RequiresActionTaken(TaskStatus status)
+        {
+            return status == TaskStatus.InProgress
+                || status == TaskStatus.Complete;
+        }
+
+        private static string StatusLabel(TaskStatus status)
+        {
+            return status == TaskStatus.InProgress
+                ? "In Progress"
+                : status.ToString();
+        }
+
+        // Returns to the page the status was changed from
+        // (keeps the tab filter / calendar period intact)
+        private ActionResult RedirectBack(string returnUrl)
+        {
+            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+                return Redirect(returnUrl);
+
+            return RedirectToAction("MyTasks");
+        }
+
        // ============
        // Calendar - Unified View
        // ============
@@ -542,48 +648,6 @@ namespace ESTAFF.Controllers
         }
 
         // ===========
-        // Update Status - Post
-        // ===========
-        // Posted by the status control on MyTasks, Calendar and DailyView.
-        // Remark is optional and stored with the transition, so the task can
-        // show why it last moved.
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult UpdateStatus(int taskId, TaskStatus status,
-            string remark = null, string returnUrl = null)
-        {
-            var userId = User.Identity.GetUserId();
-            var task = _db.TaskItems.Find(taskId);
-
-            // Employees may only move their own tasks.
-            if (task == null || task.AssignedToUserId != userId)
-                return HttpNotFound();
-
-            var oldStatus = task.Status;
-
-            if (oldStatus == status)
-            {
-                TempData["ErrorMessage"] =
-                    $"'{task.Title}' is already {TaskDisplay.StatusLabel(status)}.";
-                return RedirectToLocalOr(returnUrl, "MyTasks");
-            }
-
-            task.Status = status;
-            task.CompletedDate = status == TaskStatus.Complete
-                ? DateTime.Now
-                : (DateTime?)null;
-            task.LastModifiedDate = DateTime.Now;
-            _db.SaveChanges();
-
-            new TaskService(_db).LogStatusChange(
-                task.TaskId, oldStatus, status, userId, remark);
-
-            TempData["SuccessMessage"] =
-                $"'{task.Title}' moved to {TaskDisplay.StatusLabel(status)}.";
-            return RedirectToLocalOr(returnUrl, "MyTasks");
-        }
-
-        // ===========
         // Delete Task - Post
         // ===========
         [HttpPost]
@@ -607,15 +671,6 @@ namespace ESTAFF.Controllers
 
             TempData["SuccessMessage"] = $"Task '{title}' deleted.";
             return RedirectToAction("MyTasks");
-        }
-
-        // Keeps the user on the page they acted from, ignoring off-site URLs.
-        private ActionResult RedirectToLocalOr(string returnUrl, string fallbackAction)
-        {
-            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
-                return Redirect(returnUrl);
-
-            return RedirectToAction(fallbackAction);
         }
 
         // ===========
@@ -958,7 +1013,11 @@ namespace ESTAFF.Controllers
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing) _db.Dispose();
+            if (disposing)
+            {
+                _db.Dispose();
+                _clip.Dispose();
+            }
             base.Dispose(disposing);
         }
     }

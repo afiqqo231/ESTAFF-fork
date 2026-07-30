@@ -174,38 +174,29 @@
 
                         
                         <div class="cal-task-actions">
-                            @using (Html.BeginForm(
-                                "UpdateStatus", "Employee",
-                                FormMethod.Post,
-                                new { style = "display:contents" }))
+                            @if (task.Status !=
+                                ESTAFF.Models.Data.TaskStatus.Complete)
                             {
-                                @Html.AntiForgeryToken()
-                                <input type="hidden"
-                                       name="taskId"
-                                       value="@task.TaskId" />
-
-                                if (task.Status !=
-                                    ESTAFF.Models.Data.TaskStatus.Complete)
-                                {
-                                    <button type="submit"
-                                            name="status"
-                                            value="Complete"
-                                            class="cal-task-action-btn complete"
-                                            title="Mark Complete">
-                                        <i class="fas fa-check"></i>
-                                    </button>
-                                }
-                                else
-                                {
-                                    <button type="submit"
-                                            name="status"
-                                            value="Pending"
-                                            class="cal-task-action-btn complete"
-                                            title="Reopen"
-                                            style="color:var(--text-muted)">
-                                        <i class="fas fa-undo"></i>
-                                    </button>
-                                }
+                                <button type="button"
+                                        class="cal-task-action-btn complete js-status-btn"
+                                        data-task-id="@task.TaskId"
+                                        data-task-title="@task.Title"
+                                        data-status="Complete"
+                                        title="Mark Complete">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="button"
+                                        class="cal-task-action-btn complete js-status-btn"
+                                        data-task-id="@task.TaskId"
+                                        data-task-title="@task.Title"
+                                        data-status="Pending"
+                                        title="Reopen"
+                                        style="color:var(--text-muted)">
+                                    <i class="fas fa-undo"></i>
+                                </button>
                             }
 
                             <a href="@Url.Action("EditTask",
@@ -405,6 +396,9 @@
 
     </div>
 }
+
+@* Status change form + "Action Taken" modal *@
+@Html.Partial("_StatusActionModal")
 
 @section PageScripts {
 <script>

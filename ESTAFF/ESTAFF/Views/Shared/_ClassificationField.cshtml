@@ -55,6 +55,8 @@
         <select name="TaskListId" id="TaskListId" class="form-control">
             <option value="">— Select a task type —</option>
         </select>
+        @Html.ValidationMessage("TaskListId", "",
+            new { @class = "text-danger small" })
         <span class="clip-field-hint js-task-list-hint">
             The recurring job this task covers.
         </span>

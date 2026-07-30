@@ -17,7 +17,8 @@
             {
                 @Html.AntiForgeryToken()
                 @Html.HiddenFor(m => m.TaskId)
-                @Html.ValidationSummary(true, "",
+                @Html.ValidationSummary(true,
+                    "This task could not be saved — see the messages below.",
                     new { @class = "alert alert-danger py-2 small" })
 
                 <div class="row g-3">

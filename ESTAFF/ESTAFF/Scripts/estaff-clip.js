@@ -518,90 +518,6 @@
     }
 
     // ════════════════════════════════════════════
-    // STATUS CHANGE DIALOG
-    // ════════════════════════════════════════════
-    //
-    // The status <select> on a task card posts immediately by default. That
-    // leaves no room to say *why* the status changed, so instead we intercept
-    // the change, confirm it, and collect an optional remark that is stored
-    // with the transition and shown back on the task.
-
-    function wireStatusDialog() {
-        var dialog = document.getElementById('statusRemarkDialog');
-        if (!dialog) return;
-
-        // Task cards submit their status form inline unless this flag is set,
-        // so the select keeps working when this script never runs.
-        window.__estaffClipReady = true;
-
-        var form     = null;
-        var revertTo = null;
-        var select   = null;
-
-        var titleEl  = dialog.querySelector('[data-role="status-dialog-title"]');
-        var subEl    = dialog.querySelector('[data-role="status-dialog-sub"]');
-        var remarkEl = dialog.querySelector('[data-role="status-dialog-remark"]');
-        var confirm  = dialog.querySelector('[data-role="status-dialog-confirm"]');
-        var cancel   = dialog.querySelectorAll('[data-role="status-dialog-cancel"]');
-
-        function close(revert) {
-            if (revert && select && revertTo !== null) select.value = revertTo;
-            dialog.classList.remove('is-open');
-            form = null;
-            select = null;
-            revertTo = null;
-        }
-
-        document.addEventListener('change', function (e) {
-            var target = e.target;
-            if (!target.classList ||
-                !target.classList.contains('js-status-select')) return;
-
-            form     = target.form;
-            select   = target;
-            revertTo = target.getAttribute('data-current-status');
-
-            titleEl.textContent = 'Move to ' +
-                (target.options[target.selectedIndex] || {}).text + '?';
-            subEl.textContent = target.getAttribute('data-task-title') || '';
-            remarkEl.value = '';
-
-            dialog.classList.add('is-open');
-            remarkEl.focus();
-        });
-
-        confirm.addEventListener('click', function () {
-            if (!form) return;
-
-            var hidden = form.querySelector('input[name="remark"]');
-            if (!hidden) {
-                hidden = document.createElement('input');
-                hidden.type = 'hidden';
-                hidden.name = 'remark';
-                form.appendChild(hidden);
-            }
-            hidden.value = remarkEl.value;
-
-            dialog.classList.remove('is-open');
-            form.submit();
-        });
-
-        for (var i = 0; i < cancel.length; i++) {
-            cancel[i].addEventListener('click', function () { close(true); });
-        }
-
-        dialog.addEventListener('click', function (e) {
-            if (e.target === dialog) close(true);
-        });
-
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && dialog.classList.contains('is-open')) {
-                close(true);
-            }
-        });
-    }
-
-    // ════════════════════════════════════════════
     // BOOT
     // ════════════════════════════════════════════
 
@@ -618,8 +534,6 @@
 
         var fields = document.querySelectorAll('.classification-field');
         for (var j = 0; j < fields.length; j++) wireClassificationField(fields[j]);
-
-        wireStatusDialog();
     }
 
     if (document.readyState === 'loading') {

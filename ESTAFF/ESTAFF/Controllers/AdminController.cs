@@ -414,6 +414,12 @@ namespace ESTAFF.Controllers
                     "Select the COF or plant monitoring record this task covers.");
             }
 
+            if (!isClip && !model.TaskListId.HasValue)
+            {
+                ModelState.AddModelError("TaskListId",
+                    "Select the task type this task covers.");
+            }
+
             if (!ModelState.IsValid)
                 return View(model);
 
@@ -998,56 +1004,19 @@ namespace ESTAFF.Controllers
             int? classificationId, int? taskListId, string clipItemKey,
             string ownerUserId, bool isClip)
         {
-            if (isClip)
-            {
-                if (!Clip.ApplyKeyToTask(task, clipItemKey, ownerUserId))
-                {
-                    ModelState.AddModelError("ClipItemKey",
-                        "That CLIP item is not available for the selected employee's plants.");
-                    return false;
-                }
+            if (Clip.TryApplyClassificationLink(task, classificationId,
+                    taskListId, clipItemKey, ownerUserId, isClip))
                 return true;
-            }
 
-            task.SubTaskId = null;
-            task.TaskListId = null;
-
-            // Only accept a task type that actually belongs to the chosen
-            // classification, so a stale or hand-edited post cannot cross them.
-            if (taskListId.HasValue && classificationId.HasValue)
-            {
-                var belongs = _db.TaskLists.Any(l =>
-                    l.TaskListId == taskListId.Value
-                    && l.TaskClassificationId == classificationId.Value);
-
-                if (belongs) task.TaskListId = taskListId;
-            }
-
-            return true;
+            ModelState.AddModelError("ClipItemKey",
+                "That CLIP item is not available for the selected employee's plants.");
+            return false;
         }
 
         // "CLIP / Plant Monitoring / #12" — a stable string for the audit trail.
         private string DescribeClassification(TaskItem task)
         {
-            var classification = _db.TaskClassifications
-                .FirstOrDefault(c =>
-                    c.TaskClassificationId == task.TaskClassificationId);
-
-            var parts = new List<string>
-            {
-                classification?.Name ?? task.TaskClassificationId.ToString()
-            };
-
-            if (task.TaskListId.HasValue)
-            {
-                var list = _db.TaskLists
-                    .FirstOrDefault(l => l.TaskListId == task.TaskListId.Value);
-                parts.Add(list?.Name ?? ("#" + task.TaskListId.Value));
-            }
-
-            if (task.SubTaskId.HasValue) parts.Add("#" + task.SubTaskId.Value);
-
-            return string.Join(" / ", parts);
+            return Clip.DescribeClassification(task);
         }
 
         private void PopulateTaskClassification(int? selectedId = null)

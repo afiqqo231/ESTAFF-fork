@@ -15,7 +15,11 @@
             @using (Html.BeginForm("CreateTask", "Employee", FormMethod.Post))
             {
                 @Html.AntiForgeryToken()
-                @Html.ValidationSummary(true, "",
+                @* Needs a header message: MVC renders this box whenever
+                   ModelState is invalid, so an all-property-error postback
+                   would otherwise show an empty red band. *@
+                @Html.ValidationSummary(true,
+                    "This task could not be created — see the messages below.",
                     new { @class = "alert alert-danger py-2 small" })
 
                 <div class="row g-3">
@@ -30,20 +34,10 @@
                             new { @class = "text-danger small" })
                     </div>
                     
-                    <div class="col-g-12">
-                        @Html.LabelFor(m => m.TaskClassificationId,
-                            new { @class = "form-label"})
-                        @Html.DropDownListFor(m => m.TaskClassificationId,
-                            ViewBag.classificationList as SelectList, 
-                            "- Select Classification -",
-                            new
-                            {
-                                @class = "form-control text-muted", 
-                                id = "classificationDropdown",
-                                onchange = "this.classList.toggle('text-muted', !this.value)"
-                            })
-                        @Html.ValidationMessageFor(m => m.TaskClassificationId, "",
-                            new { @class = "text-danger small"})
+                    <!-- Classification, task type, and (for CLIP) the item picker -->
+                    <div class="col-12">
+                        @Html.Partial("_ClassificationField",
+                            TaskFormFieldsViewModel.From(Model))
                     </div>
 
                     <div class="col-12">
@@ -103,10 +97,4 @@
         </div>
     </div>
 </div>
-
-@section PageScripts {
-    <script>
-</script>
-
-}
 
