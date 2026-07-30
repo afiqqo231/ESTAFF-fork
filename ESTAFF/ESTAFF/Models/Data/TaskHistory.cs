@@ -23,6 +23,11 @@ namespace ESTAFF.Models.Data
 
         public string NewValue { get; set; }
 
+        // Free-text note the user attached to this change (currently captured on
+        // status changes so the latest one can be surfaced on the task itself).
+        [StringLength(500)]
+        public string Remark { get; set; }
+
         [Required]
         [ForeignKey("ChangedByUser")]
         public string ChangedByUserId { get; set; }

@@ -2,10 +2,12 @@
 	ViewBag.Title = "Dashboard";
 	Layout = "~/Views/Shared/_EmployeeLayout.cshtml";
 
-	var dueToday = ViewBag.DueToday as List<ESTAFF.Models.Data.TaskItem>
-				   ?? new List<ESTAFF.Models.Data.TaskItem>();
-	var recentTasks = ViewBag.RecentTasks as List<ESTAFF.Models.Data.TaskItem>
-				   ?? new List<ESTAFF.Models.Data.TaskItem>();
+	var dueToday = ViewBag.DueToday
+				   as List<ESTAFF.Models.ViewModels.TaskListItemViewModel>
+				   ?? new List<ESTAFF.Models.ViewModels.TaskListItemViewModel>();
+	var recentTasks = ViewBag.RecentTasks
+				   as List<ESTAFF.Models.ViewModels.TaskListItemViewModel>
+				   ?? new List<ESTAFF.Models.ViewModels.TaskListItemViewModel>();
 
 	decimal onTime = (decimal)(ViewBag.OnTimeRate ?? 0m);
 	double gaugeCirc = 2 * Math.PI * 54;
@@ -77,10 +79,7 @@
 			{
 				foreach (var task in dueToday)
 				{
-					var sc = task.Status == 
-						ESTAFF.Models.Data.TaskStatus.InProgress 
-						? "inprogress" 
-						: task.Status.ToString().ToLower();
+					var sc = task.StatusClass;
 
 					<div class="task-row">
 						<div class="task-row-dot @sc"></div>
@@ -93,10 +92,27 @@
 									<text> | Priority @task.Priority</text>
 								}
 							</p>
+							@if (task.ClipItem != null)
+							{
+								<div class="mt-1">
+									@Html.Partial("_ClipItemChip", task.ClipItem)
+								</div>
+							}
+							@if (task.LatestStatusRemark != null)
+							{
+								<div class="mt-1">
+									@Html.Partial("_StatusRemarkInline",
+										task.LatestStatusRemark)
+								</div>
+							}
 						</div>
-						<span class="badge-pill badge-@sc">
-							@task.Status
-						</span>
+						<div class="d-flex flex-column align-items-end gap-1">
+							<span class="badge-pill badge-@sc">
+								@TaskDisplay.StatusLabel(task.Status)
+							</span>
+							@Html.Partial("_ClassificationBadge",
+								ClassificationBadgeModel.From(task, false))
+						</div>
 					</div>								
 				}
 			}
@@ -188,12 +204,8 @@
 	{
 		foreach (var task in recentTasks)
 		{
-			var sc = task.Status == 
-				ESTAFF.Models.Data.TaskStatus.InProgress
-				? "inprogress"
-				: task.Status.ToString().ToLower();
-			var isOD = task.DueDate.Date < DateTime.Today
-					&& task.Status != ESTAFF.Models.Data.TaskStatus.Complete;
+			var sc = task.StatusClass;
+			var isOD = task.IsOverdue;
 
 			<div class="task-row">
 				<div class="task-row-dot @sc"></div>
@@ -203,10 +215,26 @@
 						Due @task.DueDate.ToString("MMM dd, yyyy")
 						@if (isOD) { <text> | Overdue</text> }
 					</p>
+					@if (task.ClipItem != null)
+					{
+						<div class="mt-1">
+							@Html.Partial("_ClipItemChip", task.ClipItem)
+						</div>
+					}
+					@if (task.LatestStatusRemark != null)
+					{
+						<div class="mt-1">
+							@Html.Partial("_StatusRemarkInline",
+								task.LatestStatusRemark)
+						</div>
+					}
 				</div>
-				<span class="badge-pill badge-@sc">
-					@task.Status
-				</span>
+				<div class="d-flex flex-column align-items-end gap-1">
+					<span class="badge-pill badge-@sc">
+						@TaskDisplay.StatusLabel(task.Status)
+					</span>
+					@Html.Partial("_ClassificationBadge", ClassificationBadgeModel.From(task, false))
+				</div>
 			</div>
 		}
 	}
@@ -218,7 +246,7 @@
 			</div>
 			<h5>No tasks yet</h5>
 			<p>Create your first task or wait for your manager to assign you</p>
-			<a href="@Url.Action("CreateTasks", "Employee")" 
+			<a href="@Url.Action("CreateTask", "Employee")" 
 			   class="btn-primary-custom">
 			   <i class="fas fa-plus"></i> Create Task
 			</a>

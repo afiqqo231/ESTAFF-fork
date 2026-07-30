@@ -1,4 +1,4 @@
-@using ESTAFF.Controllers
+﻿@using ESTAFF.Controllers
 @model List<DayTaskGroup>
 @{
     ViewBag.Title = "Weekly View";
@@ -83,15 +83,15 @@
                 {
                     foreach (var task in day.Tasks)
                     {
-                        var sc = task.Status ==
-                            ESTAFF.Models.Data.TaskStatus.InProgress
-                            ? "inprogress"
-                            : task.Status.ToString().ToLower();
+                        var sc = task.StatusClass;
 
                         <a href="@Url.Action("EditTask","Employee",
                                new { id = task.TaskId })"
                            class="week-task-chip @sc"
-                           style="display:block; text-decoration:none;">
+                           style="display:block; text-decoration:none;"
+                           title="@(task.ClassificationLabel)@(task.ClipItem != null
+                               ? " · " + task.ClipItem.Title + " · " + task.ClipItem.ExpiryText
+                               : "")">
                             <span class="week-chip-title">
                                 @task.Title
                             </span>
@@ -101,7 +101,19 @@
                                       sc == "complete" ?
                                       "var(--primary)" :
                                       "var(--text-muted)");">
-                                @task.Status
+                                @TaskDisplay.StatusLabel(task.Status)
+                            </span>
+                            <span class="d-flex flex-wrap gap-1 mt-1">
+                                @Html.Partial("_ClassificationBadge",
+                                    ClassificationBadgeModel.From(task, false))
+                                @if (task.ClipItem != null)
+                                {
+                                    <span class="badge-pill clip-chip urgency-@task.ClipItem.UrgencyClass"
+                                          style="font-size:0.6rem; padding:0.15rem 0.45rem;">
+                                        <span class="clip-chip-dot"></span>
+                                        @task.ClipItem.ExpiryStatus
+                                    </span>
+                                }
                             </span>
                         </a>
                     }

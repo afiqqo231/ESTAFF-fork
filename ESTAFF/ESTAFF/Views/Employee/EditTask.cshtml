@@ -32,6 +32,11 @@
                     </div>
 
                     <div class="col-12">
+                        @Html.Partial("_ClassificationField",
+                            TaskFormFieldsViewModel.From(Model))
+                    </div>
+
+                    <div class="col-12">
                         @Html.LabelFor(m => m.Description,
                             new { @class = "form-label" })
                         @Html.TextAreaFor(m => m.Description,
@@ -70,6 +75,17 @@
                     </div>
 
                 </div>
+
+                @* The status change already on record. Employees change status
+                   from the task card, so this is read-only context here. *@
+                if (ViewBag.LatestStatusRemark != null)
+                {
+                    <div class="mt-3">
+                        <span class="form-label">Latest status remark</span>
+                        @Html.Partial("_StatusRemark",
+                            (StatusRemarkViewModel)ViewBag.LatestStatusRemark)
+                    </div>
+                }
 
                 <hr style="border-color:var(--border-subtle);
                            margin:1.5rem 0;" />

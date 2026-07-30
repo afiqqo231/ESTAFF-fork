@@ -1,0 +1,43 @@
+@*
+    Confirmation step for a status change on a task card.
+
+    The status <select> would otherwise submit the instant it changes, which
+    both makes mis-clicks unrecoverable and leaves no room to record why the
+    status moved. This asks for confirmation and collects an optional remark,
+    which is stored with the transition and shown back on the task.
+*@
+<div class="status-dialog-backdrop"
+     id="statusRemarkDialog"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="statusRemarkDialogTitle">
+    <div class="status-dialog">
+        <div class="status-dialog-header">
+            <h6 id="statusRemarkDialogTitle"
+                data-role="status-dialog-title">Change status?</h6>
+            <p data-role="status-dialog-sub"></p>
+        </div>
+        <div class="status-dialog-body">
+            <label for="statusRemarkInput">
+                Remark <span style="font-weight:400;">(optional)</span>
+            </label>
+            <textarea id="statusRemarkInput"
+                      data-role="status-dialog-remark"
+                      rows="3"
+                      maxlength="500"
+                      placeholder="e.g. Waiting on the contractor's quotation"></textarea>
+        </div>
+        <div class="status-dialog-footer">
+            <button type="button"
+                    class="btn-cancel"
+                    data-role="status-dialog-cancel">
+                Cancel
+            </button>
+            <button type="button"
+                    class="btn-submit"
+                    data-role="status-dialog-confirm">
+                <i class="fas fa-check me-1"></i> Update status
+            </button>
+        </div>
+    </div>
+</div>

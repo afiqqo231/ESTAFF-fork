@@ -66,6 +66,7 @@
             <thead>
                 <tr>
                     <th style="padding-left:1.5rem">Task</th>
+                    <th>Classification</th>
                     <th>Priority</th>
                     <th>Due Date</th>
                     <th style="padding-right:1.5rem">Status</th>
@@ -74,10 +75,7 @@
             <tbody>
                 @foreach (var task in Model.Tasks)
                 {
-                    var sc = task.Status ==
-                        ESTAFF.Models.Data.TaskStatus.InProgress
-                        ? "inprogress"
-                        : task.Status.ToString().ToLower();
+                    var sc = TaskDisplay.StatusClass(task.Status);
 
                     <tr>
                         <td style="padding-left:1.5rem">
@@ -93,6 +91,9 @@
                                     @task.Description
                                 </div>
                             }
+                        </td>
+                        <td>
+                            @Html.Partial("_ClassificationBadge", ClassificationBadgeModel.From(task))
                         </td>
                         <td>
                             @if (task.Priority.HasValue)
@@ -117,7 +118,7 @@
                         </td>
                         <td style="padding-right:1.5rem">
                             <span class="badge-pill badge-@sc">
-                                @task.Status
+                                @TaskDisplay.StatusLabel(task.Status)
                             </span>
                         </td>
                     </tr>

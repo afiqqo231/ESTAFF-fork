@@ -1,4 +1,4 @@
-@model ESTAFF.Models.ViewModels.CreateTaskViewModel
+﻿@model ESTAFF.Models.ViewModels.CreateTaskViewModel
 @{
     ViewBag.Title = "Create Task";
     Layout = "~/Views/Shared/_EmployeeLayout.cshtml";
@@ -31,12 +31,8 @@
                     </div>
                     
                     <div class="col-12">
-                        @Html.LabelFor(m => m.COFId,
-                            new { @class = "form-label" })
-                        @Html.DropDownListFor(m => m.COFId,
-                            (SelectList)ViewBag.COFList,
-                            "— None —",
-                            new { @class = "form-control" })
+                        @Html.Partial("_ClassificationField",
+                            TaskFormFieldsViewModel.From(Model))
                     </div>
 
                     <div class="col-12">

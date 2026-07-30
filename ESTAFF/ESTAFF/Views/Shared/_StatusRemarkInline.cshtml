@@ -1,0 +1,18 @@
+﻿@using ESTAFF.Models.ViewModels
+@model StatusRemarkViewModel
+
+@* Compact one-line variant of the latest status change, for table rows and
+   dashboard lists where a full block would crowd the layout. *@
+@if (Model != null)
+{
+    var text = Model.HasRemark ? Model.Remark : "No remark left.";
+    var tooltip = string.Format("{0} — {1} · {2} · {3}",
+        Model.TransitionText, text, Model.ChangedByName,
+        Model.ChangedDate.ToString("dd MMM yyyy, h:mm tt"));
+
+    <span class="status-remark-inline" title="@tooltip">
+        <i class="fas fa-comment-dots" style="font-size:0.62rem;"></i>
+        <span>@Model.TransitionText · @text</span>
+        <span style="white-space:nowrap;">· @Model.RelativeTime</span>
+    </span>
+}

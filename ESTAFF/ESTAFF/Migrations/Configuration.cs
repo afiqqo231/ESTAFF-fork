@@ -10,8 +10,13 @@ namespace ESTAFF.Migrations
     {
         public Configuration()
         {
-            AutomaticMigrationsEnabled = true;
-            AutomaticMigrationDataLossAllowed = true;
+            // Off deliberately. This database also hosts EHS_PORTAL's CLIP, CORD
+            // and FETS schemas, and ESTAFF's entities map only the columns it
+            // reads — an automatic migration reconciling that partial model would
+            // drop live columns belonging to another application. Schema changes
+            // go through explicit migrations or the scripts in DATABASE/.
+            AutomaticMigrationsEnabled = false;
+            AutomaticMigrationDataLossAllowed = false;
         }
 
         protected override void Seed(ApplicationDbContext context)
