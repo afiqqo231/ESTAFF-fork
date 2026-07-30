@@ -43,6 +43,11 @@ namespace ESTAFF.Models.Data
             modelBuilder.Entity<COF>().ToTable("CertificateOfFitness", "CLIP");
             modelBuilder.Entity<Plant>().ToTable("Plants", "CLIP");
             modelBuilder.Entity<UserPlant>().ToTable("UserPlants", "CLIP");
+
+            // UserPlant.User points at ApplicationUser, which ApplicationDbContext
+            // owns. Following it here would pull ESTAFF's whole Identity model
+            // into this context; the UserId string is all the CLIP reads need.
+            modelBuilder.Entity<UserPlant>().Ignore(up => up.User);
             modelBuilder.Entity<PlantMonitoring>().ToTable("PlantMonitoring", "CLIP");
             modelBuilder.Entity<Monitoring>().ToTable("Monitoring", "CLIP");
 

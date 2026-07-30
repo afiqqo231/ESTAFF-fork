@@ -1,6 +1,5 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Data.Entity;
 using System.Linq;
 using System.Web.Mvc;
 using Microsoft.AspNet.Identity;
@@ -15,13 +14,10 @@ namespace ESTAFF.Controllers
     public class EmployeeController : Controller
     {
         private ApplicationDbContext _db = new ApplicationDbContext();
-        private ClipDbContext _clip = new ClipDbContext();
 
         // Helper method to get current user empnumber
-        private ApplicationUser CurrentUser =>
+        private ApplicationUser CurrentUser => 
             _db.Users.Find(User.Identity.GetUserId());
-
-        private ClipService Clip => new ClipService(_db, _clip);
 
         // Helper method to set layout variables
         private void SetLayoutData()
@@ -44,7 +40,7 @@ namespace ESTAFF.Controllers
             // Auto-flag overdue
             new TaskService(_db).UpdateOverdueTasks();
 
-            var allTasks = TaskQuery()
+            var allTasks = _db.TaskItems
                 .Where(t => t.AssignedToUserId == userId)
                 .ToList();
 
@@ -71,18 +67,18 @@ namespace ESTAFF.Controllers
 
             // Due Today
             var today = DateTime.Today;
-            ViewBag.DueToday = BuildTaskList(allTasks
+            ViewBag.DueToday = allTasks
                 .Where(t => t.DueDate.Date == today
                     && t.Status != TaskStatus.Complete)
                 .OrderBy(t => t.DueDate)
                 .Take(5)
-                .ToList());
+                .ToList();
 
             // Recent Tasks
-            ViewBag.RecentTasks = BuildTaskList(allTasks
+            ViewBag.RecentTasks = allTasks
                 .OrderByDescending(t => t.CreatedDate)
                 .Take(6)
-                .ToList());
+                .ToList();
 
             return View();
         }
@@ -90,7 +86,7 @@ namespace ESTAFF.Controllers
         // ===========
         // Task Management
         // ===========
-        public ActionResult MyTasks(string status = "", string classification = "")
+        public ActionResult MyTasks(string status = "")
         {
             SetLayoutData();
             ViewBag.PageTitle = "My Tasks";
@@ -101,34 +97,43 @@ namespace ESTAFF.Controllers
             // Auto-flag overdue
             new TaskService(_db).UpdateOverdueTasks();
 
-            var query = TaskQuery()
-                .Where(t => t.AssignedToUserId == userId);
+            var query = _db.TaskItems
+                .Where(t => t.AssignedToUserId == userId)
+                .AsQueryable();
 
             if (!string.IsNullOrEmpty(status) &&
                 Enum.TryParse<TaskStatus>(status, out var statusEnum))
                 query = query.Where(t => t.Status == statusEnum);
 
-            if (!string.IsNullOrEmpty(classification) &&
-                int.TryParse(classification, out var classificationId))
-                query = query.Where(t =>
-                    t.TaskClassificationId == classificationId);
-
-            var tasks = BuildTaskList(query
+            var tasks = query
                 .OrderByDescending(t => t.CreatedDate)
-                .ToList());
+                .ToList()
+                .Select(t => new TaskListItemViewModel
+                {
+                    TaskId = t.TaskId,
+                    Title = t.Title,
+                    Description = t.Description,
+                    SubTaskId = t.SubTaskId,
+                    Status = t.Status,
+                    Priority = t.Priority,
+                    DueDate = t.DueDate,
+                    CreatedDate = t.CreatedDate,
+                    CompletedDate = t.CompletedDate,
+                    CreatedByName = t.CreatedByUser?.UserName ?? "-"
+
+                })
+                .ToList();
 
             ViewBag.SelectedStatus = status;
-            ViewBag.SelectedClassification = classification;
-            ViewBag.Classifications = GetClassificationOptions();
 
             // Count for tabs
-            var all = _db.TaskItems
+            var all = _db.TaskItems 
                 .Where(t => t.AssignedToUserId == userId)
                 .ToList();
             ViewBag.AllCount = all.Count;
             ViewBag.PendingCount = all.Count(t =>
                 t.Status == TaskStatus.Pending);
-            ViewBag.InProgCount = all.Count(t =>
+            ViewBag.InProgCount = all.Count(t => 
                 t.Status == TaskStatus.InProgress);
             ViewBag.CompleteCount = all.Count(t =>
                 t.Status == TaskStatus.Complete);
@@ -138,75 +143,65 @@ namespace ESTAFF.Controllers
             return View(tasks);
         }
 
-        // Tasks with the lookups the list view model needs already joined.
-        private IQueryable<TaskItem> TaskQuery()
+
+        private void PopulateTaskClassification(int? selectedId = null)
         {
-            return _db.TaskItems
-                .Include(t => t.TaskClassification)
-                .Include(t => t.TaskList)
-                .Include(t => t.CreatedByUser)
-                .Include(t => t.AssignedToUser);
+            var classification = new TaskService(_db).GetTaskClassification();
+            ViewBag.classificationList = new SelectList(
+                classification.Select(c => new
+                {
+                    Value = c.TaskClassificationId,
+                    Text = c.Name
+                }), "Value", "Text", selectedId);
+
         }
 
-        // Projects tasks into the list view model, resolving each task's linked
-        // CLIP record and its newest status remark in batched queries.
-        private List<TaskListItemViewModel> BuildTaskList(List<TaskItem> tasks)
+        private void PopulateTaskList(int classificationId, int? selectedId)
         {
-            var clipItems = Clip.GetItemsForTasks(tasks);
-            var remarks = new TaskService(_db)
-                .GetLatestStatusRemarks(tasks.Select(t => t.TaskId));
+            var task = new TaskService(_db).GetTaskList(classificationId);
+            ViewBag.taskList = new SelectList(
+                task.Select(t => new
+                {
+                    Value = t.TaskListId,
+                    Text = t.Name
+                }), "Value", "Text", selectedId);
 
-            return tasks.Select(t => new TaskListItemViewModel
+            if (selectedId == 24 || selectedId == 25)
             {
-                TaskId               = t.TaskId,
-                Title                = t.Title,
-                Description          = t.Description,
-                TaskClassificationId = t.TaskClassificationId,
-                ClassificationName   = t.TaskClassification?.Name,
-                TaskListId           = t.TaskListId,
-                TaskListName         = t.TaskList?.Name,
-                SubTaskId            = t.SubTaskId,
-                Status               = t.Status,
-                Priority             = t.Priority,
-                DueDate              = t.DueDate,
-                CreatedDate          = t.CreatedDate,
-                CompletedDate        = t.CompletedDate,
-                AssignedToUserId     = t.AssignedToUserId,
-                AssignedToName       = t.AssignedToUser?.UserName ?? "-",
-                AssignedToEmpID      = t.AssignedToUser?.EmpID ?? "-",
-                CreatedByName        = t.CreatedByUser?.UserName ?? "-",
-                ClipItem             = clipItems.ContainsKey(t.TaskId)
-                                           ? clipItems[t.TaskId]
-                                           : null,
-                LatestStatusRemark   = remarks.ContainsKey(t.TaskId)
-                                           ? remarks[t.TaskId]
-                                           : null
-            }).ToList();
-        }
+                var userId = User.Identity.GetUserId();
+                var plantId = _db.UserPlants
+                    .Where(up => up.UserId == userId)
+                    .Select(up => up.PlantId)
+                    .FirstOrDefault();
+                if (selectedId == 24)
+                {
+                    var cofs = new TaskService(_db).GetCOFList(plantId);
+                    ViewBag.SubTaskList = new SelectList(
+                        cofs.Select(c => new
+                        {
+                            Value = c.Id,
+                            Text = c.MachineName + " (" + c.RegistrationNo + ")"
+                        }),
+                        "Value", "Text", selectedId);
+                }
+                else if (selectedId == 25)
+                {
+                    var monitoring = new TaskService(_db).GetPlantMonitoringList(plantId);
+                    ViewBag.SubTaskList = new SelectList(
+                        monitoring.Select(m => new
+                        {
+                            Value = m.Id,
+                            Text = m.Area + " (Status: " + (m.ProcStatus ?? "N/A") + ")"
+                        }),
+                        "Value", "Text", selectedId);
+                }
+                else
+                {
+                    ViewBag.SubTaskList = new SelectList(
+                        Enumerable.Empty<SelectListItem>());
+                }
+            }
 
-        private List<ClassificationOption> GetClassificationOptions()
-        {
-            return TaskDisplay.ToOptions(_db.TaskClassifications
-                .OrderBy(c => c.TaskClassificationId)
-                .ToList());
-        }
-
-        // Classifications, task types, and the CLIP records for the current
-        // user's plants — everything the task form's dropdowns need.
-        private TaskFormOptions GetFormOptions()
-        {
-            var clip = Clip;
-
-            return new TaskFormOptions
-            {
-                Classifications = GetClassificationOptions(),
-                TaskLists = TaskDisplay.ToOptions(_db.TaskLists
-                    .OrderBy(l => l.Name)
-                    .ToList()),
-                ClipItems = clip.GetItemsForUser(User.Identity.GetUserId()),
-                ClipClassificationId =
-                    clip.GetClipClassification()?.TaskClassificationId
-            };
         }
 
         // ===========
@@ -217,11 +212,28 @@ namespace ESTAFF.Controllers
             SetLayoutData();
             ViewBag.PageTitle = "Create Task";
             ViewBag.PageSubtitle = "Add a new task to your list.";
-
-            return View(new CreateTaskViewModel
+            PopulateTaskClassification();
+            ViewBag.COFList = new SelectList(Enumerable.Empty<SelectListItem>());
+            return View(new CreateTaskViewModel());
+        }
+        
+        // ===========
+        // Populate TaskList based on selected TaskClassification
+        //============
+        [HttpGet]
+        public JsonResult GetTaskByClassification(int classificationId)
+        {
+            if (classificationId == 4)
             {
-                Options = GetFormOptions()
+                
+            }
+            var tasks = new TaskService(_db).GetTaskList(classificationId);
+            var result = tasks.Select(t => new
+            {
+                value = t.TaskListId,
+                text = t.Name
             });
+            return Json(result, JsonRequestBehavior.AllowGet);
         }
 
         // ===========
@@ -235,20 +247,14 @@ namespace ESTAFF.Controllers
             ViewBag.PageTitle = "Create Task";
             ViewBag.PageSubtitle = "Add a new task to your list.";
 
-            var userId = User.Identity.GetUserId();
-            model.Options = GetFormOptions();
-
-            var isClip = model.TaskClassificationId.HasValue
-                && model.TaskClassificationId == model.Options.ClipClassificationId;
-
-            if (isClip && string.IsNullOrWhiteSpace(model.ClipItemKey))
+            if (!ModelState.IsValid)
             {
-                ModelState.AddModelError("ClipItemKey",
-                    "Select the COF or plant monitoring record this task covers.");
+                PopulateTaskClassification(model.TaskClassificationId);
+                PopulateTaskList(model.TaskClassificationId, model.TaskListId);
+                return View(model);
             }
 
-            if (!ModelState.IsValid)
-                return View(model);
+            var userId = User.Identity.GetUserId();
 
             var task = new TaskItem
             {
@@ -258,15 +264,17 @@ namespace ESTAFF.Controllers
                 CreatedByUserId = userId,
                 DueDate = model.DueDate,
                 Priority = model.Priority,
-                TaskClassificationId = model.TaskClassificationId.Value,
+                SubTaskId = model.SubTaskId,
+                // Without the task list, SubTaskId is ambiguous - nothing can
+                // tell whether it points at a COF or a plant monitoring record.
+                TaskListId = model.TaskListId > 0
+                    ? model.TaskListId
+                    : (int?)null,
                 Status = TaskStatus.Pending,
                 CreatedDate = DateTime.Now,
-                LastModifiedDate = DateTime.Now
+                LastModifiedDate = DateTime.Now,
+                TaskClassificationId = model.TaskClassificationId
             };
-
-            if (!ApplyClassificationLink(task, model.TaskClassificationId,
-                    model.TaskListId, model.ClipItemKey, userId, isClip))
-                return View(model);
 
             _db.TaskItems.Add(task);
             _db.SaveChanges();
@@ -278,45 +286,10 @@ namespace ESTAFF.Controllers
                 $"Task '{task.Title}' created by employee.",
                 userId);
 
-            TempData["SuccessMessage"] =
+            TempData["SuccessMessage"] = 
                 $"Task '{model.Title}' created successfully.";
             return RedirectToAction("MyTasks");
-        }
-
-        // Sets TaskListId/SubTaskId from the form. For CLIP the picker decides
-        // both; for every other classification the task type is chosen directly
-        // and there is no linked record. Returns false (with a model error) when
-        // the CLIP item is not one the owner may use.
-        private bool ApplyClassificationLink(TaskItem task,
-            int? classificationId, int? taskListId, string clipItemKey,
-            string ownerUserId, bool isClip)
-        {
-            if (isClip)
-            {
-                if (!Clip.ApplyKeyToTask(task, clipItemKey, ownerUserId))
-                {
-                    ModelState.AddModelError("ClipItemKey",
-                        "That CLIP item is not available for the assigned plants.");
-                    return false;
-                }
-                return true;
-            }
-
-            task.SubTaskId = null;
-            task.TaskListId = null;
-
-            // Only accept a task type that actually belongs to the chosen
-            // classification, so a stale or hand-edited post cannot cross them.
-            if (taskListId.HasValue && classificationId.HasValue)
-            {
-                var belongs = _db.TaskLists.Any(l =>
-                    l.TaskListId == taskListId.Value
-                    && l.TaskClassificationId == classificationId.Value);
-
-                if (belongs) task.TaskListId = taskListId;
-            }
-
-            return true;
+            
         }
 
         // ===========
@@ -340,18 +313,11 @@ namespace ESTAFF.Controllers
                 Title = task.Title,
                 Description = task.Description,
                 DueDate = task.DueDate,
-                Priority = task.Priority,
-                TaskClassificationId = task.TaskClassificationId,
-                TaskListId = task.TaskListId,
-                ClipItemKey = Clip.BuildKeyForTask(task),
-                Options = GetFormOptions()
+                Priority = task.Priority
             };
 
             ViewBag.TaskId = id;
             ViewBag.Status = task.Status;
-            ViewBag.LatestStatusRemark =
-                new TaskService(_db).GetLatestStatusRemark(task.TaskId);
-
             return View(vm);
         }
 
@@ -373,22 +339,11 @@ namespace ESTAFF.Controllers
             if (task == null || task.AssignedToUserId != userId)
                 return HttpNotFound();
 
-            ViewBag.Status = task.Status;
-            ViewBag.LatestStatusRemark =
-                new TaskService(_db).GetLatestStatusRemark(task.TaskId);
-            model.Options = GetFormOptions();
-
-            var isClip = model.TaskClassificationId.HasValue
-                && model.TaskClassificationId == model.Options.ClipClassificationId;
-
-            if (isClip && string.IsNullOrWhiteSpace(model.ClipItemKey))
-            {
-                ModelState.AddModelError("ClipItemKey",
-                    "Select the COF or plant monitoring record this task covers.");
-            }
-
             if (!ModelState.IsValid)
+            {
+                ViewBag.Status = task.Status;
                 return View(model);
+            }
 
             var changes = new System.Text.StringBuilder();
 
@@ -413,69 +368,189 @@ namespace ESTAFF.Controllers
 
             if (task.Priority != model.Priority)
             {
-                changes.Append($"Priority: '{task.Priority}'" +
+                changes.Append($"Priority: '{task.Priority}'" + 
                     $" -> '{model.Priority}'. ");
                 task.Priority = model.Priority;
             }
-
-            var before = DescribeClassification(task);
-
-            task.TaskClassificationId = model.TaskClassificationId.Value;
-
-            if (!ApplyClassificationLink(task, model.TaskClassificationId,
-                    model.TaskListId, model.ClipItemKey, userId, isClip))
-                return View(model);
-
-            var after = DescribeClassification(task);
-            if (before != after)
-                changes.Append($"Classification: '{before}' -> '{after}'. ");
 
             task.LastModifiedDate = DateTime.Now;
             _db.SaveChanges();
 
             if (changes.Length > 0)
+            
                 new TaskService(_db).LogHistory(
                     task.TaskId,
                     "Updated",
                     "Previous values",
                     changes.ToString(),
                     userId);
-
+            
             TempData["SuccessMessage"] = "Task updated successfully!";
             return RedirectToAction("MyTasks");
+            
         }
-
-        // "CLIP / Plant Monitoring #12" — a stable string for the audit trail.
-        private string DescribeClassification(TaskItem task)
+        
+       // ============
+       // Calendar - Unified View
+       // ============
+        public ActionResult Calendar(
+            string view = "weekly",
+            DateTime? date = null)
         {
-            var classification = _db.TaskClassifications
-                .FirstOrDefault(c =>
-                    c.TaskClassificationId == task.TaskClassificationId);
+            SetLayoutData();
+            ViewBag.PageTitle = "Calendar";
+            ViewBag.PageSubtitle = "Manage your tasks in a calendar view.";
 
-            var parts = new List<string>
-            {
-                classification?.Name ?? task.TaskClassificationId.ToString()
-            };
+            var userId = User.Identity.GetUserId();
+            var targetDate = date?.Date ?? DateTime.Today;
 
-            if (task.TaskListId.HasValue)
+            new TaskService(_db).UpdateOverdueTasks();
+
+            // Calculate period based on view
+            DateTime periodStart;
+            DateTime periodEnd;
+
+            switch (view.ToLower())
             {
-                var list = _db.TaskLists
-                    .FirstOrDefault(l => l.TaskListId == task.TaskListId.Value);
-                parts.Add(list?.Name ?? ("#" + task.TaskListId.Value));
+                case "daily":
+                    periodStart = targetDate;
+                    periodEnd = targetDate;
+                    break;
+
+                case "monthly":
+                    periodStart = new DateTime(
+                        targetDate.Year, targetDate.Month, 1);
+                    periodEnd = periodStart
+                        .AddMonths(1).AddDays(-1);
+                    break;
+
+                default: // weekly
+                    int diff = (int)targetDate.DayOfWeek 
+                        - (int)DayOfWeek.Monday;
+                    if (diff < 0) diff += 7;
+                    periodStart = targetDate.AddDays(-diff);
+                    periodEnd = periodStart.AddDays(6);
+                    break;
             }
 
-            if (task.SubTaskId.HasValue) parts.Add("#" + task.SubTaskId.Value);
+            var endOfDay = periodEnd.AddDays(1).AddTicks(-1);
 
-            return string.Join(" / ", parts);
+            var tasks = _db.TaskItems
+                .Where(t => t.AssignedToUserId == userId
+                         && t.DueDate >= periodStart
+                         && t.DueDate <= endOfDay)
+                .OrderBy(t => t.DueDate)
+                .ToList();
+
+            // Build day groups
+            var days = new List<DayTaskGroup>();
+            for (var d = periodStart; d <= periodEnd;
+                d = d.AddDays(1))
+            {
+                days.Add(new DayTaskGroup
+                {
+                    Date = d,
+                    Tasks = tasks.Where(t => 
+                        t.DueDate.Date == d.Date).ToList()
+                });
+            }
+
+            // Navigaiton dates
+            switch (view.ToLower())
+            {
+                case "daily":
+                    ViewBag.PrevDate = targetDate.AddDays(-1);
+                    ViewBag.NextDate = targetDate.AddDays(1);
+                    break;
+                case "monthly":
+                    ViewBag.PrevDate = targetDate.AddMonths(-1);
+                    ViewBag.NextDate = targetDate.AddMonths(1);
+                    break;
+                default: // weekly
+                    ViewBag.PrevDate = targetDate.AddDays(-7);
+                    ViewBag.NextDate = targetDate.AddDays(7);
+                    break;
+            }
+
+            ViewBag.CurrentView = view.ToLower();
+            ViewBag.TargetDate = targetDate;
+            ViewBag.PeriodStart = periodStart;
+            ViewBag.PeriodEnd = periodEnd;
+            ViewBag.IsToday = targetDate == DateTime.Today ||
+                (periodStart <= DateTime.Today && 
+                DateTime.Today <= periodEnd);
+
+            // All tasks for this employee (drag drop)
+            ViewBag.TotalTaskCount = _db.TaskItems
+                .Count(t => t.AssignedToUserId == userId);
+
+            return View(days);
+        }
+
+        // ===========
+        // Reschedule Task - POST (Drag & Drop)
+        // ===========
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult RescheduleTask(
+            int taskId, string newDate)
+        {
+            var userId = User.Identity.GetUserId();
+            var task = _db.TaskItems.Find(taskId);
+
+            if (task == null || task.AssignedToUserId != userId)
+                return Json(new
+                {
+                    success = false,
+                    message = "Task not found."
+                });
+
+            if (!DateTime.TryParse(newDate, out var parsedDate))
+                return Json(new
+                {
+                    success = false,
+                    message = "Invalid date."
+                });
+
+            var oldDate = task.DueDate;
+            task.DueDate = parsedDate;
+            task.LastModifiedDate = DateTime.Now;
+
+            // overdue and new date is future, reset to pending
+            if (task.Status == TaskStatus.Overdue
+                && parsedDate >= DateTime.Today)
+            {
+                task.Status = TaskStatus.Pending;
+            }
+
+            _db.SaveChanges();
+
+            new TaskService(_db).LogHistory(
+                task.TaskId, 
+                "Updated",
+                $"Due: {oldDate:MMM dd, yyyy}",
+                $"Due: {parsedDate:MMM dd, yyyy} (rescheduled)",
+                userId);
+            
+            return Json(new
+            {
+                success = true,
+                message = $"Task resecheduled to " +
+                    $"{parsedDate:MMM dd, yyyy}."
+            });
+            
         }
 
         // ===========
         // Update Status - Post
         // ===========
+        // Posted by the status control on MyTasks, Calendar and DailyView.
+        // Remark is optional and stored with the transition, so the task can
+        // show why it last moved.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult UpdateStatus(int taskId, TaskStatus status,
-            string remark, string returnUrl = null)
+            string remark = null, string returnUrl = null)
         {
             var userId = User.Identity.GetUserId();
             var task = _db.TaskItems.Find(taskId);
@@ -518,7 +593,7 @@ namespace ESTAFF.Controllers
             var userId = User.Identity.GetUserId();
             var task = _db.TaskItems.Find(id);
 
-            // Employees may only delete tasks they raised themselves — tasks
+            // Employees may only delete tasks they raised themselves - tasks
             // assigned by an admin stay on the board.
             if (task == null
                 || task.AssignedToUserId != userId
@@ -544,90 +619,11 @@ namespace ESTAFF.Controllers
         }
 
         // ===========
-        // Daily Views
+        // Profile
         // ===========
-        public ActionResult DailyView(DateTime? date = null)
-        {
-            SetLayoutData();
-            ViewBag.PageTitle    = "Daily View";
-            ViewBag.PageSubtitle = "Your tasks for today.";
-
-            var userId      = User.Identity.GetUserId();
-            var targetDate  = date?.Date ?? DateTime.Today;
-
-            new TaskService(_db).UpdateOverdueTasks();
-
-            var tasks = BuildTaskList(TaskQuery()
-                .Where(t => t.AssignedToUserId == userId
-                         && t.DueDate.Year  == targetDate.Year
-                         && t.DueDate.Month == targetDate.Month
-                         && t.DueDate.Day   == targetDate.Day)
-                .OrderBy(t => t.Priority)
-                .ToList());
-
-            ViewBag.TargetDate = targetDate;
-            ViewBag.PrevDate   = targetDate.AddDays(-1);
-            ViewBag.NextDate   = targetDate.AddDays(1);
-            ViewBag.IsToday    = targetDate == DateTime.Today;
-
-            return View(tasks);
-        }
-
-        // ===========
-        // Weekly Views
-        // ===========
-
-        public ActionResult WeeklyView(DateTime? weekStart = null)
-        {
-            SetLayoutData();
-            ViewBag.PageTitle    = "Weekly View";
-            ViewBag.PageSubtitle = "Your tasks for this week.";
-
-            var userId = User.Identity.GetUserId();
-
-            // Get Monday of the target week
-            var today  = DateTime.Today;
-            var start  = weekStart?.Date ?? today.AddDays(
-                -(int)today.DayOfWeek + (int)DayOfWeek.Monday);
-
-            if (start.DayOfWeek == DayOfWeek.Sunday)
-                start = start.AddDays(-6);
-
-            var end = start.AddDays(6);
-
-            new TaskService(_db).UpdateOverdueTasks();
-
-            var tasks = BuildTaskList(TaskQuery()
-                .Where(t => t.AssignedToUserId == userId
-                         && t.DueDate >= start
-                         && t.DueDate <= end)
-                .OrderBy(t => t.DueDate)
-                .ThenBy(t => t.Priority)
-                .ToList());
-
-            // Group by day
-            var days = new List<DayTaskGroup>();
-            for (int i = 0; i < 7; i++)
-            {
-                var day = start.AddDays(i);
-                days.Add(new DayTaskGroup
-                {
-                    Date  = day,
-                    Tasks = tasks.Where(t =>
-                        t.DueDate.Date == day.Date).ToList()
-                });
-
-            }
-
-            ViewBag.WeekStart = start;
-            ViewBag.WeekEnd   = end;
-            ViewBag.PrevWeek  = start.AddDays(-7);
-            ViewBag.NextWeek  = start.AddDays(7);
-            ViewBag.IsThisWeek = start <= today && today <= end;
-
-            return View(days);
-        }
-
+        // The sidebar links here and Views/Employee/Profile.cshtml exists, so
+        // the action has to as well. "new" because Controller.Profile is a
+        // protected property on the base class.
         public new ActionResult Profile()
         {
             SetLayoutData();
@@ -661,13 +657,28 @@ namespace ESTAFF.Controllers
                 .Count(t => t.CompletedDate.HasValue
                     && t.CompletedDate <= t.DueDate);
             ViewBag.OnTimeRate = completed.Count > 0
-                ? Math.Round(
-                    (decimal)onTime / completed.Count * 100, 1)
+                ? Math.Round((decimal)onTime / completed.Count * 100, 1)
                 : 0;
 
             return View(user);
         }
 
+        public ActionResult DailyView(DateTime? date = null)
+        {
+            return RedirectToAction("Calendar",
+                new { view = "daily",
+                    date = (date ?? DateTime.Today)
+                        .ToString("yyyy-MM-dd") });
+        }
+
+        public ActionResult WeeklyView(DateTime? weekStart = null)
+        {
+            return RedirectToAction("Calendar",
+                new { view = "weekly",
+                    date = (weekStart ?? DateTime.Today)
+                        .ToString("yyyy-MM-dd") });
+        }
+        
 
         // ===========
         // My Reports - LIST
@@ -689,7 +700,7 @@ namespace ESTAFF.Controllers
                     ReportId = r.ReportId,
                     EmpName = r.User?.UserName ?? "-",
                     EmpNumber = r.User?.EmpID ?? "-",
-                    ReportType = r.ReportType,
+                    ReportType = r.ReportType,    
                     PeriodStart = r.PeriodStart,
                     PeriodEnd = r.PeriodEnd,
                     Status = r.Status,
@@ -718,7 +729,7 @@ namespace ESTAFF.Controllers
                 -(int)today.DayOfWeek + (int)DayOfWeek.Monday);
             if (today.DayOfWeek == DayOfWeek.Sunday)
                 weekStart = today.AddDays(-6);
-
+            
             var vm = new GenerateReportViewModel
             {
                 PeriodStart = weekStart,
@@ -745,7 +756,7 @@ namespace ESTAFF.Controllers
             var userId = User.Identity.GetUserId();
             var endOfDay = model.PeriodEnd.AddDays(1).AddTicks(-1);
 
-            var tasks = TaskQuery()
+            var tasks = _db.TaskItems
                 .Where(t => t.AssignedToUserId == userId
                          && t.DueDate >= model.PeriodStart
                          && t.DueDate <= endOfDay)
@@ -775,7 +786,7 @@ namespace ESTAFF.Controllers
 
             if (existingReport != null)
             {
-                TempData["ErrorMessage"] =
+                TempData["ErrorMessage"] = 
                     "A report for this period has already been submitted.";
                 return RedirectToAction("MyReports");
             }
@@ -795,8 +806,8 @@ namespace ESTAFF.Controllers
             _db.Reports.Add(report);
             _db.SaveChanges();
 
-            TempData["SuccessMessage"] =
-                "Report submitted successfully! " +
+            TempData["SuccessMessage"] = 
+                "Report submitted successfully! " + 
                 "Awaiting manager approval.";
             return RedirectToAction("MyReports");
         }
@@ -816,7 +827,47 @@ namespace ESTAFF.Controllers
             if (report == null || report.UserId != userId)
                 return HttpNotFound();
 
-            return View(BuildReportDetail(report, userId));
+            var endOfDay = report.PeriodEnd.AddDays(1).AddTicks(-1);
+
+            var tasks = _db.TaskItems
+                .Where(t => t.AssignedToUserId == userId
+                         && t.DueDate >= report.PeriodStart
+                         && t.DueDate <= endOfDay)
+                .OrderBy(t => t.DueDate)
+                .ToList();
+
+            var completed = tasks.Count(t =>
+                t.Status == TaskStatus.Complete);
+
+            var vm = new ReportDetailViewModel
+            {
+                ReportId = report.ReportId,
+                EmpName = report.User?.UserName ?? "-",
+                EmpNumber = report.User?.EmpID ?? "-",
+                EmpEmail = report.User?.Email ?? "-",
+                ReportType = report.ReportType,
+                PeriodStart = report.PeriodStart,
+                PeriodEnd = report.PeriodEnd,
+                Status = report.Status,
+                CreatedDate = report.CreatedDate,
+                SubmittedDate = report.SubmittedDate,
+                ApprovedDate = report.ApprovedDate,
+                RejectionReason = report.RejectionReason,
+                Tasks = tasks,
+                TotalTasks = tasks.Count,
+                CompletedTasks = completed,
+                PendingTasks = tasks.Count(t =>
+                    t.Status == TaskStatus.Pending ||
+                    t.Status == TaskStatus.InProgress),
+                OverdueTasks = tasks.Count(t =>
+                    t.Status == TaskStatus.Overdue),
+                CompletionRate = tasks.Count > 0 
+                    ? Math.Round(
+                        (decimal)completed / tasks.Count * 100, 1)
+                    : 0
+            };
+
+            return View(vm);
         }
 
         // ===========
@@ -830,32 +881,18 @@ namespace ESTAFF.Controllers
             if (report == null || report.UserId != userId)
                 return HttpNotFound();
 
-            var vm = BuildReportDetail(report, userId);
-
-            var pdfService = new ReportPdfService();
-            var bytes = pdfService.GeneratePdf(vm);
-            var fileName =
-                $"Report_{vm.EmpNumber}_" +
-                $"{vm.PeriodStart:yyyyMMdd}_" +
-                $"{vm.PeriodEnd:yyyyMMdd}.pdf";
-
-            return File(bytes, "application/pdf", fileName);
-        }
-
-        private ReportDetailViewModel BuildReportDetail(Report report, string userId)
-        {
             var endOfDay = report.PeriodEnd.AddDays(1).AddTicks(-1);
-
-            var tasks = TaskQuery()
+            var tasks = _db.TaskItems
                 .Where(t => t.AssignedToUserId == userId
                          && t.DueDate >= report.PeriodStart
                          && t.DueDate <= endOfDay)
                 .OrderBy(t => t.DueDate)
                 .ToList();
 
-            var completed = tasks.Count(t => t.Status == TaskStatus.Complete);
+            var completed = tasks.Count(t =>
+                t.Status == TaskStatus.Complete);
 
-            return new ReportDetailViewModel
+            var vm = new ReportDetailViewModel
             {
                 ReportId = report.ReportId,
                 EmpName = report.User?.UserName ?? "-",
@@ -882,6 +919,15 @@ namespace ESTAFF.Controllers
                         (decimal)completed / tasks.Count * 100, 1)
                     : 0
             };
+
+            var pdfService = new ReportPdfService();
+            var bytes = pdfService.GeneratePdf(vm);
+            var fileName = 
+                $"Report_{vm.EmpNumber}_" +
+                $"{vm.PeriodStart:yyyMMdd}_" +
+                $"{vm.PeriodEnd:yyyMMdd}.pdf";
+
+            return File(bytes, "application/pdf", fileName);
         }
 
         // ===========
@@ -894,7 +940,7 @@ namespace ESTAFF.Controllers
             var userId = User.Identity.GetUserId();
             var report = _db.Reports.Find(id);
 
-            if (report == null
+            if (report == null 
                 || report.UserId != userId
                 || report.Status != ReportStatus.Rejected)
                 return HttpNotFound();
@@ -905,27 +951,23 @@ namespace ESTAFF.Controllers
             report.LastModifiedDate = DateTime.Now;
             _db.SaveChanges();
 
-            TempData["SuccessMessage"] =
+            TempData["SuccessMessage"] = 
                 "Report resubmitted successfully!";
             return RedirectToAction("MyReports");
         }
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing)
-            {
-                _db.Dispose();
-                _clip.Dispose();
-            }
+            if (disposing) _db.Dispose();
             base.Dispose(disposing);
         }
     }
 
-    // Helper class
+    // Helper class 
     public class DayTaskGroup
     {
         public DateTime Date { get; set; }
-        public List<TaskListItemViewModel> Tasks { get; set; }
-            = new List<TaskListItemViewModel>();
+        public List<TaskItem> Tasks { get; set; }
+            = new List<TaskItem>();
     }
 }

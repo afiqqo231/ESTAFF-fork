@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data.Entity;
 using System.Linq;
@@ -19,6 +19,44 @@ namespace ESTAFF.Services
         public TaskService(ApplicationDbContext db)
         {
             _db = db;
+        }
+
+        public List<COF> GetCOF(int plantId)
+        {
+            return _db.COFs
+                .Where(c => c.PlantId == plantId)
+                .ToList();
+        }
+
+        public List<COF> GetCOFsForPlants(IEnumerable<int> plantIds)
+        {
+            return _db.COFs
+                .Where(c => plantIds.Contains(c.PlantId))
+                .ToList();
+        }
+
+        public List<PlantMonitoring> GetPlantMonitoringList(int plantId)
+        {
+            return _db.PlantMonitoring
+                .Where(m => m.PlantID == plantId)
+                .ToList();
+        }
+
+        public List<COF> GetCOFList(int plantId)
+        {
+            return _db.COFs
+                .Where(c => c.PlantId == plantId)
+                .ToList();
+        }
+
+        public List<TaskClassification> GetTaskClassification()
+        {
+            return _db.TaskClassifications.ToList();
+        }
+
+        public List<TaskList> GetTaskList(int classificationId)
+        {
+            return _db.TaskLists.Where(t => t.TaskClassificationId == classificationId).ToList();
         }
 
         // Auto-flag overdue tasks
@@ -46,7 +84,7 @@ namespace ESTAFF.Services
                     Action          = StatusChangedAction,
                     OldValue        = oldStatus,
                     NewValue        = TaskStatus.Overdue.ToString(),
-                    Remark          = "Automatically flagged overdue — the due date passed.",
+                    Remark          = "Automatically flagged overdue - the due date passed.",
                     ChangedByUserId = task.CreatedByUserId,
                     ChangedDate     = DateTime.Now
                 });
@@ -66,7 +104,7 @@ namespace ESTAFF.Services
                 Action          = action,
                 OldValue        = oldValue,
                 NewValue        = newValue,
-                Remark          = Trim(remark),
+                Remark          = TrimRemark(remark),
                 ChangedByUserId = changedByUserId,
                 ChangedDate     = DateTime.Now
             });
@@ -97,7 +135,7 @@ namespace ESTAFF.Services
                 .ThenByDescending(h => h.HistoryId)
                 .FirstOrDefault();
 
-            return Map(entry);
+            return MapRemark(entry);
         }
 
         // Newest status change per task, keyed by TaskId. One query for the whole
@@ -116,13 +154,13 @@ namespace ESTAFF.Services
                 .GroupBy(h => h.TaskId)
                 .ToDictionary(
                     g => g.Key,
-                    g => Map(g
+                    g => MapRemark(g
                         .OrderByDescending(h => h.ChangedDate)
                         .ThenByDescending(h => h.HistoryId)
                         .First()));
         }
 
-        private static StatusRemarkViewModel Map(TaskHistory entry)
+        private static StatusRemarkViewModel MapRemark(TaskHistory entry)
         {
             if (entry == null) return null;
 
@@ -145,7 +183,7 @@ namespace ESTAFF.Services
             return Enum.TryParse(value, out parsed) ? parsed : (TaskStatus?)null;
         }
 
-        private static string Trim(string remark)
+        private static string TrimRemark(string remark)
         {
             if (string.IsNullOrWhiteSpace(remark)) return null;
 

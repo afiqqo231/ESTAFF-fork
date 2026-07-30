@@ -1,4 +1,4 @@
-﻿@model List<ESTAFF.Models.ViewModels.TaskListItemViewModel>
+@model List<ESTAFF.Models.ViewModels.TaskListItemViewModel>
 @{
     ViewBag.Title = "My Tasks";
     Layout = "~/Views/Shared/_EmployeeLayout.cshtml";
@@ -46,13 +46,19 @@
     <div class="my-tasks-grid">
         @foreach (var task in Model)
         {
-            var sc = task.StatusClass;
+            var sc = task.Status ==
+                ESTAFF.Models.Data.TaskStatus.InProgress
+                ? "inprogress"
+                : task.Status.ToString().ToLower();
 
             var pc = task.Priority.HasValue
                 ? task.Priority.ToString().ToLower()
                 : "";
 
-            var isOD = task.IsOverdue;
+            var classificationColor = task.SubTaskId.HasValue ? "COF" : "other";
+            
+            var isOD = task.DueDate.Date < DateTime.Today
+                    && task.Status != ESTAFF.Models.Data.TaskStatus.Complete;
 
             var isSelfCreated = task.CreatedByName ==
                 (ViewBag.FullName as string ?? "");
@@ -61,11 +67,22 @@
 
                 <!-- Top Row -->
                 <div class="my-task-card-top">
-                    <div class="d-flex flex-wrap gap-1">
+                    <div>
                         <span class="badge-pill badge-@sc">
-                            @TaskDisplay.StatusLabel(task.Status)
+                            @task.Status
                         </span>
-                        @Html.Partial("_ClassificationBadge", ClassificationBadgeModel.From(task))
+                        @if (task.SubTaskId.HasValue){
+                            
+                            <span class="badge-pill badge-@classificationColor">
+                                Certificate of Fitness
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge-pill badge-@pc">
+                                Others
+                            </span>
+                        }
                     </div>
 
                     @if (task.Priority.HasValue)
@@ -83,22 +100,6 @@
                     @if (!string.IsNullOrEmpty(task.Description))
                     {
                         <p class="my-task-desc">@task.Description</p>
-                    }
-
-                    @* Live status of the linked CLIP record. *@
-                    @if (task.ClipItem != null)
-                    {
-                        <div class="mt-2">
-                            @Html.Partial("_ClipItemChip", task.ClipItem)
-                        </div>
-                    }
-
-                    @* Most recent status change and the note left with it. *@
-                    @if (task.LatestStatusRemark != null)
-                    {
-                        <div class="mt-2">
-                            @Html.Partial("_StatusRemark", task.LatestStatusRemark)
-                        </div>
                     }
                 </div>
 
@@ -127,24 +128,18 @@
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="taskId"
                                value="@task.TaskId" />
-                        <input type="hidden" name="returnUrl"
-                               value="@Request.Url.PathAndQuery" />
                         <div class="status-select-wrap">
-                            @* js-status-select opens the remark dialog; without
-                               JS this still posts on change as it always did. *@
                             <select name="status"
-                                    class="status-select js-status-select"
-                                    data-current-status="@task.Status"
-                                    data-task-title="@task.Title"
-                                    onchange="if(!window.__estaffClipReady) this.form.submit();">
+                                    class="status-select"
+                                    onchange="this.form.submit()">
                                 @foreach (ESTAFF.Models.Data.TaskStatus s in
                                     Enum.GetValues(typeof(ESTAFF.Models.Data.TaskStatus)))
                                 {
                                     if (s != ESTAFF.Models.Data.TaskStatus.Overdue)
                                     {
                                         <option value="@s"
-                                            selected="@(task.Status == s)">
-                                            @TaskDisplay.StatusLabel(s)
+                                            @(task.Status == s ? "selected" : "")>
+                                            @s
                                         </option>
                                     }
                                 }

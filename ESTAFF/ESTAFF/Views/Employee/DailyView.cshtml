@@ -1,4 +1,4 @@
-@model List<ESTAFF.Models.ViewModels.TaskListItemViewModel>
+@model List<ESTAFF.Models.Data.TaskItem>
 @{
     ViewBag.Title = "Daily View";
     Layout = "~/Views/Shared/_EmployeeLayout.cshtml";
@@ -61,7 +61,10 @@
     <div style="max-width:700px;">
         @foreach (var task in Model)
         {
-            var sc = task.StatusClass;
+            var sc = task.Status ==
+                ESTAFF.Models.Data.TaskStatus.InProgress
+                ? "inprogress"
+                : task.Status.ToString().ToLower();
 
             var isComplete = task.Status ==
                 ESTAFF.Models.Data.TaskStatus.Complete;
@@ -76,9 +79,8 @@
                     }
                     <div class="daily-task-tags">
                         <span class="badge-pill badge-@sc">
-                            @TaskDisplay.StatusLabel(task.Status)
+                            @task.Status
                         </span>
-                        @Html.Partial("_ClassificationBadge", ClassificationBadgeModel.From(task))
                         @if (task.Priority.HasValue)
                         {
                             var pc = task.Priority.ToString().ToLower();
@@ -87,21 +89,6 @@
                             </span>
                         }
                     </div>
-
-                    @if (task.ClipItem != null)
-                    {
-                        <div class="mt-2">
-                            @Html.Partial("_ClipItemChip", task.ClipItem)
-                        </div>
-                    }
-
-                    @if (task.LatestStatusRemark != null)
-                    {
-                        <div class="mt-2">
-                            @Html.Partial("_StatusRemarkInline",
-                                task.LatestStatusRemark)
-                        </div>
-                    }
                 </div>
 
                 <!-- Quick Status Update -->
@@ -112,8 +99,6 @@
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="taskId"
                            value="@task.TaskId" />
-                    <input type="hidden" name="returnUrl"
-                           value="@Request.Url.PathAndQuery" />
 
                     if (task.Status != ESTAFF.Models.Data.TaskStatus.Complete)
                     {

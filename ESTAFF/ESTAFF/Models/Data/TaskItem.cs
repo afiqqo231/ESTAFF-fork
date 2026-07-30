@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -25,21 +25,22 @@ namespace ESTAFF.Models.Data
         [Required]
         public DateTime DueDate { get; set; }
 
-        // Which EHS work stream this task belongs to (required by the schema).
-        [Required]
-        public int TaskClassificationId { get; set; }
+        // Link to subtask for CLIP if applicable. Which CLIP table the id refers
+        // to is decided by TaskList: "Certificate Of FItness" means
+        // CLIP.CertificateOfFitness.Id, "Plant Monitoring" means
+        // CLIP.PlantMonitoring.Id. Deliberately not a foreign key - those tables
+        // belong to EHS_PORTAL and ESTAFF only ever reads them.
+        public int? SubTaskId { get; set; }
 
-        // The specific recurring job within that classification. Optional, but
-        // for CLIP tasks it is what tells SubTaskId which table to look in.
-        // The column keeps EF's original navigation-derived name.
+        // The specific recurring job within the classification. The column keeps
+        // the name EF generated from TaskList.TaskItems; mapping it explicitly
+        // here lets a task read its own task list without loading the collection.
         [Column("TaskList_TaskListId")]
         public int? TaskListId { get; set; }
 
-        // Id of the linked record in the module that owns this classification.
-        // For CLIP that is CLIP.CertificateOfFitness.Id or CLIP.PlantMonitoring.Id,
-        // decided by TaskListId. Deliberately not a foreign key: those tables
-        // belong to EHS_PORTAL and ESTAFF only ever reads them.
-        public int? SubTaskId { get; set; }
+        [Required]
+            [ForeignKey("TaskClassification")]
+        public int TaskClassificationId { get; set; }
 
         [Required]
         [ForeignKey("AssignedToUser")]
@@ -60,13 +61,8 @@ namespace ESTAFF.Models.Data
 
         public virtual ApplicationUser AssignedToUser { get; set; }
         public virtual ApplicationUser CreatedByUser { get; set; }
-
-        [ForeignKey("TaskClassificationId")]
         public virtual TaskClassification TaskClassification { get; set; }
-
-        [ForeignKey("TaskListId")]
         public virtual TaskList TaskList { get; set; }
-
         public virtual ICollection<TaskHistory> Histories { get; set; } = new List<TaskHistory>();
     }
 

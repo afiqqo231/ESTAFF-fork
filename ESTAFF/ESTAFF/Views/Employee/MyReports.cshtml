@@ -1,4 +1,4 @@
-﻿@model List<ESTAFF.Models.ViewModels.ReportListItemViewModel>
+@model List<ESTAFF.Models.ViewModels.ReportListItemViewModel>
 @{
     ViewBag.Title = "My Reports";
     Layout = "~/Views/Shared/_EmployeeLayout.cshtml";
@@ -84,7 +84,7 @@
                                     <i class="fas fa-eye"></i>
                                 </a>
 
-                                <a href="@Url.Action("DownloadReport",
+                                <a href="@Url.Action("DownloadReportPdf",
                                        "Employee", new { id=r.ReportId })"
                                    class="btn-task-action edit"
                                    title="Download PDF">

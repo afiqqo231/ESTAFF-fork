@@ -94,7 +94,7 @@ namespace ESTAFF.Controllers
                 {
                     UserId             = u.Id,
                     UserName           = u.UserName,
-                    EmpID          = u.EmpID,
+                    EmpID              = u.EmpID,
                     Email              = u.Email,
                     IsActive           = u.IsActive,
                     HireDate           = u.HireDate ?? DateTime.Now,
@@ -163,7 +163,7 @@ namespace ESTAFF.Controllers
             {
                 Email            = model.Email,
                 UserName         = model.UserName,
-                EmpID        = model.EmpID,
+                EmpID              = model.EmpID,
                 IsAdmin          = false,
                 IsActive         = true,
                 HireDate         = model.HireDate,
@@ -211,7 +211,7 @@ namespace ESTAFF.Controllers
             {
                 UserId             = user.Id,
                 UserName           = user.UserName,
-                EmpID          = user.EmpID,
+                EmpID              = user.EmpID,
                 Email              = user.Email,
                 HireDate           = user.HireDate ?? DateTime.Now,
                 IsActive           = user.IsActive,
@@ -258,9 +258,8 @@ namespace ESTAFF.Controllers
             }
 
             user.UserName           = model.UserName;
-            user.EmpID          = model.EmpID;
+            user.EmpID              = model.EmpID;
             user.Email              = model.Email;
-            user.UserName           = model.Email;
             user.HireDate           = model.HireDate;
             user.IsActive           = model.IsActive;
             user.LastModifiedDate   = DateTime.Now;
@@ -382,6 +381,8 @@ namespace ESTAFF.Controllers
             ViewBag.PageTitle    = "Assign Task";
             ViewBag.PageSubtitle = "Create and assign a task to an employee.";
 
+            PopulateTaskClassification();
+
             var vm = new AssignTaskViewModel
             {
                 Employees = GetEmployeeSelectList(),
@@ -404,7 +405,7 @@ namespace ESTAFF.Controllers
             model.Employees = GetEmployeeSelectList();
             model.Options = GetFormOptions(model.AssignedToUserId);
 
-            var isClip = model.TaskClassificationId.HasValue
+            var isClip = model.TaskClassificationId > 0
                 && model.TaskClassificationId == model.Options.ClipClassificationId;
 
             if (isClip && string.IsNullOrWhiteSpace(model.ClipItemKey))
@@ -425,9 +426,9 @@ namespace ESTAFF.Controllers
                 Description = model.Description,
                 AssignedToUserId = model.AssignedToUserId,
                 CreatedByUserId = adminId,
+                TaskClassificationId = model.TaskClassificationId,
                 DueDate = model.DueDate,
                 Priority = model.Priority,
-                TaskClassificationId = model.TaskClassificationId.Value,
                 Status = TaskStatus.Pending,
                 CreatedDate = DateTime.Now,
                 LastModifiedDate = DateTime.Now
@@ -508,7 +509,7 @@ namespace ESTAFF.Controllers
             ViewBag.LatestStatusRemark =
                 new TaskService(_db).GetLatestStatusRemark(task.TaskId);
 
-            var isClip = model.TaskClassificationId.HasValue
+            var isClip = model.TaskClassificationId > 0
                 && model.TaskClassificationId == model.Options.ClipClassificationId;
 
             if (isClip && string.IsNullOrWhiteSpace(model.ClipItemKey))
@@ -573,7 +574,7 @@ namespace ESTAFF.Controllers
 
             var before = DescribeClassification(task);
 
-            task.TaskClassificationId = model.TaskClassificationId.Value;
+            task.TaskClassificationId = model.TaskClassificationId;
 
             if (!ApplyClassificationLink(task, model.TaskClassificationId,
                     model.TaskListId, model.ClipItemKey,
@@ -898,6 +899,22 @@ namespace ESTAFF.Controllers
         }
 
         // ══════════════════════════════════════════
+        // AJAX — Get Task Lists by Classification
+        // ══════════════════════════════════════════
+        [HttpGet]
+        public JsonResult GetTasksByClassification(int classificationId)
+        {
+            var taskService = new TaskService(_db);
+            var tasks = taskService.GetTaskList(classificationId);
+            var result = tasks.Select(t => new
+            {
+                value = t.TaskListId,
+                text = t.Name
+            });
+            return Json(result, JsonRequestBehavior.AllowGet);
+        }
+
+        // ══════════════════════════════════════════
         // HELPER
         // ══════════════════════════════════════════
 
@@ -1031,6 +1048,30 @@ namespace ESTAFF.Controllers
             if (task.SubTaskId.HasValue) parts.Add("#" + task.SubTaskId.Value);
 
             return string.Join(" / ", parts);
+        }
+
+        private void PopulateTaskClassification(int? selectedId = null)
+        {
+            var taskService = new TaskService(_db);
+            var classifications = taskService.GetTaskClassification();
+            ViewBag.ClassificationList = new SelectList(
+                classifications.Select(c => new
+                {
+                    Value = c.TaskClassificationId,
+                    Text = c.Name
+                }), "Value", "Text", selectedId);
+        }
+
+        private void PopulateTaskList(int classificationId, int? selectedId = null)
+        {
+            var taskService = new TaskService(_db);
+            var tasks = taskService.GetTaskList(classificationId);
+            ViewBag.TaskList = new SelectList(
+                tasks.Select(t => new
+                {
+                    Value = t.TaskListId,
+                    Text = t.Name
+                }), "Value", "Text", selectedId);
         }
 
         private List<EmployeeSelectItem> GetEmployeeSelectList()

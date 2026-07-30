@@ -1,9 +1,10 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text.RegularExpressions;
 using ESTAFF.Models.Data;
+using Newtonsoft.Json;
 
 namespace ESTAFF.Models.ViewModels
 {
@@ -29,22 +30,22 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Priority")]
         public TaskPriority? Priority { get; set; }
 
-        [Required(ErrorMessage = "Please choose a classification")]
-        [Display(Name = "Classification")]
-        public int? TaskClassificationId { get; set; }
+        [Required(ErrorMessage = "Please select a task classification")]
+        [Display(Name = "Task Classification")]
+        public int TaskClassificationId { get; set; }
 
-        [Display(Name = "Task Type")]
-        public int? TaskListId { get; set; }
+        [Required(ErrorMessage = "Please select a task")]
+        [Display(Name = "Task")]
+        public int TaskListId { get; set; }
 
-        // Posted by the CLIP picker as "COF:14" / "PM:3". Only read when the
-        // chosen classification is CLIP.
+        // Posted by the CLIP picker on the admin form as "COF:14" / "PM:3".
         [Display(Name = "CLIP Item")]
         public string ClipItemKey { get; set; }
 
         public TaskFormOptions Options { get; set; } = new TaskFormOptions();
 
         // Dropdown List of Employees
-        public List<EmployeeSelectItem> Employees { get; set; }
+        public List<EmployeeSelectItem> Employees { get; set; } 
             = new List<EmployeeSelectItem>();
     }
 
@@ -75,11 +76,10 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Status")]
         public TaskStatus Status { get; set; }
 
-        [Required(ErrorMessage = "Please choose a classification")]
-        [Display(Name = "Classification")]
-        public int? TaskClassificationId { get; set; }
+        [Display(Name = "Task Classification")]
+        public int TaskClassificationId { get; set; }
 
-        [Display(Name = "Task Type")]
+        [Display(Name = "Task")]
         public int? TaskListId { get; set; }
 
         [Display(Name = "CLIP Item")]
@@ -97,6 +97,73 @@ namespace ESTAFF.Models.ViewModels
             = new List<EmployeeSelectItem>();
     }
 
+    public class TaskListItemViewModel
+    {
+        public int TaskId { get; set; }
+        public string Title { get; set; }
+        public string Description { get; set; }
+        public int? SubTaskId { get; set; }
+        public TaskStatus Status { get; set; }
+        public TaskPriority? Priority { get; set; }
+        public DateTime DueDate { get; set; }
+        public DateTime CreatedDate { get; set; }
+        public DateTime? CompletedDate { get; set; }
+        public string AssignedToUserId { get; set; }
+        public string AssignedToName { get; set; }
+        public string AssignedToEmpID { get; set; }
+        public string CreatedByName { get; set; }
+
+        public int TaskClassificationId { get; set; }
+        public string ClassificationName { get; set; }
+        public int? TaskListId { get; set; }
+        public string TaskListName { get; set; }
+
+        // The linked CLIP record, when this task is CLIP-classified and linked.
+        public ClipItemViewModel ClipItem { get; set; }
+
+        // Newest status transition, shown inline on the task.
+        public StatusRemarkViewModel LatestStatusRemark { get; set; }
+
+        public bool IsOverdue => Status != TaskStatus.Complete
+            && DueDate.Date < DateTime.Today;
+
+        // CSS modifier suffix for the status badge / dot (badge-pending, ...).
+        public string StatusClass => TaskDisplay.StatusClass(Status);
+
+        public string ClassificationSlug =>
+            TaskDisplay.ClassificationSlug(ClassificationName);
+
+        public string ClassificationIcon =>
+            TaskDisplay.ClassificationIcon(ClassificationName);
+
+        public string ClassificationLabel =>
+            string.IsNullOrWhiteSpace(ClassificationName)
+                ? "Unclassified"
+                : ClassificationName;
+    }
+
+    public class TaskHistoryItemViewModel
+    {
+        public int HistoryId { get; set; }
+        public int TaskId { get; set; }
+        public string TaskTitle { get; set; }
+        public string Action { get; set; }
+        public string OldValue { get; set; }
+        public string NewValue { get; set; }
+        public string Remark { get; set; }
+        public string ChangedByName { get; set; }
+        public DateTime ChangedDate { get; set; }
+    }
+
+    public class EmployeeSelectItem
+    {
+        public string UserId { get; set; }
+        public string FullName { get; set; }
+        public string EmpID { get; set; }
+        public string Display => $"{FullName} ({EmpID})";
+    }
+
+
     // Employee Side
     public class CreateTaskViewModel
     {
@@ -113,24 +180,88 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Due Date")]
         public DateTime DueDate { get; set; } = DateTime.Today.AddDays(1);
 
-        [Required(ErrorMessage = "Please choose a classification")]
-        [Display(Name = "Classification")]
-        public int? TaskClassificationId { get; set; }
+        [Display(Name = "Certificate Of Fitness (COF)")]
+        public int? SubTaskId { get; set; }
+        
+        [Required(ErrorMessage = "Please select a task classification")]
+        [Display(Name = "Task Classification")]
+        public int TaskClassificationId { get; set; }
 
-        [Display(Name = "Task Type")]
-        public int? TaskListId { get; set; }
-
-        [Display(Name = "CLIP Item")]
-        public string ClipItemKey { get; set; }
-
+        [Required(ErrorMessage = "Please select a task")]
+        [Display(Name = "Task List")]
+        public int TaskListId { get; set; }
+        
         [Display(Name = "Priority")]
         public TaskPriority? Priority { get; set; }
-
-        public TaskFormOptions Options { get; set; } = new TaskFormOptions();
     }
 
-    // Everything the classification / task type / CLIP item controls need.
-    // Bundled so the three task forms populate them the same way.
+    public class UpdateTaskStatusViewModel
+    {
+        public int TaskId { get; set; }
+        public TaskStatus Status { get; set; }
+
+        [StringLength(500)]
+        public string Remark { get; set; }
+    }
+
+    // A single status transition, with whatever note the user attached to it.
+    // Populated by TaskService.GetLatestStatusRemark(s).
+    public class StatusRemarkViewModel
+    {
+        public int TaskId { get; set; }
+        public TaskStatus? FromStatus { get; set; }
+        public TaskStatus? ToStatus { get; set; }
+        public string Remark { get; set; }
+        public string ChangedByName { get; set; }
+        public DateTime ChangedDate { get; set; }
+
+        public bool HasRemark => !string.IsNullOrWhiteSpace(Remark);
+
+        // "Pending -> In Progress", or just the new status on the first entry.
+        public string TransitionText
+        {
+            get
+            {
+                var to = ToStatus.HasValue
+                    ? TaskDisplay.StatusLabel(ToStatus.Value)
+                    : "-";
+
+                return FromStatus.HasValue
+                    ? TaskDisplay.StatusLabel(FromStatus.Value) + " → " + to
+                    : to;
+            }
+        }
+
+        // "just now" / "3h ago" / "12 Jul 2026"
+        public string RelativeTime
+        {
+            get
+            {
+                var span = DateTime.Now - ChangedDate;
+
+                if (span.TotalSeconds < 60) return "just now";
+                if (span.TotalMinutes < 60)
+                    return (int)span.TotalMinutes + "m ago";
+                if (span.TotalHours < 24)
+                    return (int)span.TotalHours + "h ago";
+                if (span.TotalDays < 7)
+                    return (int)span.TotalDays + "d ago";
+
+                return ChangedDate.ToString("dd MMM yyyy");
+            }
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // Admin-side task form support.
+    //
+    // The employee pages drive classification through the cascading
+    // ViewBag SelectLists in EmployeeController (PopulateTaskClassification /
+    // PopulateTaskList / GetTaskByClassification). The admin pages use these
+    // strongly-typed options instead. Worth unifying on one approach later -
+    // until then both are live and neither depends on the other.
+    // ══════════════════════════════════════════════════════════════
+
     public class TaskFormOptions
     {
         public List<ClassificationOption> Classifications { get; set; }
@@ -145,12 +276,29 @@ namespace ESTAFF.Models.ViewModels
         public List<ClipItemViewModel> ClipItems { get; set; }
             = new List<ClipItemViewModel>();
 
-        // Id of the classification named "CLIP" — the one that reveals the CLIP
+        // Id of the classification named "CLIP" - the one that reveals the CLIP
         // picker. Null when that row is missing from the lookup table.
         public int? ClipClassificationId { get; set; }
     }
 
-    // What the _ClassificationField partial needs, so the three task forms can
+    public class ClassificationOption
+    {
+        public int TaskClassificationId { get; set; }
+        public string Name { get; set; }
+
+        public string Slug => TaskDisplay.ClassificationSlug(Name);
+        public string Icon => TaskDisplay.ClassificationIcon(Name);
+    }
+
+    public class TaskListOption
+    {
+        public int TaskListId { get; set; }
+        public int TaskClassificationId { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+    }
+
+    // What the _ClassificationField partial needs, so the admin task forms can
     // render the same block from their own view models.
     public class TaskFormFieldsViewModel
     {
@@ -167,17 +315,6 @@ namespace ESTAFF.Models.ViewModels
         public string ClipHint { get; set; } =
             "Certificates of fitness and plant monitoring records for the " +
             "assigned plants. Expired items are listed first.";
-
-        public static TaskFormFieldsViewModel From(CreateTaskViewModel m)
-        {
-            return new TaskFormFieldsViewModel
-            {
-                TaskClassificationId = m.TaskClassificationId,
-                TaskListId = m.TaskListId,
-                ClipItemKey = m.ClipItemKey,
-                Options = m.Options
-            };
-        }
 
         public static TaskFormFieldsViewModel From(AssignTaskViewModel m)
         {
@@ -233,144 +370,6 @@ namespace ESTAFF.Models.ViewModels
                 ShowTaskList = showTaskList
             };
         }
-    }
-
-    public class ClassificationOption
-    {
-        public int TaskClassificationId { get; set; }
-        public string Name { get; set; }
-
-        public string Slug => TaskDisplay.ClassificationSlug(Name);
-        public string Icon => TaskDisplay.ClassificationIcon(Name);
-    }
-
-    public class TaskListOption
-    {
-        public int TaskListId { get; set; }
-        public int TaskClassificationId { get; set; }
-        public string Name { get; set; }
-        public string Description { get; set; }
-    }
-
-    public class TaskListItemViewModel
-    {
-        public int TaskId { get; set; }
-        public string Title { get; set; }
-        public string Description { get; set; }
-        public int TaskClassificationId { get; set; }
-        public string ClassificationName { get; set; }
-        public int? TaskListId { get; set; }
-        public string TaskListName { get; set; }
-        public int? SubTaskId { get; set; }
-        public TaskStatus Status { get; set; }
-        public TaskPriority? Priority { get; set; }
-        public DateTime DueDate { get; set; }
-        public DateTime CreatedDate { get; set; }
-        public DateTime? CompletedDate { get; set; }
-        public string AssignedToUserId { get; set; }
-        public string AssignedToName { get; set; }
-        public string AssignedToEmpID { get; set; }
-        public string CreatedByName { get; set; }
-
-        // The linked CLIP record, when this task is CLIP-classified and linked.
-        public ClipItemViewModel ClipItem { get; set; }
-
-        // Newest status transition, shown inline on the task.
-        public StatusRemarkViewModel LatestStatusRemark { get; set; }
-
-        public bool IsOverdue => Status != TaskStatus.Complete
-            && DueDate.Date < DateTime.Today;
-
-        // CSS modifier suffix for the status badge / dot (badge-pending, ...).
-        public string StatusClass => TaskDisplay.StatusClass(Status);
-
-        public string ClassificationSlug =>
-            TaskDisplay.ClassificationSlug(ClassificationName);
-
-        public string ClassificationIcon =>
-            TaskDisplay.ClassificationIcon(ClassificationName);
-
-        public string ClassificationLabel =>
-            string.IsNullOrWhiteSpace(ClassificationName)
-                ? "Unclassified"
-                : ClassificationName;
-    }
-
-    // A single status transition, with whatever note the user attached to it.
-    public class StatusRemarkViewModel
-    {
-        public int TaskId { get; set; }
-        public TaskStatus? FromStatus { get; set; }
-        public TaskStatus? ToStatus { get; set; }
-        public string Remark { get; set; }
-        public string ChangedByName { get; set; }
-        public DateTime ChangedDate { get; set; }
-
-        public bool HasRemark => !string.IsNullOrWhiteSpace(Remark);
-
-        // "Pending → In Progress", or just the new status on the first entry.
-        public string TransitionText
-        {
-            get
-            {
-                var to = ToStatus.HasValue
-                    ? TaskDisplay.StatusLabel(ToStatus.Value)
-                    : "—";
-
-                return FromStatus.HasValue
-                    ? TaskDisplay.StatusLabel(FromStatus.Value) + " → " + to
-                    : to;
-            }
-        }
-
-        // "just now" / "3h ago" / "12 Jul 2026"
-        public string RelativeTime
-        {
-            get
-            {
-                var span = DateTime.Now - ChangedDate;
-
-                if (span.TotalSeconds < 60) return "just now";
-                if (span.TotalMinutes < 60)
-                    return (int)span.TotalMinutes + "m ago";
-                if (span.TotalHours < 24)
-                    return (int)span.TotalHours + "h ago";
-                if (span.TotalDays < 7)
-                    return (int)span.TotalDays + "d ago";
-
-                return ChangedDate.ToString("dd MMM yyyy");
-            }
-        }
-    }
-
-    public class TaskHistoryItemViewModel
-    {
-        public int HistoryId { get; set; }
-        public int TaskId { get; set; }
-        public string TaskTitle { get; set; }
-        public string Action { get; set; }
-        public string OldValue { get; set; }
-        public string NewValue { get; set; }
-        public string Remark { get; set; }
-        public string ChangedByName { get; set; }
-        public DateTime ChangedDate { get; set; }
-    }
-
-    public class EmployeeSelectItem
-    {
-        public string UserId { get; set; }
-        public string FullName { get; set; }
-        public string EmpID { get; set; }
-        public string Display => $"{FullName} ({EmpID})";
-    }
-
-    public class UpdateTaskStatusViewModel
-    {
-        public int TaskId { get; set; }
-        public TaskStatus Status { get; set; }
-
-        [StringLength(500)]
-        public string Remark { get; set; }
     }
 
     // Presentation rules shared by every view that renders a task, so badge

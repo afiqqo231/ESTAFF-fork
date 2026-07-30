@@ -136,7 +136,6 @@
                     <thead>
                         <tr>
                             <th style="padding-left:1.5rem">Task</th>
-                            <th>Classification</th>
                             <th>Priority</th>
                             <th>Due Date</th>
                             <th>Completed</th>
@@ -148,7 +147,10 @@
                     <tbody>
                         @foreach (var task in Model.Tasks)
                         {
-                            var tsc = TaskDisplay.StatusClass(task.Status);
+                            var tsc = task.Status ==
+                                ESTAFF.Models.Data.TaskStatus.InProgress
+                                ? "inprogress"
+                                : task.Status.ToString().ToLower();
 
                             <tr>
                                 <td style="padding-left:1.5rem">
@@ -157,10 +159,6 @@
                                                 font-size:0.845rem;">
                                         @task.Title
                                     </div>
-                                </td>
-                                <td>
-                                    @Html.Partial("_ClassificationBadge",
-                                        ClassificationBadgeModel.From(task))
                                 </td>
                                 <td>
                                     @if (task.Priority.HasValue)
@@ -196,7 +194,7 @@
                                 </td>
                                 <td style="padding-right:1.5rem">
                                     <span class="badge-pill badge-@tsc">
-                                        @TaskDisplay.StatusLabel(task.Status)
+                                        @task.Status
                                     </span>
                                 </td>
                             </tr>
@@ -227,7 +225,7 @@
             </div>
             <div class="report-side-body">
 
-                <a href="@Url.Action("DownloadReport","Employee",
+                <a href="@Url.Action("DownloadReportPdf","Employee",
                        new { id = Model.ReportId })"
                    class="report-action-btn download">
                     <i class="fas fa-download"></i>

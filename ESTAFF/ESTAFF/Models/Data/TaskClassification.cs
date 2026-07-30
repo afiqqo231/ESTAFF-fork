@@ -1,3 +1,4 @@
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -8,7 +9,7 @@ namespace ESTAFF.Models.Data
     // because the taxonomy is maintained as data (see ESTAFF.TaskClassifications):
     //   1 Chemical & Legal   2 DOSH / BOMBA / DOE
     //   3 Environmental      4 CLIP
-    // Only CLIP has records in another module to link to — see ClipService.
+    // Only CLIP has records in another module to link to - see ClipService.
     [Table("TaskClassifications", Schema = "ESTAFF")]
     public class TaskClassification
     {
@@ -24,6 +25,6 @@ namespace ESTAFF.Models.Data
         public string Name { get; set; }
 
         public virtual ICollection<TaskList> TaskLists { get; set; }
-            = new List<TaskList>();
+        public virtual ICollection<TaskItem> TaskItems { get; set; }
     }
 }
