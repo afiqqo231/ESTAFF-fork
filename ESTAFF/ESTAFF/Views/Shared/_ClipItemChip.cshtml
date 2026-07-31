@@ -1,0 +1,27 @@
+﻿@using ESTAFF.Models.ViewModels
+@model ClipItemViewModel
+
+@* The CLIP record a task is linked to, with its live expiry status pulled
+   straight from the CLIP schema. Urgency is carried by the colour, the dot
+   and the wording, so no single channel is load-bearing. *@
+@if (Model != null)
+{
+    var tooltip = string.Format("{0}: {1}{2} — {3} (expires {4}){5}",
+        Model.KindLabel,
+        Model.Title,
+        string.IsNullOrWhiteSpace(Model.Subtitle) ? "" : " · " + Model.Subtitle,
+        Model.ExpiryStatus,
+        Model.ExpiryDateText,
+        string.IsNullOrWhiteSpace(Model.ProcessStatus)
+            ? "" : " · " + Model.ProcessStatus);
+
+    <span class="clip-chip urgency-@Model.UrgencyClass" title="@tooltip">
+        <span class="clip-chip-dot"></span>
+        <i class="fas @Model.KindIcon" style="font-size:0.62rem;"></i>
+        <span class="clip-chip-label">@Model.Title</span>
+        <span class="clip-chip-sep">·</span>
+        <span class="clip-chip-expiry">@Model.ExpiryStatus</span>
+        <span class="clip-chip-sep">·</span>
+        <span class="clip-chip-expiry">@Model.ExpiryText</span>
+    </span>
+}

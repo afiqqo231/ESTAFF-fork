@@ -20,14 +20,24 @@ namespace ESTAFF.Models.Data
         [Required]
         public TaskStatus Status { get; set; } = TaskStatus.Pending;
 
-        public TaskPriority? Priority { get; set; } 
+        public TaskPriority? Priority { get; set; }
 
         [Required]
         public DateTime DueDate { get; set; }
 
-        // Link to subtask for CLIP if applicable
+        // Link to subtask for CLIP if applicable. Which CLIP table the id refers
+        // to is decided by TaskList: "Certificate Of FItness" means
+        // CLIP.CertificateOfFitness.Id, "Plant Monitoring" means
+        // CLIP.PlantMonitoring.Id. Deliberately not a foreign key - those tables
+        // belong to EHS_PORTAL and ESTAFF only ever reads them.
         public int? SubTaskId { get; set; }
-        
+
+        // The specific recurring job within the classification. The column keeps
+        // the name EF generated from TaskList.TaskItems; mapping it explicitly
+        // here lets a task read its own task list without loading the collection.
+        [Column("TaskList_TaskListId")]
+        public int? TaskListId { get; set; }
+
         [Required]
             [ForeignKey("TaskClassification")]
         public int TaskClassificationId { get; set; }
@@ -52,8 +62,9 @@ namespace ESTAFF.Models.Data
         public virtual ApplicationUser AssignedToUser { get; set; }
         public virtual ApplicationUser CreatedByUser { get; set; }
         public virtual TaskClassification TaskClassification { get; set; }
+        public virtual TaskList TaskList { get; set; }
         public virtual ICollection<TaskHistory> Histories { get; set; } = new List<TaskHistory>();
-    }   
+    }
 
     public enum TaskStatus
     {

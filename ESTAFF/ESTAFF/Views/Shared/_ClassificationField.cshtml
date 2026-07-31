@@ -1,0 +1,91 @@
+﻿@using System.Web.Script.Serialization
+@model TaskFormFieldsViewModel
+
+@*
+    Classification, task type, and (for CLIP) the CLIP item picker.
+
+    Laid out as one block because the three controls are a single decision:
+    the classification decides which task types are offered, and choosing CLIP
+    swaps the task-type dropdown for the CLIP picker — which sets the task type
+    itself from whichever record you pick.
+
+    Classification is a segmented radio group rather than a <select>: there are
+    only a handful, the choice changes what appears below it, and showing them
+    all up front avoids a hidden interaction. Each carries an icon as well as a
+    label, so the meaning never rests on colour alone.
+*@
+@{
+    var taskListPayload = new JavaScriptSerializer().Serialize(
+        Model.Options.TaskLists.Select(l => new
+        {
+            id             = l.TaskListId,
+            classification = l.TaskClassificationId,
+            name           = l.Name,
+            description    = l.Description
+        }).ToList());
+}
+
+<div class="classification-field"
+     data-clip-classification="@Model.Options.ClipClassificationId">
+
+    <label class="form-label">Classification</label>
+    <div class="classification-options">
+        @foreach (var option in Model.Options.Classifications)
+        {
+            <label class="classification-option">
+                <input type="radio"
+                       name="TaskClassificationId"
+                       class="js-classification-radio"
+                       value="@option.TaskClassificationId"
+                       checked="@(Model.TaskClassificationId == option.TaskClassificationId)" />
+                <span class="classification-option-box classification-@option.Slug">
+                    <i class="fas @option.Icon"></i>
+                    @option.Name
+                </span>
+            </label>
+        }
+    </div>
+    @Html.ValidationMessage("TaskClassificationId", "",
+        new { @class = "text-danger small" })
+
+    @* Task type — filtered to the selected classification by estaff-clip.js.
+       Hidden for CLIP, where the CLIP picker below sets it instead. *@
+    <div class="task-list-field mt-3">
+        <label class="form-label" for="TaskListId">Task Type</label>
+        <select name="TaskListId" id="TaskListId" class="form-control">
+            <option value="">— Select a task type —</option>
+        </select>
+        @Html.ValidationMessage("TaskListId", "",
+            new { @class = "text-danger small" })
+        <span class="clip-field-hint js-task-list-hint">
+            The recurring job this task covers.
+        </span>
+    </div>
+
+    @* CLIP item — revealed only when the CLIP classification is selected. *@
+    <div class="clip-field mt-3">
+        <label class="form-label" for="ClipItemKey">
+            CLIP Item
+            <span style="font-weight:400; color:var(--text-muted);">
+                — sorted by nearest expiry
+            </span>
+        </label>
+        @Html.Partial("_ClipPicker",
+            new ClipPickerViewModel
+            {
+                FieldName       = "ClipItemKey",
+                SelectedKey     = Model.ClipItemKey,
+                Items           = Model.Options.ClipItems,
+                ReloadUrl       = Model.ClipReloadUrl,
+                ReloadTriggerId = Model.ClipReloadTriggerId
+            })
+        @Html.ValidationMessage("ClipItemKey", "",
+            new { @class = "text-danger small" })
+        <span class="clip-field-hint">
+            @Model.ClipHint
+        </span>
+    </div>
+
+    <script type="application/json" class="task-list-data">@Html.Raw(taskListPayload)</script>
+    <script type="application/json" class="task-list-selected">@(Model.TaskListId?.ToString() ?? "null")</script>
+</div>

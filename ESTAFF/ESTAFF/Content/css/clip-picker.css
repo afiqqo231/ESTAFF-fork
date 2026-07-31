@@ -1,0 +1,490 @@
+/* ============================================================
+   ESTAFF — CLIP ITEM PICKER
+
+   The dropdown shown when a task is classified as CLIP. It lists the
+   assignee's Certificates of Fitness and Plant Monitoring records,
+   nearest-expiry first, so the work most at risk is impossible to miss.
+
+   UI/UX notes:
+   - Urgency is signalled three ways, never by colour alone: a coloured
+     left rail, a text label ("Expired 12 days ago"), and the group
+     heading it sits under. This keeps it readable for colour-blind users.
+   - Expired and expiring items sort and render first; the list is
+     grouped by urgency with sticky headings so the ordering is explicit
+     rather than something the user has to infer.
+   - The trigger always shows the current selection with its urgency, so
+     the state is visible without reopening the panel.
+   - Search filters by registration number, machine, area and plant so
+     long lists stay usable with the keyboard alone.
+============================================================ */
+
+.clip-picker { position: relative; }
+
+/* The real <select> underneath. Kept in the DOM (and focusable) until the
+   script confirms it can take over, so the form works without JS. */
+.clip-picker-native {
+    width: 100%;
+}
+
+.clip-picker.is-enhanced .clip-picker-native {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ── Trigger ─────────────────────────────────────────────── */
+.clip-picker-trigger {
+    display: none;
+    width: 100%;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 0.85rem;
+    border: 1.5px solid #E2E8F0;
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    text-align: left;
+    font-family: inherit;
+    font-size: 0.845rem;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.clip-picker.is-enhanced .clip-picker-trigger { display: flex; }
+
+.clip-picker-trigger:hover { border-color: var(--border); }
+
+.clip-picker-trigger:focus-visible,
+.clip-picker.is-open .clip-picker-trigger {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: var(--shadow-glow);
+}
+
+.clip-picker-trigger[disabled] {
+    background: #F8FAFC;
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+.clip-picker-trigger-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.clip-picker-trigger-title {
+    display: block;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.clip-picker-trigger-title.is-placeholder {
+    font-weight: 400;
+    color: var(--text-muted);
+}
+
+.clip-picker-trigger-sub {
+    display: block;
+    margin-top: 0.1rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.clip-picker-caret {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.clip-picker.is-open .clip-picker-caret { transform: rotate(180deg); }
+
+/* ── Panel ───────────────────────────────────────────────── */
+.clip-picker-panel {
+    display: none;
+    position: absolute;
+    z-index: 40;
+    top: calc(100% + 0.35rem);
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+
+.clip-picker.is-open .clip-picker-panel { display: block; }
+
+.clip-picker-search-wrap {
+    position: relative;
+    padding: 0.6rem;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.clip-picker-search-wrap > i {
+    position: absolute;
+    left: 1.2rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    pointer-events: none;
+}
+
+.clip-picker-search {
+    width: 100%;
+    padding: 0.45rem 0.7rem 0.45rem 2rem;
+    border: 1.5px solid #E2E8F0;
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+}
+
+.clip-picker-search:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: var(--shadow-glow);
+}
+
+.clip-picker-list {
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 0.3rem 0;
+    margin: 0;
+    list-style: none;
+}
+
+/* ── Group headings ──────────────────────────────────────── */
+.clip-picker-group {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.85rem;
+    background: #F8FAFC;
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.clip-picker-group:first-child { border-top: none; }
+
+.clip-picker-group.urgency-expired { background: #FEF2F2; color: #991B1B; }
+.clip-picker-group.urgency-soon    { background: #FFFBEB; color: #92400E; }
+.clip-picker-group.urgency-active  { background: var(--primary-light); color: #065F46; }
+.clip-picker-group.urgency-none    { background: #F8FAFC; color: var(--text-secondary); }
+
+.clip-picker-group-count {
+    margin-left: auto;
+    font-weight: 700;
+    opacity: 0.75;
+}
+
+/* ── Options ─────────────────────────────────────────────── */
+.clip-picker-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 0.55rem 0.85rem;
+    border: none;
+    border-left: 3px solid transparent;
+    background: transparent;
+    text-align: left;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.12s ease;
+}
+
+.clip-picker-option:hover,
+.clip-picker-option.is-active {
+    background: #F1F5F9;
+}
+
+.clip-picker-option.is-selected { background: var(--primary-light); }
+
+.clip-picker-option.urgency-expired { border-left-color: var(--danger); }
+.clip-picker-option.urgency-soon    { border-left-color: var(--warning); }
+.clip-picker-option.urgency-active  { border-left-color: var(--primary); }
+.clip-picker-option.urgency-none    { border-left-color: var(--border-subtle); }
+
+.clip-picker-option-icon {
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    background: #F1F5F9;
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+}
+
+.clip-picker-option.urgency-expired .clip-picker-option-icon {
+    background: #FEE2E2; color: #991B1B;
+}
+.clip-picker-option.urgency-soon .clip-picker-option-icon {
+    background: #FEF3C7; color: #92400E;
+}
+.clip-picker-option.urgency-active .clip-picker-option-icon {
+    background: var(--primary-light); color: #065F46;
+}
+
+.clip-picker-option-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.clip-picker-option-title {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.clip-picker-option-meta {
+    display: block;
+    margin-top: 0.1rem;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.clip-picker-option-expiry {
+    flex-shrink: 0;
+    text-align: right;
+    font-size: 0.66rem;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.clip-picker-option.urgency-expired .clip-picker-option-expiry { color: #991B1B; }
+.clip-picker-option.urgency-soon    .clip-picker-option-expiry { color: #92400E; }
+.clip-picker-option.urgency-active  .clip-picker-option-expiry { color: #065F46; }
+.clip-picker-option.urgency-none    .clip-picker-option-expiry { color: var(--text-muted); }
+
+.clip-picker-option-expiry small {
+    display: block;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.clip-picker-empty {
+    padding: 1.75rem 1rem;
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.clip-picker-clear {
+    width: 100%;
+    padding: 0.5rem;
+    border: none;
+    border-top: 1px solid var(--border-subtle);
+    background: var(--surface);
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.clip-picker-clear:hover { background: #F8FAFC; color: var(--danger); }
+
+/* ── Field wrappers (label + hint + validation) ──────────── */
+.clip-field { display: none; }
+.clip-field.is-visible { display: block; }
+
+.task-list-field.is-hidden { display: none; }
+
+.clip-field-hint {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+/* ── Classification segmented control ──────────────────────
+   Wraps rather than shrinks: classification names are real phrases
+   ("DOSH / BOMBA / DOE"), so squeezing them onto one row would truncate
+   the very thing being chosen. */
+.classification-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.classification-option {
+    flex: 1 1 180px;
+    cursor: pointer;
+}
+
+.classification-option input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.classification-option-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    height: 100%;
+    padding: 0.6rem;
+    border: 1.5px solid #E2E8F0;
+    border-radius: var(--radius-sm);
+    font-size: 0.775rem;
+    font-weight: 600;
+    text-align: center;
+    color: var(--text-muted);
+    transition: var(--transition);
+}
+
+.classification-option:hover .classification-option-box {
+    border-color: var(--border);
+}
+
+/* Selected state mirrors the badge palette for the same classification, so
+   the choice made here is recognisable on the task list afterwards. */
+.classification-option input:checked + .classification-option-box {
+    border-color: #94A3B8;
+    background: #F8FAFC;
+    color: var(--text-primary);
+}
+
+.classification-option input:checked + .classification-clip {
+    border-color: #6366F1;
+    background: #EEF2FF;
+    color: #3730A3;
+}
+
+.classification-option input:checked + .classification-chemical-legal {
+    border-color: #38BDF8;
+    background: #F0F9FF;
+    color: #075985;
+}
+
+.classification-option input:checked + .classification-dosh-bomba-doe {
+    border-color: #E879F9;
+    background: #FDF4FF;
+    color: #86198F;
+}
+
+.classification-option input:checked + .classification-environmental {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    color: #166534;
+}
+
+.classification-option input:focus-visible + .classification-option-box {
+    box-shadow: var(--shadow-glow);
+}
+
+/* ── Status change dialog ────────────────────────────────── */
+.status-dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(15,23,42,0.45);
+}
+
+.status-dialog-backdrop.is-open { display: flex; }
+
+.status-dialog {
+    width: 100%;
+    max-width: 420px;
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+
+.status-dialog-header {
+    padding: 1.1rem 1.25rem 0.75rem;
+}
+
+.status-dialog-header h6 {
+    margin: 0 0 0.35rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.status-dialog-header p {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.status-dialog-body { padding: 0 1.25rem 1rem; }
+
+.status-dialog-body label {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.status-dialog-body textarea {
+    width: 100%;
+    padding: 0.55rem 0.7rem;
+    border: 1.5px solid #E2E8F0;
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    resize: none;
+}
+
+.status-dialog-body textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: var(--shadow-glow);
+}
+
+.status-dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 0.85rem 1.25rem;
+    border-top: 1px solid var(--border-subtle);
+    background: #F8FAFC;
+}
+
+@media (max-width: 640px) {
+    .classification-options { flex-wrap: wrap; }
+    .classification-option { flex: 1 1 40%; }
+}

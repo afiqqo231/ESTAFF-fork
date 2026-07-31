@@ -1,0 +1,29 @@
+﻿@using ESTAFF.Models.ViewModels
+@model StatusRemarkViewModel
+
+@* The most recent status change on a task, with the note left with it. *@
+@if (Model != null)
+{
+    <div class="status-remark">
+        <i class="fas fa-comment-dots"></i>
+        <div class="status-remark-body">
+            <span class="status-remark-transition">@Model.TransitionText</span>
+            @if (Model.HasRemark)
+            {
+                @* Entities, not literal curly quotes: Razor reads "@" that
+                   directly follows a letter as an email address and emits it
+                   verbatim, which a mis-decoded quote character would trigger. *@
+                <span class="status-remark-text">&ldquo;@Model.Remark&rdquo;</span>
+            }
+            else
+            {
+                <span class="status-remark-text is-empty">No remark left.</span>
+            }
+            <span class="status-remark-meta">
+                @Model.ChangedByName ·
+                @Model.ChangedDate.ToString("dd MMM yyyy, h:mm tt")
+                (@Model.RelativeTime)
+            </span>
+        </div>
+    </div>
+}

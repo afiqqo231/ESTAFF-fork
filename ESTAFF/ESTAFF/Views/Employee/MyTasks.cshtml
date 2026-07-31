@@ -55,8 +55,13 @@
                 ? task.Priority.ToString().ToLower()
                 : "";
 
-            var classificationColor = task.SubTaskId.HasValue ? "COF" : "other";
-            
+            // Only COF / FETS have their own badge colour
+            var cn = (task.TaskClassificationName ?? "").ToUpperInvariant();
+            var classificationColor =
+                cn.Contains("COF") || cn.Contains("CERTIFICATE OF FITNESS")
+                    ? "COF"
+                    : cn.Contains("FETS") ? "FETS" : "other";
+
             var isOD = task.DueDate.Date < DateTime.Today
                     && task.Status != ESTAFF.Models.Data.TaskStatus.Complete;
 
@@ -71,16 +76,10 @@
                         <span class="badge-pill badge-@sc">
                             @task.Status
                         </span>
-                        @if (task.SubTaskId.HasValue){
-                            
-                            <span class="badge-pill badge-@classificationColor">
-                                Certificate of Fitness
-                            </span>
-                        }
-                        else
+                        @if (!string.IsNullOrEmpty(task.TaskClassificationName))
                         {
-                            <span class="badge-pill badge-@pc">
-                                Others
+                            <span class="badge-pill badge-@classificationColor">
+                                @task.TaskClassificationName
                             </span>
                         }
                     </div>
@@ -121,31 +120,29 @@
 
                 <!-- Footer: Status Changer + Actions -->
                 <div class="my-task-card-footer">
-                    @using (Html.BeginForm("UpdateStatus", "Employee",
-                        FormMethod.Post,
-                        new { style = "display:contents;" }))
-                    {
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="taskId"
-                               value="@task.TaskId" />
-                        <div class="status-select-wrap">
-                            <select name="status"
-                                    class="status-select"
-                                    onchange="this.form.submit()">
-                                @foreach (ESTAFF.Models.Data.TaskStatus s in
-                                    Enum.GetValues(typeof(ESTAFF.Models.Data.TaskStatus)))
+                    <div class="status-select-wrap">
+                        <select class="status-select js-status-select"
+                                data-task-id="@task.TaskId"
+                                data-task-title="@task.Title"
+                                data-current="@task.Status">
+                            @foreach (ESTAFF.Models.Data.TaskStatus s in
+                                Enum.GetValues(typeof(ESTAFF.Models.Data.TaskStatus)))
+                            {
+                                @* Overdue is set by the system, but keep it
+                                   listed while the task is in that state so
+                                   the dropdown shows the real status. *@
+                                if (s != ESTAFF.Models.Data.TaskStatus.Overdue
+                                    || task.Status == ESTAFF.Models.Data.TaskStatus.Overdue)
                                 {
-                                    if (s != ESTAFF.Models.Data.TaskStatus.Overdue)
-                                    {
-                                        <option value="@s"
-                                            @(task.Status == s ? "selected" : "")>
-                                            @s
-                                        </option>
-                                    }
+                                    <option value="@s"
+                                        @(task.Status == s ? "selected" : "")>
+                                        @(s == ESTAFF.Models.Data.TaskStatus.InProgress
+                                            ? "In Progress" : s.ToString())
+                                    </option>
                                 }
-                            </select>
-                        </div>
-                    }
+                            }
+                        </select>
+                    </div>
 
                     <div class="task-card-actions">
                         <a href="@Url.Action("EditTask", "Employee",
@@ -196,3 +193,6 @@ else
         </a>
     </div>
 }
+
+@* Status change form + "Action Taken" modal (shared by every card) *@
+@Html.Partial("_StatusActionModal")

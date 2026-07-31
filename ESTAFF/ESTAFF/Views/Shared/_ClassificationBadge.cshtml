@@ -1,0 +1,23 @@
+﻿@model ClassificationBadgeModel
+
+@* Which EHS work stream a task belongs to, plus its sub-type where one is set.
+   Rendered everywhere a task is listed so the classification reads the same on
+   every page. Colour comes from a slug of the name, so a classification added
+   to the lookup table later still renders (in the neutral style). *@
+@if (Model != null && !string.IsNullOrWhiteSpace(Model.Name))
+{
+    var title = string.IsNullOrWhiteSpace(Model.TaskListName)
+        ? "Classification: " + Model.Name
+        : "Classification: " + Model.Name + " · " + Model.TaskListName;
+
+    <span class="badge-pill badge-classification badge-classification-@TaskDisplay.ClassificationSlug(Model.Name)"
+          title="@title">
+        <i class="fas @TaskDisplay.ClassificationIcon(Model.Name)"
+           style="font-size:0.6rem;"></i>
+        @Model.Name
+        @if (Model.ShowTaskList && !string.IsNullOrWhiteSpace(Model.TaskListName))
+        {
+            <span class="badge-classification-sub">· @Model.TaskListName</span>
+        }
+    </span>
+}

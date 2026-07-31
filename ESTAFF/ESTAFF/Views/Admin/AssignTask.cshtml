@@ -1,4 +1,4 @@
-@model ESTAFF.Models.ViewModels.AssignTaskViewModel
+﻿@model ESTAFF.Models.ViewModels.AssignTaskViewModel
 @{
     ViewBag.Title = "Assign Task";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
@@ -16,36 +16,14 @@
         @using (Html.BeginForm("AssignTask", "Admin", FormMethod.Post))
         {
             @Html.AntiForgeryToken()
-            @Html.ValidationSummary(true, "",
+            @* Header text matters: MVC still renders this box whenever
+               ModelState is invalid, so without a message an all-property-error
+               postback shows an empty red band. *@
+            @Html.ValidationSummary(true,
+                "This task could not be assigned — see the messages below.",
                 new { @class = "alert alert-danger py-2 small" })
 
             <div class="row g-3">
-
-                <!-- Task Classification -->
-                <div class="col-md-6">
-                    @Html.LabelFor(m => m.TaskClassificationId,
-                        new { @class = "form-label" })
-                    @Html.DropDownListFor(m => m.TaskClassificationId,
-                        ViewBag.ClassificationList as SelectList,
-                        "— Select Classification —",
-                        new { @class = "form-control",
-                              id = "classificationDropdown" })
-                    @Html.ValidationMessageFor(m => m.TaskClassificationId, "",
-                        new { @class = "text-danger small" })
-                </div>
-
-                <!-- Task List (filtered by classification) -->
-                <div class="col-md-6">
-                    @Html.LabelFor(m => m.TaskListId,
-                        new { @class = "form-label" })
-                    @Html.DropDownListFor(m => m.TaskListId,
-                        new SelectList(Enumerable.Empty<SelectListItem>()),
-                        "— Select Task —",
-                        new { @class = "form-control",
-                              id = "taskListDropdown" })
-                    @Html.ValidationMessageFor(m => m.TaskListId, "",
-                        new { @class = "text-danger small" })
-                </div>
 
                 <!-- Title -->
                 <div class="col-12">
@@ -97,6 +75,20 @@
                               oninput = "updatePreview()" })
                     @Html.ValidationMessageFor(m => m.DueDate, "",
                         new { @class = "text-danger small" })
+                </div>
+
+                <!-- Classification, task type, and (for CLIP) the item picker -->
+                <div class="col-12">
+                    @{
+                        var fields = TaskFormFieldsViewModel.From(Model);
+                        fields.ClipReloadUrl = Url.Action("ClipItems", "Admin");
+                        fields.ClipReloadTriggerId = "assignedTo";
+                        fields.ClipHint =
+                            "Certificates of fitness and plant monitoring records "
+                            + "for the selected employee's plants. Expired items "
+                            + "are listed first — pick an employee to load the list.";
+                    }
+                    @Html.Partial("_ClassificationField", fields)
                 </div>
 
                 <!-- Priority -->
@@ -195,6 +187,20 @@
         </div>
 
         <div class="preview-item">
+            <span class="preview-label">Classification</span>
+            <span id="prev-classification"></span>
+        </div>
+
+        <div class="preview-item">
+            <span class="preview-label">Task Type</span>
+            <span class="preview-value" id="prev-clip"
+                  style="color:var(--text-muted); font-weight:400;
+                         font-style:italic;">
+                Not set
+            </span>
+        </div>
+
+        <div class="preview-item">
             <span class="preview-label">Priority</span>
             <span id="prev-priority"
                   style="color:var(--text-muted); font-size:0.78rem;
@@ -255,6 +261,17 @@
         });
     });
 
+    // Classification + CLIP selection feed the preview too, so the panel
+    // always reflects the whole form rather than half of it.
+    document.addEventListener('change', function (e) {
+        if (!e.target.name) return;
+        if (e.target.name === 'TaskClassificationId' ||
+            e.target.name === 'TaskListId' ||
+            e.target.name === 'ClipItemKey') {
+            updatePreview();
+        }
+    });
+
     // Live Preview
     function updatePreview() {
         var title    = document.getElementById('taskTitle').value;
@@ -307,6 +324,61 @@
             prevDue.style.fontStyle  = 'italic';
         }
 
+        // Classification — reuse the badge markup from the task lists so the
+        // preview matches what the task will look like once assigned.
+        var classInput = document.querySelector(
+            '.js-classification-radio:checked');
+        var prevClass = document.getElementById('prev-classification');
+        var field = document.querySelector('.classification-field');
+        var clipId = field ? field.getAttribute('data-clip-classification') : '';
+        var isClip = classInput && clipId && classInput.value === clipId;
+
+        if (classInput) {
+            var box = classInput.nextElementSibling;
+            prevClass.innerHTML =
+                '<span class="badge-pill ' +
+                box.className.replace('classification-option-box',
+                    'badge-classification').replace(/classification-/g,
+                    'badge-classification-') + '">' +
+                box.textContent.trim() + '</span>';
+        } else {
+            prevClass.innerHTML =
+                '<span style="color:var(--text-muted); font-size:0.78rem; font-style:italic;">Not set</span>';
+        }
+
+        // Task type / CLIP item
+        var prevClip = document.getElementById('prev-clip');
+        var clipSelect = document.getElementById('ClipItemKey');
+        var listSelect = document.getElementById('TaskListId');
+
+        if (isClip && clipSelect && clipSelect.value) {
+            prevClip.textContent =
+                clipSelect.options[clipSelect.selectedIndex].text;
+            setSolid(prevClip);
+        } else if (isClip) {
+            prevClip.textContent = 'Select a CLIP item...';
+            setMuted(prevClip);
+        } else if (listSelect && listSelect.value) {
+            prevClip.textContent =
+                listSelect.options[listSelect.selectedIndex].text;
+            setSolid(prevClip);
+        } else {
+            prevClip.textContent = 'Not set';
+            setMuted(prevClip);
+        }
+
+        function setSolid(el) {
+            el.style.color = 'var(--text-primary)';
+            el.style.fontWeight = '600';
+            el.style.fontStyle = 'normal';
+        }
+
+        function setMuted(el) {
+            el.style.color = 'var(--text-muted)';
+            el.style.fontWeight = '400';
+            el.style.fontStyle = 'italic';
+        }
+
         // Priority
         var prevPriority = document.getElementById('prev-priority');
         if (priority) {
@@ -323,5 +395,9 @@
                 '<span style="color:var(--text-muted); font-size:0.78rem; font-style:italic;">Not set</span>';
         }
     }
+
+    // Render the preview once on load so it matches the form's initial state
+    // (including a re-displayed form after a validation failure).
+    updatePreview();
     </script>
 }

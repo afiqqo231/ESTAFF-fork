@@ -1,0 +1,177 @@
+@*
+    Shared status-change form + "Action Taken" modal.
+
+    Moving a task to In Progress or Complete has to be explained, so any
+    control that triggers one of those goes through this modal first.
+    Other statuses post straight away.
+
+    Usage - render @Html.Partial("_StatusActionModal") once per page, then
+    mark the triggers:
+
+      <select class="js-status-select"
+              data-task-id="1" data-task-title="..." data-current="Pending">
+
+      <button type="button" class="js-status-btn"
+              data-task-id="1" data-task-title="..." data-status="Complete">
+*@
+
+@using (Html.BeginForm("UpdateStatus", "Employee", FormMethod.Post,
+    new { id = "statusForm" }))
+{
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="taskId" id="statusTaskId" />
+    <input type="hidden" name="status" id="statusValue" />
+    <input type="hidden" name="returnUrl"
+           value="@Request.Url.PathAndQuery" />
+
+    <div class="modal fade" id="actionTakenModal"
+         tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius:var(--radius-lg);">
+
+                <div class="modal-header"
+                     style="border-bottom:1px solid var(--border-subtle);">
+                    <h6 class="modal-title fw-bold">
+                        <i class="fas fa-clipboard-check me-2"
+                           style="color:var(--primary);"></i>
+                        Action Taken
+                    </h6>
+                    <button type="button" class="btn-close"
+                            data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <p class="small text-muted mb-3"
+                       id="actionTakenSubtitle"></p>
+
+                    <label for="actionTaken"
+                           class="form-label small fw-semibold">
+                        What did you do?
+                        <span class="text-danger">*</span>
+                    </label>
+                    <textarea name="actionTaken" id="actionTaken"
+                              class="form-control" rows="4"
+                              maxlength="1000"
+                              placeholder="Describe the action taken on this task..."
+                              style="resize:none;"></textarea>
+                    <div class="invalid-feedback">
+                        Please describe the action taken.
+                    </div>
+                </div>
+
+                <div class="modal-footer"
+                     style="border-top:1px solid var(--border-subtle);">
+                    <button type="button" class="btn-outline-custom"
+                            data-bs-dismiss="modal">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn-primary-custom">
+                        <i class="fas fa-check me-1"></i> Save
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
+
+<script>
+    // Runs on DOMContentLoaded because the partial renders above the
+    // Bootstrap bundle in the layout.
+    document.addEventListener('DOMContentLoaded', function () {
+
+        var form        = document.getElementById('statusForm');
+        var taskIdInput = document.getElementById('statusTaskId');
+        var statusInput = document.getElementById('statusValue');
+        var noteInput   = document.getElementById('actionTaken');
+        var subtitle    = document.getElementById('actionTakenSubtitle');
+        var modalEl     = document.getElementById('actionTakenModal');
+        var modal       = new bootstrap.Modal(modalEl);
+
+        // Statuses that must be explained before they are saved
+        var needsNote = ['InProgress', 'Complete'];
+        var labels    = { InProgress: 'In Progress', Complete: 'Completed' };
+
+        // The dropdown that opened the modal, so Cancel can undo it
+        var pendingSelect = null;
+
+        function submitDirect(taskId, status) {
+            taskIdInput.value = taskId;
+            statusInput.value = status;
+            noteInput.value   = '';
+            form.submit();
+        }
+
+        function askForAction(taskId, status, title, select) {
+            taskIdInput.value = taskId;
+            statusInput.value = status;
+            pendingSelect     = select || null;
+
+            noteInput.value = '';
+            noteInput.classList.remove('is-invalid');
+            subtitle.textContent = '"' + title + '" will be marked as ' +
+                (labels[status] || status) + '.';
+
+            modal.show();
+        }
+
+        // Status dropdowns (My Tasks cards)
+        document.querySelectorAll('.js-status-select')
+            .forEach(function (select) {
+                select.addEventListener('change', function () {
+                    var status = select.value;
+
+                    if (needsNote.indexOf(status) === -1) {
+                        submitDirect(select.dataset.taskId, status);
+                        return;
+                    }
+
+                    askForAction(select.dataset.taskId, status,
+                        select.dataset.taskTitle, select);
+                });
+            });
+
+        // Quick-action buttons (Calendar)
+        document.querySelectorAll('.js-status-btn')
+            .forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var status = btn.dataset.status;
+
+                    if (needsNote.indexOf(status) === -1) {
+                        submitDirect(btn.dataset.taskId, status);
+                        return;
+                    }
+
+                    askForAction(btn.dataset.taskId, status,
+                        btn.dataset.taskTitle, null);
+                });
+            });
+
+        modalEl.addEventListener('shown.bs.modal', function () {
+            noteInput.focus();
+        });
+
+        // Cancelled / dismissed -> put the dropdown back where it was
+        modalEl.addEventListener('hidden.bs.modal', function () {
+            if (pendingSelect) {
+                pendingSelect.value = pendingSelect.dataset.current;
+                pendingSelect = null;
+            }
+        });
+
+        form.addEventListener('submit', function (e) {
+            var mustExplain =
+                needsNote.indexOf(statusInput.value) !== -1;
+
+            if (mustExplain && !noteInput.value.trim()) {
+                e.preventDefault();
+                noteInput.classList.add('is-invalid');
+                noteInput.focus();
+                return;
+            }
+
+            // Saved for real - don't let the hide handler revert it
+            pendingSelect = null;
+        });
+    });
+</script>

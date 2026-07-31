@@ -17,7 +17,8 @@
                 new { id = taskId }, FormMethod.Post))
             {
                 @Html.AntiForgeryToken()
-                @Html.ValidationSummary(true, "",
+                @Html.ValidationSummary(true,
+                    "This task could not be saved — see the messages below.",
                     new { @class = "alert alert-danger py-2 small" })
 
                 <div class="row g-3">
@@ -29,6 +30,12 @@
                             new { @class = "form-control" })
                         @Html.ValidationMessageFor(m => m.Title, "",
                             new { @class = "text-danger small" })
+                    </div>
+
+                    <!-- Classification, task type, and (for CLIP) the item picker -->
+                    <div class="col-12">
+                        @Html.Partial("_ClassificationField",
+                            TaskFormFieldsViewModel.From(Model))
                     </div>
 
                     <div class="col-12">

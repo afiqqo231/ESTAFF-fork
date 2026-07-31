@@ -1,56 +1,74 @@
-@model List<ESTAFF.Models.ViewModels.TaskListItemViewModel>
+﻿@model List<ESTAFF.Models.ViewModels.TaskListItemViewModel>
 @{
     ViewBag.Title = "All Tasks";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
     var selectedStatus = ViewBag.SelectedStatus as string ?? "";
+    var selectedClassification = ViewBag.SelectedClassification as string ?? "";
     var employees = ViewBag.Employees as 
         List<ESTAFF.Models.Data.ApplicationUser> ??
         new List<ESTAFF.Models.Data.ApplicationUser>();
+    var classifications = ViewBag.Classifications as List<ClassificationOption>
+        ?? new List<ClassificationOption>();
 }
 
 <!-- Filter -->
 <div class="task-filter-bar">
 
     <!-- Status Pills -->
+    @* The status value has to be the TaskStatus enum name — the controller
+       parses it with Enum.TryParse, so "In Progress"/"Completed" would be
+       ignored. *@
     <div class="status-filter-pills">
 
-        <a href="@Url.Action("Tasks", "Admin")"
+        <a href="@Url.Action("Tasks", "Admin", new {
+               employeeId = ViewBag.SelectedEmployeeId,
+               classification = selectedClassification })"
            class="status-pill-btn @(string.IsNullOrEmpty(selectedStatus) ? "active-filter" : "")">
             All
         </a>
 
-        <a href="@Url.Action("Tasks", "Admin", new { status = "Pending" })"
-           class="status-pill-btn @(selectedStatus == "Pending" ? "active-filter" : "")">
-            Pending
-        </a>
-
-        <a href="@Url.Action("Tasks", "Admin", new { status = "In Progress" })"
-           class="status-pill-btn @(selectedStatus == "In Progress" ? "active-filter" : "")">
-            In Progress
-        </a>
-
-        <a href="@Url.Action("Tasks", "Admin", new { status = "Completed" })"
-           class="status-pill-btn @(selectedStatus == "Completed" ? "active-filter" : "")">
-            Completed
-        </a>
-
-        <a href="@Url.Action("Tasks", "Admin", new { status = "Overdue" })"
-           class="status-pill-btn @(selectedStatus == "Overdue" ? "active-filter" : "")">
-            Overdue
-        </a>
+        @foreach (ESTAFF.Models.Data.TaskStatus s in
+            Enum.GetValues(typeof(ESTAFF.Models.Data.TaskStatus)))
+        {
+            <a href="@Url.Action("Tasks", "Admin", new {
+                   status = s.ToString(),
+                   employeeId = ViewBag.SelectedEmployeeId,
+                   classification = selectedClassification })"
+               class="status-pill-btn @(selectedStatus == s.ToString() ? "active-filter" : "")">
+                @TaskDisplay.StatusLabel(s)
+            </a>
+        }
     </div>
 
     <!-- Employee filter -->
     <div class="filter-group">
         <span class="filter-label">Employee</span>
         <select class="filter-select"
-            onchange="filterByEmployee(this.value)">
+                id="employeeFilter"
+                onchange="applyFilters()">
             <option value="">All Employees</option>
             @foreach (var emp in employees)
             {
                 <option value="@emp.Id"
                     @(ViewBag.SelectedEmployeeId == emp.Id ? "selected" : "")>
                     @emp.UserName
+                </option>
+            }
+        </select>
+    </div>
+
+    <!-- Classification filter -->
+    <div class="filter-group">
+        <span class="filter-label">Classification</span>
+        <select class="filter-select"
+                id="classificationFilter"
+                onchange="applyFilters()">
+            <option value="">All Types</option>
+            @foreach (var c in classifications)
+            {
+                <option value="@c.TaskClassificationId"
+                        selected="@(selectedClassification == c.TaskClassificationId.ToString())">
+                    @c.Name
                 </option>
             }
         </select>
@@ -80,10 +98,12 @@
             <thead>
                 <tr>
                     <th style="padding-left:1.5rem">Task</th>
+                    <th>Classification</th>
                     <th>Assigned To</th>
                     <th>Priority</th>
                     <th>Due Date</th>
                     <th>Status</th>
+                    <th>Latest Status Remark</th>
                     <th>Created </th>
                     <th style="padding-right:1.5rem">Actions</th>
                 </tr>
@@ -91,17 +111,13 @@
             <tbody>
                 @foreach (var task in Model)
                 {
-                    var statusClass = task.Status ==
-                        ESTAFF.Models.Data.TaskStatus.InProgress
-                        ? "inprogress"
-                        : task.Status.ToString().ToLower();
+                    var statusClass = task.StatusClass;
 
                     var priorityClass = task.Priority.HasValue
                         ? task.Priority.ToString().ToLower()
                         : "";
 
-                    var isOverdue = task.DueDate.Date < DateTime.Today
-                        && task.Status != ESTAFF.Models.Data.TaskStatus.Complete;
+                    var isOverdue = task.IsOverdue;
 
                     <tr>
                         <td style="padding-left:1.5rem; max-width:220px">
@@ -116,6 +132,16 @@
                                             margin-top:0.15rem; white-space:nowrap;
                                             overflow:hidden; text-overflow:ellipsis">
                                     @task.Description
+                                </div>
+                            }
+                        </td>
+                        <td style="max-width:230px">
+                            @Html.Partial("_ClassificationBadge", ClassificationBadgeModel.From(task))
+                            @* Live expiry status of the linked CLIP record. *@
+                            @if (task.ClipItem != null)
+                            {
+                                <div style="margin-top:0.3rem">
+                                    @Html.Partial("_ClipItemChip", task.ClipItem)
                                 </div>
                             }
                         </td>
@@ -157,8 +183,20 @@
                         </td>
                         <td>
                             <span class="badge-pill badge-@statusClass">
-                                @task.Status
+                                @TaskDisplay.StatusLabel(task.Status)
                             </span>
+                        </td>
+                        <td style="max-width:260px">
+                            @if (task.LatestStatusRemark != null)
+                            {
+                                @Html.Partial("_StatusRemarkInline",
+                                    task.LatestStatusRemark)
+                            }
+                            else
+                            {
+                                <span style="color:var(--text-muted);
+                                             font-size:0.78rem">—</span>
+                            }
                         </td>
                         <td>
                             <span style="font-size:0.78rem;
@@ -220,13 +258,18 @@
 
 @section PageScripts {
     <script>
-        function filterByEmployee(employeeId) {
+        function applyFilters() {
             var status = '@selectedStatus';
             var url    = '@Url.Action("Tasks", "Admin")';
             var params = [];
 
-            if (status)     params.push('status='     + status);
-            if (employeeId) params.push('employeeId=' + employeeId);
+            var employeeId = document.getElementById('employeeFilter').value;
+            var classification =
+                document.getElementById('classificationFilter').value;
+
+            if (status)         params.push('status=' + encodeURIComponent(status));
+            if (employeeId)     params.push('employeeId=' + encodeURIComponent(employeeId));
+            if (classification) params.push('classification=' + encodeURIComponent(classification));
 
             window.location.href = url +
                 (params.length ? '?' + params.join('&') : '');

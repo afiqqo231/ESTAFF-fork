@@ -7,7 +7,6 @@ using System.Web.Http;
 using System.Web.Mvc;
 using System.Web.Optimization;
 using System.Web.Routing;
-using ESTAFF.Migrations;
 using ESTAFF.Models.Data;
 
 namespace ESTAFF
@@ -16,7 +15,12 @@ namespace ESTAFF
     {
         protected void Application_Start()
         {
-            Database.SetInitializer(new MigrateDatabaseToLatestVersion<ApplicationDbContext, Configuration>());
+            // Schema management is deliberately not done here. This used to run
+            // MigrateDatabaseToLatestVersion, which could reconcile ESTAFF's
+            // partial model against a database shared with EHS_PORTAL and drop
+            // columns another application owns. ApplicationDbContext's static
+            // constructor now disables the initializer for every consumer, not
+            // just the web host — see the comment there.
 
             AreaRegistration.RegisterAllAreas();
             FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);

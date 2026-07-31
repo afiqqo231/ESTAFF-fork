@@ -17,7 +17,8 @@
             {
                 @Html.AntiForgeryToken()
                 @Html.HiddenFor(m => m.TaskId)
-                @Html.ValidationSummary(true, "",
+                @Html.ValidationSummary(true,
+                    "This task could not be saved — see the messages below.",
                     new { @class = "alert alert-danger py-2 small" })
 
                 <div class="row g-3">
@@ -29,6 +30,19 @@
                             new { @class = "form-control" })
                         @Html.ValidationMessageFor(m => m.Title, "",
                             new { @class = "text-danger small" })
+                    </div>
+
+                    <div class="col-12">
+                        @{
+                            var fields = TaskFormFieldsViewModel.From(Model);
+                            fields.ClipReloadUrl = Url.Action("ClipItems", "Admin");
+                            fields.ClipReloadTriggerId = "AssignedToUserId";
+                            fields.ClipHint =
+                                "Certificates of fitness and plant monitoring "
+                                + "records for the assigned employee's plants. "
+                                + "Expired items are listed first.";
+                        }
+                        @Html.Partial("_ClassificationField", fields)
                     </div>
 
                     <div class="col-12">
@@ -92,7 +106,35 @@
                             new { @class = "form-control" })
                     </div>
 
+                    @* Only recorded when the status actually changes on save. *@
+                    <div class="col-12">
+                        @Html.LabelFor(m => m.StatusRemark,
+                            new { @class = "form-label" })
+                        @Html.TextAreaFor(m => m.StatusRemark,
+                            new { @class = "form-control",
+                                  rows = 2,
+                                  maxlength = 500,
+                                  placeholder = "Why is the status changing? (optional)",
+                                  style = "resize:none;" })
+                        <span class="clip-field-hint">
+                            Saved with the status change and shown as the task's
+                            latest remark. Ignored if the status is unchanged.
+                        </span>
+                    </div>
+
                 </div>
+
+                @* The status change already on record, so the admin can see
+                   what the last person said before overwriting it. *@
+                if (ViewBag.LatestStatusRemark != null)
+                {
+                    <div class="mt-3">
+                        <span class="form-label">Latest status remark</span>
+                        @Html.Partial("_StatusRemark",
+                            (ESTAFF.Models.ViewModels.StatusRemarkViewModel)
+                                ViewBag.LatestStatusRemark)
+                    </div>
+                }
 
                 <hr style="border-color:var(--border-subtle); margin:1.5rem 0;" />
 

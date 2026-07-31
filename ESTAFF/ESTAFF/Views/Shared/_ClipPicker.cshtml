@@ -1,0 +1,87 @@
+﻿@using System.Web.Script.Serialization
+@using ESTAFF.Models.ViewModels
+@model ClipPickerViewModel
+
+@*
+    CLIP item dropdown.
+
+    Renders a real <select> first — that is what actually posts, and it works
+    on its own if the script never runs. estaff-clip.js then hides it and
+    builds the richer list on top (grouped by urgency, searchable, keyboard
+    navigable) from the JSON payload below.
+*@
+@{
+    var pickerId = "clip-picker-" + Model.FieldName.ToLower();
+    var listId = pickerId + "-list";
+
+    var payload = new JavaScriptSerializer().Serialize(
+        Model.Items.Select(i => new
+        {
+            key           = i.Key,
+            kind          = i.KindShortLabel,
+            kindLabel     = i.KindLabel,
+            icon          = i.KindIcon,
+            title         = i.Title,
+            subtitle      = i.Subtitle,
+            plant         = i.PlantName,
+            status        = i.ExpiryStatus,
+            processStatus = i.ProcessStatus,
+            urgency       = i.UrgencyClass,
+            expiryDate    = i.ExpiryDateText,
+            expiryText    = i.ExpiryText
+        }).ToList());
+}
+
+<div class="clip-picker"
+     id="@pickerId"
+     data-reload-url="@Model.ReloadUrl"
+     data-reload-trigger="@Model.ReloadTriggerId">
+
+    <select name="@Model.FieldName"
+            id="@Model.FieldName"
+            class="form-control clip-picker-native">
+        <option value="">— Select a CLIP item —</option>
+        @foreach (var item in Model.Items)
+        {
+            <option value="@item.Key"
+                    selected="@(item.Key == Model.SelectedKey)">
+                @item.OptionLabel
+            </option>
+        }
+    </select>
+
+    <button type="button"
+            class="clip-picker-trigger"
+            aria-haspopup="listbox"
+            aria-expanded="false"
+            aria-controls="@listId">
+        <span class="clip-picker-trigger-main">
+            <span class="clip-picker-trigger-title is-placeholder">
+                Select a CLIP item…
+            </span>
+            <span class="clip-picker-trigger-sub"></span>
+        </span>
+        <i class="clip-picker-trigger-icon fas fa-chevron-down clip-picker-caret"></i>
+    </button>
+
+    <div class="clip-picker-panel">
+        <div class="clip-picker-search-wrap">
+            <i class="fas fa-search"></i>
+            <input type="text"
+                   class="clip-picker-search"
+                   placeholder="Search by registration, machine, area or plant…"
+                   autocomplete="off" />
+        </div>
+
+        <ul class="clip-picker-list"
+            id="@listId"
+            role="listbox"
+            aria-label="CLIP items, most urgent first"></ul>
+
+        <button type="button" class="clip-picker-clear">
+            <i class="fas fa-times me-1"></i> Clear selection
+        </button>
+    </div>
+
+    <script type="application/json" class="clip-picker-data">@Html.Raw(payload)</script>
+</div>

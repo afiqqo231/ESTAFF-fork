@@ -9,6 +9,22 @@ namespace ESTAFF.Models.Data
 {
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
+        static ApplicationDbContext()
+        {
+            // No automatic schema management, for anything that opens this
+            // context - the web app, a console tool, a scheduled job.
+            //
+            // This database also hosts EHS_PORTAL's CLIP, CORD and FETS schemas.
+            // ESTAFF's CLIP entities below map only the columns it reads (COF has
+            // no Remarks/DocumentPath/HostInfo/ResidentInfo, PlantMonitoring has
+            // no QuoteSubmitDate/EprSubmitDate/RenewDate), so letting EF reconcile
+            // the model against the database would drop live columns EHS_PORTAL
+            // depends on. Schema changes are applied deliberately: the scripts in
+            // DATABASE/, or Update-Database from the Package Manager Console
+            // (which drives the migrator directly and is unaffected by this).
+            Database.SetInitializer<ApplicationDbContext>(null);
+        }
+
         public ApplicationDbContext() : base("DefaultConnection", throwIfV1Schema: false)
         {
         }
@@ -27,7 +43,7 @@ namespace ESTAFF.Models.Data
         public virtual DbSet<Monitoring> Monitoring {get; set; }
         public virtual DbSet<TaskList> TaskLists { get; set; }
         public virtual DbSet<TaskClassification> TaskClassifications { get; set; }
-    
+
 
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
@@ -76,7 +92,7 @@ namespace ESTAFF.Models.Data
                 .WithMany()
                 .HasForeignKey(s => s.ManagerId)
                 .WillCascadeOnDelete(false);
-            
+
             modelBuilder.Entity<TaskItem>()
                 .HasRequired(t => t.AssignedToUser)
                 .WithMany()
@@ -93,6 +109,14 @@ namespace ESTAFF.Models.Data
                 .HasRequired(t => t.TaskClassification)
                 .WithMany(tl => tl.TaskItems)
                 .HasForeignKey(t => t.TaskClassificationId)
+                .WillCascadeOnDelete(false);
+
+            // Bound to the existing TaskList_TaskListId column, so exposing
+            // TaskItem.TaskListId does not introduce a second relationship.
+            modelBuilder.Entity<TaskItem>()
+                .HasOptional(t => t.TaskList)
+                .WithMany(tl => tl.TaskItems)
+                .HasForeignKey(t => t.TaskListId)
                 .WillCascadeOnDelete(false);
 
             modelBuilder.Entity<TaskHistory>()
@@ -112,19 +136,24 @@ namespace ESTAFF.Models.Data
                 .WithMany()
                 .HasForeignKey(r => r.UserId)
                 .WillCascadeOnDelete(false);
-            
+
             modelBuilder.Entity<TaskList>()
                 .HasRequired(t => t.TaskClassification)
                 .WithMany(tc => tc.TaskLists)
                 .HasForeignKey(t => t.TaskClassificationId)
                 .WillCascadeOnDelete(false);
 
-            // Read-only CLIP tables (owned by EHS_PORTAL - do not CreateTable/AddColumn for these in migrations)
+            // Read-only CLIP tables (owned by EHS_PORTAL - do not CreateTable/AddColumn for these in migrations).
+            // Names mirror EHS_PORTAL exactly (Areas/CLIP/Models/IdentityModels.cs,
+            // OnModelCreating). Note the SINGULAR "PlantMonitoring"/"Monitoring":
+            // the plural spellings are a different, empty pair of tables that
+            // ESTAFF's own automatic migrations created by mistake, and reading
+            // them returns nothing.
             modelBuilder.Entity<COF>().ToTable("CertificateOfFitness", "CLIP");
             modelBuilder.Entity<Plant>().ToTable("Plants", "CLIP");
             modelBuilder.Entity<UserPlant>().ToTable("UserPlants", "CLIP");
-            modelBuilder.Entity<PlantMonitoring>().ToTable("PlantMonitorings", "CLIP");
-            modelBuilder.Entity<Monitoring>().ToTable("Monitorings", "CLIP");
+            modelBuilder.Entity<PlantMonitoring>().ToTable("PlantMonitoring", "CLIP");
+            modelBuilder.Entity<Monitoring>().ToTable("Monitoring", "CLIP");
 
             modelBuilder.Entity<COF>()
                 .HasRequired(c => c.Plant)
@@ -143,13 +172,13 @@ namespace ESTAFF.Models.Data
                 .WithMany(p => p.UserPlants)
                 .HasForeignKey(up => up.PlantId)
                 .WillCascadeOnDelete(false);
-            
+
             modelBuilder.Entity<PlantMonitoring>()
                 .HasRequired(up => up.Plant)
                 .WithMany()
                 .HasForeignKey(up => up.PlantID)
                 .WillCascadeOnDelete(false);
-            
+
             modelBuilder.Entity<PlantMonitoring>()
                 .HasRequired(up => up.Monitoring)
                 .WithMany(m => m.PlantMonitorings)
@@ -169,19 +198,23 @@ namespace ESTAFF.Models.Data
             return base.SaveChangesAsync(cancellationToken);
         }
 
-        // COF/Plant/UserPlant mirror tables that EHS_PORTAL's CLIP module owns and writes to.
+        // Mirror tables that EHS_PORTAL's CLIP module owns and writes to.
         // Blocking writes here at the SaveChanges level guards against silently corrupting
         // EHS_PORTAL's data if a future ESTAFF change accidentally Add/Update/Removes one.
         private void PreventClipReadOnlyWrites()
         {
             var hasClipWrites = ChangeTracker.Entries()
                 .Any(e => e.State != EntityState.Unchanged &&
-                          (e.Entity is COF || e.Entity is Plant || e.Entity is UserPlant));
+                          (e.Entity is COF
+                        || e.Entity is Plant
+                        || e.Entity is UserPlant
+                        || e.Entity is PlantMonitoring
+                        || e.Entity is Monitoring));
 
             if (hasClipWrites)
             {
                 throw new InvalidOperationException(
-                    "COF, Plant, and UserPlant are read-only projections of EHS_PORTAL's CLIP schema and cannot be written from ESTAFF.");
+                    "COF, Plant, UserPlant, PlantMonitoring, and Monitoring are read-only projections of EHS_PORTAL's CLIP schema and cannot be written from ESTAFF.");
             }
         }
 
