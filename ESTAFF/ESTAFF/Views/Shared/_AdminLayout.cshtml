@@ -90,6 +90,10 @@
            class="nav-link @(action == "TaskHistory" ? "active" : "")">
             <i class="fas fa-history"></i> Task History
         </a>
+        <a href="@Url.Action("Index", "Classifications")"
+           class="nav-link @(ctrl == "Classifications" ? "active" : "")">
+            <i class="fas fa-tags"></i> Classifications
+        </a>
 
         <p class="nav-section-label">Reports</p>
         <a href="@Url.Action("PendingReports", "Admin")"

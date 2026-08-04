@@ -257,6 +257,7 @@
     <Compile Include="Models\ViewModels\AccountViewModels.cs" />
     <Compile Include="Models\ViewModels\ClipViewModels.cs" />
     <Compile Include="Models\ViewModels\ReportViewModels.cs" />
+    <Compile Include="Models\ViewModels\ClassificationViewModels.cs" />
     <Compile Include="Models\ViewModels\StaffViewModels.cs" />
     <Compile Include="Models\ViewModels\TaskViewModels.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

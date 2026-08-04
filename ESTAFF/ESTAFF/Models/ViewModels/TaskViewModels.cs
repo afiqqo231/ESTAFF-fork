@@ -430,9 +430,15 @@ namespace ESTAFF.Models.ViewModels
             switch (ClassificationSlug(name))
             {
                 case "clip":            return "fa-shield-halved";
-                case "chemical-legal":  return "fa-flask";
-                case "dosh-bomba-doe":  return "fa-helmet-safety";
-                case "environmental":   return "fa-leaf";
+                case "compliance-activity-with-safety-and-health-related-regulation":  return "fa-clipboard-check";
+                case "methods-of-establishing-and-maintaining-a-safe-and-healthy-workplace": return "fa-people-arrows";
+                case "safety-and-health-statistics":  return "fa-helmet-safety";
+                case "machinery-plant-equipment-process-that-can-lead-to-injuries": return "fa-gears";
+                case "machinery-plant-equipment-ppe-required-for-minimizing-risk":   return "fa-vest";
+                case "layout-changes-in-the-premises":   return "fa-compass-drafting";
+                case "safety-and-health-training-promotions-activities-and-inspection":   return "fa-people-group";
+                case "matters-arising":   return "fa-circle-exclamation";
+                case "feedback-and-communication":   return "fa-people-arrows";
                 default:                return "fa-tag";
             }
         }

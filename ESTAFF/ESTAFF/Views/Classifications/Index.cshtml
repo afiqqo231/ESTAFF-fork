@@ -1,0 +1,132 @@
+@model List<ESTAFF.Models.ViewModels.ClassificationListItemViewModel>
+@{
+    ViewBag.Title = "Task Classifications";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="task-table-card">
+    <div class="task-table-header">
+        <h6>
+            <i class="fas fa-tags"></i>
+            Classifications
+        </h6>
+        <div class="d-flex align-items-center gap-3">
+            <span class="task-count-badge">
+                @Model.Count classification@(Model.Count == 1 ? "" : "s")
+            </span>
+            <a href="@Url.Action("Create", "Classifications")"
+               class="btn-primary-custom">
+                <i class="fas fa-plus"></i> New Classification
+            </a>
+        </div>
+    </div>
+
+    @* What these rows drive, so nobody has to guess why the screen exists. *@
+    <p class="taxonomy-note">
+        <i class="fas fa-circle-info"></i>
+        These are the options in the <strong>Classification</strong> and
+        <strong>Task</strong> dropdowns on the assign task form. Changes apply
+        on the next page load.
+    </p>
+
+    @if (Model.Count > 0)
+    {
+        <div class="table-scroll">
+        <table class="data-table" style="width:100%">
+            <thead>
+                <tr>
+                    <th style="padding-left:1.5rem">Classification</th>
+                    <th>Task Types</th>
+                    <th>Tasks Using It</th>
+                    <th style="padding-right:1.5rem">Manage</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td style="padding-left:1.5rem">
+                            <span class="badge-pill badge-classification badge-classification-@item.Slug">
+                                <i class="fas @item.Icon"
+                                   style="font-size:0.6rem;"></i>
+                                @item.Name
+                            </span>
+                            @if (item.IsClip)
+                            {
+                                <div class="taxonomy-flag">
+                                    <i class="fas fa-lock"></i>
+                                    Linked to the CLIP module by name
+                                </div>
+                            }
+                        </td>
+                        <td>
+                            <span class="taxonomy-count">@item.TaskTypeCount</span>
+                            @if (item.TaskTypeCount == 0)
+                            {
+                                <div class="taxonomy-warn">
+                                    Not usable until a task type is added
+                                </div>
+                            }
+                        </td>
+                        <td>
+                            <span class="taxonomy-count">@item.TaskCount</span>
+                        </td>
+                        <td style="padding-right:1.5rem">
+                            <div class="task-actions">
+                                <a href="@Url.Action("Edit", "Classifications",
+                                       new { id = item.TaskClassificationId })"
+                                   class="btn-task-action edit"
+                                   title="Edit classification">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+
+                                @* A row that something points at is not
+                                   deletable; the reason replaces the button
+                                   rather than failing after the click. *@
+                                @if (item.CanDelete)
+                                {
+                                    using (Html.BeginForm("Delete",
+                                        "Classifications",
+                                        new { id = item.TaskClassificationId },
+                                        FormMethod.Post,
+                                        new { style = "display:inline" }))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit"
+                                                class="btn-task-action delete"
+                                                title="Delete classification"
+                                                onclick="return confirm('Delete \'@item.Name\'?')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="btn-task-action is-disabled"
+                                          title="@item.DeleteBlockedReason">
+                                        <i class="fas fa-trash"></i>
+                                    </span>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <i class="fas fa-tags"></i>
+            </div>
+            <h5>No classifications yet</h5>
+            <p>Add one so tasks can be classified when they are assigned.</p>
+            <a href="@Url.Action("Create", "Classifications")"
+               class="btn-primary-custom mt-2">
+                <i class="fas fa-plus"></i> New Classification
+            </a>
+        </div>
+    }
+</div>

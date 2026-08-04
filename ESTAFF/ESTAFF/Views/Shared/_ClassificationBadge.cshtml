@@ -10,7 +10,7 @@
         ? "Classification: " + Model.Name
         : "Classification: " + Model.Name + " · " + Model.TaskListName;
 
-    <span class="badge-pill badge-classification badge-classification-@TaskDisplay.ClassificationSlug(Model.Name)"
+    <span class="badge-pill badge-classification badge-classification-sub"
           title="@title">
         <i class="fas @TaskDisplay.ClassificationIcon(Model.Name)"
            style="font-size:0.6rem;"></i>

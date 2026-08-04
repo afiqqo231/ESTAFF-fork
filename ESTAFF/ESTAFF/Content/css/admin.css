@@ -1454,3 +1454,168 @@
 }
 
 .history-by i { color: var(--primary); font-size: 0.65rem; }
+
+/* ============================================================
+   TASK TAXONOMY (Classifications + Task Types)
+   The maintenance screens for the two lookup tables behind the
+   assign task form.
+============================================================ */
+
+/* Two columns on a wide screen, stacked on a narrow one: the
+   classification is a short form, its task types are a long list. */
+.taxonomy-layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) minmax(0, 1.6fr);
+    gap: 1.25rem;
+    align-items: start;
+}
+
+@media (max-width: 991px) {
+    .taxonomy-layout { grid-template-columns: 1fr; }
+}
+
+.taxonomy-form { max-width: 100%; }
+
+/* The line explaining what the screen drives. */
+.taxonomy-note {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0;
+    padding: 0.7rem 1.5rem;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    background: #F8FAF9;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.taxonomy-note i { color: var(--info); }
+
+.form-hint {
+    margin: 0.35rem 0 0;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+/* Callout used for "what happens next" and for the CLIP warning. */
+.taxonomy-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.85rem 1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+    border-left: 3px solid var(--info);
+    background: #F8FAFC;
+    font-size: 0.78rem;
+    line-height: 1.55;
+    color: var(--text-secondary);
+}
+
+.taxonomy-info i { color: var(--info); margin-top: 0.15rem; }
+
+.taxonomy-info.is-warning {
+    border-left-color: #F59E0B;
+    background: #FFFBEB;
+}
+
+.taxonomy-info.is-warning i { color: #F59E0B; }
+
+.taxonomy-info code {
+    padding: 0.05rem 0.3rem;
+    border-radius: 4px;
+    background: rgba(15, 23, 42, 0.06);
+    font-size: 0.72rem;
+}
+
+.taxonomy-count {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.taxonomy-count-chip {
+    margin-left: 0.4rem;
+    padding: 0.1rem 0.5rem;
+    border-radius: 20px;
+    background: var(--primary-light);
+    color: #065F46;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.taxonomy-flag,
+.taxonomy-warn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.25rem;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+}
+
+.taxonomy-warn { color: #B45309; }
+
+/* One task type: name, description, save, delete - each row its own
+   form, so rows never overwrite one another. */
+.taxonomy-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.taxonomy-row:last-of-type { border-bottom: none; }
+
+.taxonomy-row.is-new {
+    margin-top: 0.4rem;
+    padding-top: 0.9rem;
+    border-top: 1px dashed var(--border);
+    border-bottom: none;
+}
+
+.taxonomy-row-form {
+    display: flex;
+    flex: 1 1 320px;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+}
+
+.taxonomy-row-delete { margin: 0; }
+
+.taxonomy-input {
+    flex: 1 1 120px;
+    min-width: 0;
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+}
+
+.taxonomy-add {
+    padding: 0.4rem 0.9rem;
+    font-size: 0.78rem;
+    box-shadow: none;
+}
+
+/* Counts and CLIP linkage sit under the row on their own line. */
+.taxonomy-row-meta {
+    flex: 1 0 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+}
+
+.taxonomy-row-meta .taxonomy-flag { margin-top: 0; }
+
+/* Delete is shown but inert when something still points at the row.
+   The title attribute carries the reason. */
+.btn-task-action.is-disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: #F8FAF9;
+}

@@ -216,24 +216,6 @@
     border-color: #C7D2FE;
 }
 
-.badge-classification-chemical-legal {
-    background: #F0F9FF;
-    color: #075985;
-    border-color: #BAE6FD;
-}
-
-.badge-classification-dosh-bomba-doe {
-    background: #FDF4FF;
-    color: #86198F;
-    border-color: #F5D0FE;
-}
-
-.badge-classification-environmental {
-    background: #F0FDF4;
-    color: #166534;
-    border-color: #BBF7D0;
-}
-
 /* ── CLIP Item Chip ───────────────────────────────────────────
    Shows the linked COF / Plant Monitoring record on a task, colour-coded
    by how close it is to expiry. */
