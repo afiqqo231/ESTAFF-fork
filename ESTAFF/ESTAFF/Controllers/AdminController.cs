@@ -935,38 +935,44 @@ namespace ESTAFF.Controllers
         }
 
         // Projects tasks into the list view model, resolving each task's linked
-        // CLIP record and its newest status remark in batched queries.
+        // CLIP record and its status action flow in batched queries.
         private List<TaskListItemViewModel> BuildTaskList(List<TaskItem> tasks)
         {
             var clipItems = Clip.GetItemsForTasks(tasks);
-            var remarks = new TaskService(_db)
-                .GetLatestStatusRemarks(tasks.Select(t => t.TaskId));
+            var flows = new TaskService(_db)
+                .GetStatusActionFlows(tasks.Select(t => t.TaskId));
 
-            return tasks.Select(t => new TaskListItemViewModel
+            return tasks.Select(t =>
             {
-                TaskId               = t.TaskId,
-                Title                = t.Title,
-                Description          = t.Description,
-                TaskClassificationId = t.TaskClassificationId,
-                ClassificationName   = t.TaskClassification?.Name,
-                TaskListId           = t.TaskListId,
-                TaskListName         = t.TaskList?.Name,
-                SubTaskId            = t.SubTaskId,
-                Status               = t.Status,
-                Priority             = t.Priority,
-                DueDate              = t.DueDate,
-                CreatedDate          = t.CreatedDate,
-                CompletedDate        = t.CompletedDate,
-                AssignedToUserId     = t.AssignedToUserId,
-                AssignedToName       = t.AssignedToUser?.UserName ?? "-",
-                AssignedToEmpID      = t.AssignedToUser?.EmpID ?? "-",
-                CreatedByName        = t.CreatedByUser?.UserName ?? "-",
-                ClipItem             = clipItems.ContainsKey(t.TaskId)
-                                           ? clipItems[t.TaskId]
-                                           : null,
-                LatestStatusRemark   = remarks.ContainsKey(t.TaskId)
-                                           ? remarks[t.TaskId]
-                                           : null
+                var flow = flows.ContainsKey(t.TaskId)
+                    ? flows[t.TaskId]
+                    : new List<StatusRemarkViewModel>();
+
+                return new TaskListItemViewModel
+                {
+                    TaskId               = t.TaskId,
+                    Title                = t.Title,
+                    Description          = t.Description,
+                    TaskClassificationId = t.TaskClassificationId,
+                    ClassificationName   = t.TaskClassification?.Name,
+                    TaskListId           = t.TaskListId,
+                    TaskListName         = t.TaskList?.Name,
+                    SubTaskId            = t.SubTaskId,
+                    Status               = t.Status,
+                    Priority             = t.Priority,
+                    DueDate              = t.DueDate,
+                    CreatedDate          = t.CreatedDate,
+                    CompletedDate        = t.CompletedDate,
+                    AssignedToUserId     = t.AssignedToUserId,
+                    AssignedToName       = t.AssignedToUser?.UserName ?? "-",
+                    AssignedToEmpID      = t.AssignedToUser?.EmpID ?? "-",
+                    CreatedByName        = t.CreatedByUser?.UserName ?? "-",
+                    ClipItem             = clipItems.ContainsKey(t.TaskId)
+                                               ? clipItems[t.TaskId]
+                                               : null,
+                    StatusActions        = flow,
+                    LatestStatusRemark   = flow.LastOrDefault()
+                };
             }).ToList();
         }
 

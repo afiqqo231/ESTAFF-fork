@@ -94,6 +94,9 @@
 
     @if (Model.Count > 0)
     {
+        @* The action column is wide by design, so the table scrolls sideways
+           on narrow screens rather than being clipped by the card. *@
+        <div class="table-scroll">
         <table class="data-table" style="width: 100%">
             <thead>
                 <tr>
@@ -103,9 +106,12 @@
                     <th>Priority</th>
                     <th>Due Date</th>
                     <th>Status</th>
-                    <th>Latest Status Remark</th>
+                    <th style="min-width:260px">Action</th>
                     <th>Created </th>
-                    <th style="padding-right:1.5rem">Actions</th>
+                    @* "Manage", not "Actions" — the Action column above is the
+                       flow of actions taken, and two similar headings side by
+                       side read as the same thing. *@
+                    <th style="padding-right:1.5rem">Manage</th>
                 </tr>
             </thead>
             <tbody>
@@ -186,17 +192,9 @@
                                 @TaskDisplay.StatusLabel(task.Status)
                             </span>
                         </td>
-                        <td style="max-width:260px">
-                            @if (task.LatestStatusRemark != null)
-                            {
-                                @Html.Partial("_StatusRemarkInline",
-                                    task.LatestStatusRemark)
-                            }
-                            else
-                            {
-                                <span style="color:var(--text-muted);
-                                             font-size:0.78rem">—</span>
-                            }
+                        <td class="action-cell">
+                            @Html.Partial("_StatusActionFlow",
+                                task.StatusActions)
                         </td>
                         <td>
                             <span style="font-size:0.78rem;
@@ -230,6 +228,7 @@
                 }
             </tbody>
         </table>
+        </div>
     }
     else
     {

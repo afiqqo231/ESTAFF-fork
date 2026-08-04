@@ -455,18 +455,12 @@ namespace ESTAFF.Controllers
             task.LastModifiedDate = DateTime.Now;
             _db.SaveChanges();
 
-            var detail = $"Status: {StatusLabel(oldStatus)}" +
-                $" -> {StatusLabel(status)}.";
-
-            if (!string.IsNullOrWhiteSpace(actionTaken))
-                detail += $" Action taken: {actionTaken.Trim()}";
-
-            new TaskService(_db).LogHistory(
-                task.TaskId,
-                "StatusChanged",
-                StatusLabel(oldStatus),
-                detail,
-                userId);
+            // The action-taken text belongs in Remark, not folded into the new
+            // value: Remark is the field GetLatestStatusRemark reads back onto
+            // the task. Old/new values stay raw enum names so the transition
+            // parses back into a TaskStatus.
+            new TaskService(_db).LogStatusChange(
+                task.TaskId, oldStatus, status, userId, actionTaken);
 
             TempData["SuccessMessage"] =
                 $"'{task.Title}' marked as {StatusLabel(status)}.";

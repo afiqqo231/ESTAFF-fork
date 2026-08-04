@@ -133,6 +133,11 @@ namespace ESTAFF.Models.ViewModels
         // CSS modifier suffix for the status badge / dot (badge-pending, ...).
         public string StatusClass => TaskDisplay.StatusClass(Status);
 
+        // Every status transition on the task, oldest first — rendered as the
+        // action flow in the task table.
+        public List<StatusRemarkViewModel> StatusActions { get; set; }
+            = new List<StatusRemarkViewModel>();
+
         public string ClassificationSlug =>
             TaskDisplay.ClassificationSlug(ClassificationName);
 
@@ -273,7 +278,23 @@ namespace ESTAFF.Models.ViewModels
     public class TaskFormOptions
     {
         public List<ClassificationOption> Classifications { get; set; }
+        // Shown wherever a step of the flow carries no note of its own.
+        public const string NoActionText = "No action described";
+
             = new List<ClassificationOption>();
+
+        // What was done at this step. The remark is the action the person
+        // described when they moved the task; without one there is nothing to
+        // show but the transition itself.
+        public string ActionText => HasRemark ? Remark : NoActionText;
+
+        // Badge modifier for the status this step moved the task into.
+        public string StatusClass => ToStatus.HasValue
+            ? TaskDisplay.StatusClass(ToStatus.Value)
+            : "draft";
+
+        public string FullTimestamp =>
+            ChangedDate.ToString("dd MMM yyyy, h:mm tt");
 
         // All task types across every classification. The form filters them
         // client-side as the classification changes.

@@ -360,6 +360,143 @@
     white-space: nowrap;
 }
 
+/* Wide tables scroll inside their card instead of being clipped by it. */
+.table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ── Action Flow ──────────────────────────────────────────────
+   Every status change on a task as a top-to-bottom flow, with the action
+   described at each step. Sized for a table cell: small type that wraps
+   over as many lines as the sentence needs, never truncated. */
+.data-table td.action-cell {
+    vertical-align: top;
+    padding-top: 0.7rem;
+}
+
+.action-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    min-width: 240px;
+    max-width: 340px;
+}
+
+.action-flow-empty {
+    font-size: 0.72rem;
+    font-style: italic;
+    color: var(--text-muted);
+}
+
+.action-step {
+    position: relative;
+    padding-left: 0.95rem;
+}
+
+/* The connector between consecutive steps. Stretched past the flex gap so
+   the line reads as continuous; dropped after the final step. */
+.action-step::before {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 0.9rem;
+    bottom: -0.75rem;
+    width: 1px;
+    background: var(--border-subtle);
+}
+
+.action-flow > .action-step:last-child::before { display: none; }
+
+.action-step-dot {
+    position: absolute;
+    left: 0;
+    top: 0.32rem;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-muted);
+}
+
+.action-step-dot.pending    { background: #F59E0B; }
+.action-step-dot.inprogress { background: #3B82F6; }
+.action-step-dot.complete   { background: var(--primary); }
+.action-step-dot.overdue    { background: var(--danger); }
+
+.action-step-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.action-step-status {
+    font-size: 0.62rem;
+    padding: 0.15rem 0.5rem;
+}
+
+.action-step-time {
+    font-size: 0.63rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.action-step-text {
+    margin: 0.22rem 0 0;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.action-step-text.is-empty {
+    font-style: italic;
+    color: var(--text-muted);
+}
+
+.action-step-by {
+    margin-top: 0.15rem;
+    font-size: 0.63rem;
+    color: var(--text-muted);
+}
+
+.action-step-by i {
+    font-size: 0.55rem;
+    margin-right: 0.15rem;
+}
+
+/* Older steps, folded away until asked for. */
+.action-flow-earlier { margin-bottom: -0.1rem; }
+
+.action-flow-earlier > summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-bottom: 0.4rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--info);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+
+.action-flow-earlier > summary::-webkit-details-marker { display: none; }
+
+.action-flow-earlier > summary:hover { text-decoration: underline; }
+
+.action-flow-earlier > summary i {
+    font-size: 0.55rem;
+    transition: var(--transition);
+}
+
+.action-flow-earlier[open] > summary i { transform: rotate(90deg); }
+
+/* Inside the fold every step keeps its connector - the flow continues into
+   the steps that stayed visible below. */
+.action-flow-earlier .action-step { margin-bottom: 0.55rem; }
+
 /* ── Buttons ──────────────────────────────────────────────── */
 .btn-primary-custom {
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));

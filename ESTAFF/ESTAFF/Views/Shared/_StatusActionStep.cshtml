@@ -1,0 +1,25 @@
+@using ESTAFF.Models.ViewModels
+@model StatusRemarkViewModel
+
+@* One step of a task's action flow: the status it moved into, what was done,
+   and who did it. The text wraps freely so a long sentence stays readable. *@
+@if (Model != null)
+{
+    <div class="action-step">
+        <span class="action-step-dot @Model.StatusClass"></span>
+        <div class="action-step-head">
+            <span class="badge-pill badge-@Model.StatusClass action-step-status">
+                @Model.TransitionText
+            </span>
+            <span class="action-step-time" title="@Model.FullTimestamp">
+                @Model.RelativeTime
+            </span>
+        </div>
+        <p class="action-step-text @(Model.HasRemark ? "" : "is-empty")">
+            @Model.ActionText
+        </p>
+        <div class="action-step-by">
+            <i class="fas fa-user"></i> @Model.ChangedByName
+        </div>
+    </div>
+}

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data.Entity;
 using System.Linq;
+using System.Text.RegularExpressions;
 using ESTAFF.Models.Data;
 using ESTAFF.Models.ViewModels;
 
@@ -138,13 +139,32 @@ namespace ESTAFF.Services
             return MapRemark(entry);
         }
 
-        // Newest status change per task, keyed by TaskId. One query for the whole
-        // page rather than one per task.
-        public Dictionary<int, StatusRemarkViewModel> GetLatestStatusRemarks(
+        // ══════════════════════════════════════════
+        // ACTION FLOW
+        // ══════════════════════════════════════════
+
+        // Every status change on a task, oldest first, so a view can render the
+        // actions taken as a flow rather than only the newest one.
+        public List<StatusRemarkViewModel> GetStatusActionFlow(int taskId)
+        {
+            return _db.TaskHistories
+                .Include(h => h.ChangedByUser)
+                .Where(h => h.TaskId == taskId
+                         && h.Action == StatusChangedAction)
+                .ToList()
+                .OrderBy(h => h.ChangedDate)
+                .ThenBy(h => h.HistoryId)
+                .Select(MapRemark)
+                .ToList();
+        }
+
+        // Same, for a page's worth of tasks in one query.
+        public Dictionary<int, List<StatusRemarkViewModel>> GetStatusActionFlows(
             IEnumerable<int> taskIds)
         {
             var ids = (taskIds ?? Enumerable.Empty<int>()).Distinct().ToList();
-            if (!ids.Any()) return new Dictionary<int, StatusRemarkViewModel>();
+            if (!ids.Any())
+                return new Dictionary<int, List<StatusRemarkViewModel>>();
 
             return _db.TaskHistories
                 .Include(h => h.ChangedByUser)
@@ -154,22 +174,66 @@ namespace ESTAFF.Services
                 .GroupBy(h => h.TaskId)
                 .ToDictionary(
                     g => g.Key,
-                    g => MapRemark(g
-                        .OrderByDescending(h => h.ChangedDate)
-                        .ThenByDescending(h => h.HistoryId)
-                        .First()));
+                    g => g.OrderBy(h => h.ChangedDate)
+                          .ThenBy(h => h.HistoryId)
+                          .Select(MapRemark)
+                          .ToList());
+        }
+
+        // ══════════════════════════════════════════
+        // REPORT DETAIL
+        // ══════════════════════════════════════════
+
+        // Tasks with everything the printed report needs. Both download paths
+        // (employee and admin) go through here so the two copies of the same
+        // report cannot describe a task differently.
+        public List<ReportTaskDetailViewModel> BuildReportTaskDetails(
+            List<TaskItem> tasks,
+            Dictionary<int, ClipItemViewModel> clipItems = null)
+        {
+            if (tasks == null || !tasks.Any())
+                return new List<ReportTaskDetailViewModel>();
+
+            var flows = GetStatusActionFlows(tasks.Select(t => t.TaskId));
+
+            return tasks
+                .Select(t => ReportTaskDetailViewModel.From(
+                    t,
+                    clipItems != null && clipItems.ContainsKey(t.TaskId)
+                        ? clipItems[t.TaskId]
+                        : null,
+                    flows.ContainsKey(t.TaskId) ? flows[t.TaskId] : null))
+                .ToList();
         }
 
         private static StatusRemarkViewModel MapRemark(TaskHistory entry)
         {
             if (entry == null) return null;
 
+            // Rows written before the Remark column existed folded the whole
+            // change into NewValue - "Status: In Progress -> Complete. Action
+            // taken: <text>" - leaving OldValue as a display label and Remark
+            // null. Add_Task_Status_Remark.sql normalises them, but a database
+            // that has not had it applied must still read correctly here, so
+            // the legacy text is parsed as a fallback for each field.
+            var legacyNew = ParseLegacyEntry(entry.NewValue);
+            var legacyRem = ParseLegacyEntry(entry.Remark);
+
             return new StatusRemarkViewModel
             {
                 TaskId        = entry.TaskId,
-                FromStatus    = ParseStatus(entry.OldValue),
-                ToStatus      = ParseStatus(entry.NewValue),
-                Remark        = entry.Remark,
+                FromStatus    = ParseStatus(entry.OldValue)
+                                    ?? legacyNew.FromStatus
+                                    ?? legacyRem.FromStatus,
+                ToStatus      = ParseStatus(entry.NewValue)
+                                    ?? legacyNew.ToStatus
+                                    ?? legacyRem.ToStatus,
+                // A remark that still carries the old preamble is reduced to
+                // the action itself - the transition is shown separately, so
+                // repeating it in the text reads as a rendering fault.
+                Remark        = legacyRem.Action
+                                    ?? Clean(entry.Remark)
+                                    ?? legacyNew.Action,
                 ChangedByName = entry.ChangedByUser != null
                                     ? entry.ChangedByUser.UserName
                                     : "-",
@@ -177,10 +241,72 @@ namespace ESTAFF.Services
             };
         }
 
+        // "Status: In Progress -> Complete. Action taken: <text>", in any of the
+        // arrow spellings that reached the table. Either half may be missing.
+        private static readonly Regex LegacyEntryPattern = new Regex(
+            @"^\s*Status:\s*(?<from>[^.\->→]+?)\s*(?:-+>|→)\s*" +
+            @"(?<to>[^.]+?)\s*\.?\s*(?:Action\s*taken:\s*(?<action>.*))?$",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+        // "Action taken: <text>" on its own, without the status preamble.
+        private static readonly Regex LegacyActionPattern = new Regex(
+            @"^\s*Action\s*taken:\s*(?<action>.*)$",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+        private static LegacyEntry ParseLegacyEntry(string value)
+        {
+            var result = new LegacyEntry();
+            if (string.IsNullOrWhiteSpace(value)) return result;
+
+            var match = LegacyEntryPattern.Match(value);
+
+            if (match.Success)
+            {
+                result.FromStatus = ParseStatus(match.Groups["from"].Value);
+                result.ToStatus   = ParseStatus(match.Groups["to"].Value);
+                result.Action     = Clean(match.Groups["action"].Value);
+
+                // "Status: ..." that parsed into neither status is not the
+                // legacy shape at all - leave the text to the caller.
+                if (result.FromStatus == null && result.ToStatus == null)
+                    return new LegacyEntry();
+
+                return result;
+            }
+
+            match = LegacyActionPattern.Match(value);
+            if (match.Success)
+                result.Action = Clean(match.Groups["action"].Value);
+
+            return result;
+        }
+
+        private class LegacyEntry
+        {
+            public TaskStatus? FromStatus { get; set; }
+            public TaskStatus? ToStatus { get; set; }
+            public string Action { get; set; }
+        }
+
+        private static string Clean(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return null;
+            return value.Trim();
+        }
+
+        // Accepts the enum name and the display label alike: rows written
+        // before the values were normalised stored "In Progress".
         private static TaskStatus? ParseStatus(string value)
         {
+            if (string.IsNullOrWhiteSpace(value)) return null;
+
+            var cleaned = value.Trim().Replace(" ", "");
+
             TaskStatus parsed;
-            return Enum.TryParse(value, out parsed) ? parsed : (TaskStatus?)null;
+            return Enum.TryParse(cleaned, true, out parsed)
+                && Enum.IsDefined(typeof(TaskStatus), parsed)
+                    ? parsed
+                    : (TaskStatus?)null;
         }
 
         private static string TrimRemark(string remark)

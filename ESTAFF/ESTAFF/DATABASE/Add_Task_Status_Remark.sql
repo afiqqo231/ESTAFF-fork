@@ -49,6 +49,60 @@ ELSE
     PRINT 'IX_TaskHistories_TaskId_Action_ChangedDate already exists';
 GO
 
+/* ── Backfill rows written before the remark was wired up ─────
+   EmployeeController.UpdateStatus used to fold the employee's "action
+   taken" text into NewValue instead of passing it as the remark, so those
+   rows read:
+
+       OldValue  'In Progress'
+       NewValue  'Status: In Progress -> Complete. Action taken: <text>'
+       Remark    NULL
+
+   which left HasRemark false on the task and made the transition
+   unparseable (ParseStatus expects the raw enum name). This recovers the
+   remark and normalises the two value columns to match what
+   TaskService.LogStatusChange writes now.
+
+   Idempotent: each statement only matches rows still in the old shape. */
+UPDATE [ESTAFF].[TaskHistories]
+SET [Remark] = NULLIF(LTRIM(RTRIM(
+        SUBSTRING([NewValue],
+                  CHARINDEX('Action taken:', [NewValue]) + 13,
+                  500))), '')
+WHERE [Action] = 'StatusChanged'
+  AND [Remark] IS NULL
+  AND [NewValue] LIKE '%Action taken:%';
+GO
+
+PRINT 'Backfilled ESTAFF.TaskHistories.Remark from legacy NewValue text';
+GO
+
+/* NewValue -> raw enum name. Runs after the remark extraction above, which
+   depends on the old text still being present. */
+UPDATE [ESTAFF].[TaskHistories]
+SET [NewValue] =
+        CASE
+            WHEN [NewValue] LIKE '%-> In Progress%' THEN 'InProgress'
+            WHEN [NewValue] LIKE '%-> Complete%'    THEN 'Complete'
+            WHEN [NewValue] LIKE '%-> Pending%'     THEN 'Pending'
+            WHEN [NewValue] LIKE '%-> Overdue%'     THEN 'Overdue'
+            ELSE [NewValue]
+        END
+WHERE [Action] = 'StatusChanged'
+  AND [NewValue] LIKE 'Status:%->%';
+GO
+
+/* OldValue used the display label; only "In Progress" differs from the
+   enum name. */
+UPDATE [ESTAFF].[TaskHistories]
+SET [OldValue] = 'InProgress'
+WHERE [Action] = 'StatusChanged'
+  AND [OldValue] = 'In Progress';
+GO
+
+PRINT 'Normalised ESTAFF.TaskHistories status transition values';
+GO
+
 /* ── Optional cleanup ─────────────────────────────────────────
    CLIP.Monitorings and CLIP.PlantMonitorings (plural) were created in the
    CLIP schema by ESTAFF's automatic migrations, which used the wrong table

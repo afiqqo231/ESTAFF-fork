@@ -1137,8 +1137,8 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    flex: 1;
-    min-width: 180px;
+    flex: 0 1 auto;
+    min-width: 0;
 }
 
 .filter-label {
@@ -1151,7 +1151,13 @@
 }
 
 .filter-select {
-    flex: 1;
+    /* Size to content, but never collapse small enough for the native
+       dropdown arrow to sit on top of the selected option text. */
+    flex: 0 1 auto;
+    width: auto;
+    min-width: 9rem;
+    max-width: 14rem;
+    text-overflow: ellipsis;
     background: #F8FAF9;
     border: 1.5px solid #E2E8F0;
     border-radius: var(--radius-sm);
@@ -1175,6 +1181,8 @@
     display: flex;
     gap: 0.4rem;
     flex-wrap: wrap;
+    flex: 0 1 auto;
+    min-width: 0;
 }
 
 .status-pill-btn {
