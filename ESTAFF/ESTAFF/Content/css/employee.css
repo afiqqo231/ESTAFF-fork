@@ -85,7 +85,7 @@
     border-radius: var(--radius-md);
     border: 1px solid var(--border-subtle);
     box-shadow: var(--shadow-sm);
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.75rem;
     flex-wrap: wrap;
 }
 
@@ -133,11 +133,14 @@
     border-color: transparent;
 }
 
-/* Task Cards Grid */
+/* Task Cards Grid — a list of tasks, marked up as one. */
 .my-tasks-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
     gap: 1.25rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
 }
 
 /* Individual Task Card */
@@ -151,6 +154,14 @@
     display: flex;
     flex-direction: column;
 }
+
+/* Urgency read along the leading edge, so a grid of cards can be scanned
+   without reading a single date. Never the only signal — the due line spells
+   the same thing out in words. */
+.my-task-card.due-overdue { border-left: 3px solid var(--danger); }
+.my-task-card.due-soon    { border-left: 3px solid #F59E0B; }
+.my-task-card.due-later   { border-left: 3px solid var(--border-subtle); }
+.my-task-card.due-done    { border-left: 3px solid var(--primary); }
 
 .my-task-card:hover {
     transform: translateY(-2px);
@@ -290,6 +301,230 @@
     border-color: var(--danger);
     color: var(--danger);
     background: #FEF2F2;
+}
+
+/* ── My Tasks toolbar ─────────────────────────────────────────
+   Search and sort, kept in a separate row from the status pills: filtering
+   is navigation, this is refinement, and the primary action is neither. */
+.task-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.task-toolbar-form {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.task-search {
+    position: relative;
+    flex: 1;
+    min-width: 220px;
+}
+
+.task-search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.task-search-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1.5px solid #E2E8F0;
+    border-radius: var(--radius-md);
+    padding: 0.5rem 2.25rem;
+    font-size: 0.8rem;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    color: var(--text-primary);
+    outline: none;
+    transition: var(--transition);
+}
+
+.task-search-input::placeholder { color: var(--text-muted); }
+
+.task-search-input:focus {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-glow);
+}
+
+/* Hide the browser's own clear affordance — the styled one sits in the
+   same place and two of them read as a rendering fault. */
+.task-search-input::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.task-search-clear {
+    position: absolute;
+    right: 0.6rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.task-search-clear:hover {
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+.task-sort {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-shrink: 0;
+}
+
+.task-sort-label {
+    margin: 0;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.task-sort-select {
+    background: var(--surface);
+    border: 1.5px solid #E2E8F0;
+    border-radius: var(--radius-md);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.78rem;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    outline: none;
+    transition: var(--transition);
+}
+
+.task-sort-select:focus {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-glow);
+}
+
+.task-toolbar-new { margin-left: auto; flex-shrink: 0; }
+
+/* Count of what is on screen against the whole workload. */
+.task-result-line {
+    margin: 0 0 1rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* ── My Tasks card internals ──────────────────────────────── */
+.my-task-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.my-task-title a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.my-task-title a:hover {
+    color: var(--primary);
+    text-decoration: underline;
+}
+
+.my-task-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 0.6rem;
+}
+
+.my-task-due {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.my-task-due i { font-size: 0.65rem; color: var(--primary); }
+
+.my-task-due-date {
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.my-task-due.due-overdue,
+.my-task-due.due-overdue i { color: var(--danger); }
+
+.my-task-due.due-soon,
+.my-task-due.due-soon i { color: #B45309; }
+
+.my-task-due.due-done,
+.my-task-due.due-done i { color: var(--primary); }
+
+/* Action history, folded away: present on every card for recognition, but
+   never taking space from the task itself until it is asked for. */
+.my-task-flow {
+    padding: 0 1.25rem 0.75rem;
+}
+
+.my-task-flow > summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--info);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+
+.my-task-flow > summary::-webkit-details-marker { display: none; }
+
+.my-task-flow > summary:hover { text-decoration: underline; }
+
+.my-task-flow > summary i { font-size: 0.6rem; }
+
+.my-task-flow-time {
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.my-task-flow-body { margin-top: 0.6rem; }
+
+/* The flow is sized for a wide table cell; in a card it takes the width
+   it is given. */
+.my-task-flow-body .action-flow {
+    min-width: 0;
+    max-width: none;
+}
+
+@media (max-width: 640px) {
+    .task-toolbar-form { flex-direction: column; align-items: stretch; }
+    .task-search { min-width: 0; }
+    .task-sort { justify-content: space-between; }
+    .task-toolbar-new { margin-left: 0; width: 100%; justify-content: center; }
+    .task-toolbar-apply { width: 100%; justify-content: center; }
 }
 
 /* ══════════════════════════════════════════

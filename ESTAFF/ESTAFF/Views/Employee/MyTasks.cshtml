@@ -1,130 +1,250 @@
-@model List<ESTAFF.Models.ViewModels.TaskListItemViewModel>
+@using ESTAFF.Models.ViewModels
+@model List<TaskListItemViewModel>
 @{
     ViewBag.Title = "My Tasks";
     Layout = "~/Views/Shared/_EmployeeLayout.cshtml";
-    var sel = ViewBag.SelectedStatus as string ?? "";
+
+    var sel        = ViewBag.SelectedStatus as string ?? "";
+    var term       = ViewBag.SearchTerm as string ?? "";
+    var sort       = ViewBag.SelectedSort as string ?? "due";
+    var totalCount = (int)(ViewBag.TotalCount ?? 0);
+    var isFiltered = !string.IsNullOrEmpty(sel) || term.Length > 0;
+
+    var tabs = new[]
+    {
+        new { Key = "",           Label = "All",         Count = (int)ViewBag.AllCount },
+        new { Key = "Pending",    Label = "Pending",     Count = (int)ViewBag.PendingCount },
+        new { Key = "InProgress", Label = "In Progress", Count = (int)ViewBag.InProgCount },
+        new { Key = "Complete",   Label = "Completed",   Count = (int)ViewBag.CompleteCount },
+        new { Key = "Overdue",    Label = "Overdue",     Count = (int)ViewBag.OverdueCount }
+    };
 }
 
-<!-- TAB PILLS -->
-<div class="task-tabs">
-    <a href="@Url.Action("MyTasks","Employee")"
-       class="task-tab @(string.IsNullOrEmpty(sel) ? "active" : "")">
-        All
-        <span class="task-tab-count">@ViewBag.AllCount</span>
-    </a>
-    <a href="@Url.Action("MyTasks","Employee", new { status="Pending" })"
-       class="task-tab @(sel=="Pending" ? "active" : "")">
-        Pending
-        <span class="task-tab-count">@ViewBag.PendingCount</span>
-    </a>
-    <a href="@Url.Action("MyTasks","Employee", new { status="InProgress" })"
-       class="task-tab @(sel=="InProgress" ? "active" : "")">
-        In Progress
-        <span class="task-tab-count">@ViewBag.InProgCount</span>
-    </a>
-    <a href="@Url.Action("MyTasks","Employee", new { status="Complete" })"
-       class="task-tab @(sel=="Complete" ? "active" : "")">
-        Completed
-        <span class="task-tab-count">@ViewBag.CompleteCount</span>
-    </a>
-    <a href="@Url.Action("MyTasks","Employee", new { status="Overdue" })"
-       class="task-tab @(sel=="Overdue" ? "active" : "")">
-        Overdue
-        <span class="task-tab-count">@ViewBag.OverdueCount</span>
-    </a>
+@* Filtering is navigation, so it is a nav landmark and the selected pill
+   carries aria-current. The primary action is deliberately NOT in this group:
+   mixing "which tasks am I looking at" with "make a new one" reads as one
+   control set and puts a destructive-feeling jump next to a filter. *@
+<nav class="task-tabs" aria-label="Filter tasks by status">
+    @foreach (var tab in tabs)
+    {
+        var active = sel == tab.Key;
 
-    <!-- Create Button -->
-    <a href="@Url.Action("CreateTask","Employee")"
-       class="btn-primary-custom ms-auto"
-       style="font-size:0.8rem; padding:0.45rem 1rem;">
-        <i class="fas fa-plus"></i> New Task
+        <a href="@Url.Action("MyTasks", "Employee",
+                 new { status = tab.Key, q = term, sort = sort })"
+           class="task-tab @(active ? "active" : "")"
+           aria-current="@(active ? "page" : null)">
+            @tab.Label
+            <span class="task-tab-count">@tab.Count</span>
+        </a>
+    }
+</nav>
+
+<div class="task-toolbar">
+    @using (Html.BeginForm("MyTasks", "Employee", FormMethod.Get,
+        new { @class = "task-toolbar-form", role = "search" }))
+    {
+        @* The tab keeps its meaning across a search, so it travels with it. *@
+        <input type="hidden" name="status" value="@sel" />
+
+        <div class="task-search">
+            <label for="taskSearch" class="visually-hidden">
+                Search your tasks
+            </label>
+            <i class="fas fa-magnifying-glass task-search-icon"
+               aria-hidden="true"></i>
+            <input type="search" id="taskSearch" name="q" value="@term"
+                   class="task-search-input"
+                   placeholder="Search title, description or classification"
+                   autocomplete="off" />
+            @if (term.Length > 0)
+            {
+                <a class="task-search-clear"
+                   href="@Url.Action("MyTasks", "Employee",
+                         new { status = sel, sort = sort })"
+                   aria-label="Clear search">
+                    <i class="fas fa-xmark" aria-hidden="true"></i>
+                </a>
+            }
+        </div>
+
+        <div class="task-sort">
+            <label for="taskSort" class="task-sort-label">Sort by</label>
+            <select id="taskSort" name="sort" class="task-sort-select"
+                    onchange="this.form.submit()">
+                <option value="due" @(sort == "due" ? "selected" : "")>
+                    Due date
+                </option>
+                <option value="priority" @(sort == "priority" ? "selected" : "")>
+                    Priority
+                </option>
+                <option value="created" @(sort == "created" ? "selected" : "")>
+                    Recently added
+                </option>
+                <option value="title" @(sort == "title" ? "selected" : "")>
+                    Title (A–Z)
+                </option>
+            </select>
+        </div>
+
+        @* Submits the search for anyone not pressing Enter, and is the only
+           control here that does nothing on its own when JS is off. *@
+        <button type="submit" class="btn-outline-custom task-toolbar-apply">
+            <i class="fas fa-magnifying-glass me-1" aria-hidden="true"></i>
+            Search
+        </button>
+    }
+
+    <a href="@Url.Action("CreateTask", "Employee")"
+       class="btn-primary-custom task-toolbar-new">
+        <i class="fas fa-plus me-1" aria-hidden="true"></i> New Task
     </a>
 </div>
 
+@* Announced when a search or filter changes what is on screen — otherwise a
+   screen reader user gets no signal that the list underneath moved. *@
+<p class="task-result-line" role="status">
+    @if (isFiltered)
+    {
+        <text>Showing @Model.Count of @totalCount tasks</text>
+        if (term.Length > 0)
+        {
+            <text> matching &ldquo;@term&rdquo;</text>
+        }
+    }
+    else
+    {
+        <text>@Model.Count @(Model.Count == 1 ? "task" : "tasks")</text>
+    }
+</p>
+
 @if (Model.Count > 0)
 {
-    <div class="my-tasks-grid">
-        @foreach (var task in Model)
+    <ul class="my-tasks-grid">
+        @for (var i = 0; i < Model.Count; i++)
         {
-            var sc = task.Status ==
-                ESTAFF.Models.Data.TaskStatus.InProgress
-                ? "inprogress"
-                : task.Status.ToString().ToLower();
+            var task = Model[i];
 
-            var pc = task.Priority.HasValue
-                ? task.Priority.ToString().ToLower()
-                : "";
+            @* Ownership decides deletion, judged on the id rather than on a
+               display name that two people can share. *@
+            var isSelfCreated = !string.IsNullOrEmpty(task.CreatedByUserId)
+                && task.CreatedByUserId == (ViewBag.CurrentUserId as string);
 
-            // Only COF / FETS have their own badge colour
-            var cn = (task.TaskClassificationName ?? "").ToUpperInvariant();
-            var classificationColor =
-                cn.Contains("COF") || cn.Contains("CERTIFICATE OF FITNESS")
-                    ? "COF"
-                    : cn.Contains("FETS") ? "FETS" : "other";
+            @* Stagger only the first rows: past that the delay outlasts the
+               reader's attention and just feels slow. *@
+            var delay = i < 6 ? " anim-delay-" + (i + 1) : "";
 
-            var isOD = task.DueDate.Date < DateTime.Today
-                    && task.Status != ESTAFF.Models.Data.TaskStatus.Complete;
+            <li class="my-task-card due-@task.DueClass anim-fade-up@(delay)">
 
-            var isSelfCreated = task.CreatedByName ==
-                (ViewBag.FullName as string ?? "");
-
-            <div class="my-task-card anim-fade-up">
-
-                <!-- Top Row -->
                 <div class="my-task-card-top">
-                    <div>
-                        <span class="badge-pill badge-@sc">
-                            @task.Status
+                    <div class="my-task-badges">
+                        <span class="badge-pill badge-@task.StatusClass">
+                            @task.StatusLabel
                         </span>
-                        @if (!string.IsNullOrEmpty(task.TaskClassificationName))
-                        {
-                            <span class="badge-pill badge-@classificationColor">
-                                @task.TaskClassificationName
-                            </span>
-                        }
                     </div>
 
                     @if (task.Priority.HasValue)
                     {
-                        <span class="badge-pill badge-@pc">
-                            <span class="priority-dot @pc"></span>
+                        var pc = task.Priority.Value.ToString().ToLower();
+                        <span class="badge-pill badge-@pc"
+                              title="@task.Priority priority">
+                            <span class="priority-dot @pc" aria-hidden="true"></span>
                             @task.Priority
                         </span>
                     }
                 </div>
 
-                <!-- Body -->
                 <div class="my-task-card-body">
-                    <h6 class="my-task-title">@task.Title</h6>
-                    @if (!string.IsNullOrEmpty(task.Description))
+                    @* The title is the large target for opening the task —
+                       the 30px pencil should not be the only way in. *@
+                    <h6 class="my-task-title">
+                        <a href="@Url.Action("EditTask", "Employee",
+                                 new { id = task.TaskId })">
+                            @task.Title
+                        </a>
+                    </h6>
+
+                    @if (!string.IsNullOrWhiteSpace(task.Description))
                     {
-                        <p class="my-task-desc">@task.Description</p>
+                        @* Clamped to two lines, so the full text is kept on
+                           the element rather than silently lost. *@
+                        <p class="my-task-desc" title="@task.Description">
+                            @task.Description
+                        </p>
                     }
+
+                    <div class="my-task-tags">
+                        @Html.Partial("_ClassificationBadge",
+                            ClassificationBadgeModel.From(task))
+
+                        @if (task.ClipItem != null)
+                        {
+                            @Html.Partial("_ClipItemChip", task.ClipItem)
+                        }
+                    </div>
                 </div>
 
-                <!-- Meta -->
                 <div class="my-task-meta">
-                    <div class="my-task-meta-item @(isOD ? "overdue" : "")">
-                        <i class="fas fa-calendar-alt"></i>
-                        @task.DueDate.ToString("MMM dd, yyyy")
-                        @if (isOD) { <text> · Overdue</text> }
+                    @* Urgency in words as well as colour, and the exact date
+                       kept on the tooltip for anyone who needs it. *@
+                    <div class="my-task-due due-@task.DueClass"
+                         title="Due @task.DueDate.ToString("dddd, dd MMM yyyy")">
+                        <i class="fas fa-calendar-alt" aria-hidden="true"></i>
+                        <span class="my-task-due-text">@task.DueText</span>
+                        <span class="my-task-due-date">
+                            @task.DueDate.ToString("dd MMM")
+                        </span>
                     </div>
-                    @if (task.CreatedByName != null)
+
+                    @if (!string.IsNullOrEmpty(task.CreatedByName))
                     {
                         <div class="my-task-meta-item">
-                            <i class="fas fa-user-circle"></i>
-                            @task.CreatedByName
+                            <i class="fas fa-user-circle" aria-hidden="true"></i>
+                            @(task.CreatedByName == "You"
+                                ? "Raised by you"
+                                : "Raised by " + task.CreatedByName)
                         </div>
                     }
                 </div>
 
-                <!-- Footer: Status Changer + Actions -->
+                @if (task.StatusActions.Any())
+                {
+                    <details class="my-task-flow">
+                        <summary>
+                            <i class="fas fa-clock-rotate-left"
+                               aria-hidden="true"></i>
+                            @task.StatusActions.Count
+                            @(task.StatusActions.Count == 1
+                                ? "update" : "updates")
+                            @if (task.LatestStatusRemark != null)
+                            {
+                                <span class="my-task-flow-time">
+                                    => last @task.LatestStatusRemark.RelativeTime
+                                </span>
+                            }
+                        </summary>
+                        <div class="my-task-flow-body">
+                            @Html.Partial("_StatusActionFlow",
+                                task.StatusActions)
+                        </div>
+                    </details>
+                }
+
                 <div class="my-task-card-footer">
                     <div class="status-select-wrap">
-                        <select class="status-select js-status-select"
+                        <label for="status-@task.TaskId"
+                               class="visually-hidden">
+                            Status for @task.Title
+                        </label>
+                        @* data-note="optional" makes every change confirm
+                           before it saves. Without it a mis-click on the
+                           dropdown wrote straight to the database with no
+                           confirmation and no way back. *@
+                        <select id="status-@task.TaskId"
+                                class="status-select js-status-select"
                                 data-task-id="@task.TaskId"
                                 data-task-title="@task.Title"
-                                data-current="@task.Status">
+                                data-current="@task.Status"
+                                data-note="optional">
                             @foreach (ESTAFF.Models.Data.TaskStatus s in
                                 Enum.GetValues(typeof(ESTAFF.Models.Data.TaskStatus)))
                             {
@@ -136,8 +256,7 @@
                                 {
                                     <option value="@s"
                                         @(task.Status == s ? "selected" : "")>
-                                        @(s == ESTAFF.Models.Data.TaskStatus.InProgress
-                                            ? "In Progress" : s.ToString())
+                                        @TaskDisplay.StatusLabel(s)
                                     </option>
                                 }
                             }
@@ -146,10 +265,11 @@
 
                     <div class="task-card-actions">
                         <a href="@Url.Action("EditTask", "Employee",
-                               new { id = task.TaskId })"
+                                 new { id = task.TaskId })"
                            class="btn-task-sm edit"
+                           aria-label="Edit @task.Title"
                            title="Edit">
-                            <i class="fas fa-edit"></i>
+                            <i class="fas fa-edit" aria-hidden="true"></i>
                         </a>
 
                         @if (isSelfCreated)
@@ -161,36 +281,63 @@
                                 @Html.AntiForgeryToken()
                                 <button type="submit"
                                         class="btn-task-sm delete"
+                                        aria-label="Delete @task.Title"
                                         title="Delete"
-                                        onclick="return confirm('Delete this task?')">
-                                    <i class="fas fa-trash"></i>
+                                        onclick="return confirm('Delete \'@task.Title\'? This cannot be undone.')">
+                                    <i class="fas fa-trash" aria-hidden="true"></i>
                                 </button>
                             }
                         }
                     </div>
                 </div>
 
-            </div>
+            </li>
         }
-    </div>
+    </ul>
 }
 else
 {
     <div class="empty-state">
         <div class="empty-state-icon">
-            <i class="fas fa-inbox"></i>
+            <i class="fas fa-inbox" aria-hidden="true"></i>
         </div>
-        <h5>No tasks found</h5>
-        <p>
-            @if (!string.IsNullOrEmpty(sel))
-            { <text>No @sel.ToLower() tasks.</text> }
-            else
-            { <text>Create your first task to get started.</text> }
-        </p>
-        <a href="@Url.Action("CreateTask", "Employee")"
-           class="btn-primary-custom">
-            <i class="fas fa-plus"></i> Create Task
-        </a>
+
+        @* A filtered empty result is a different problem from an empty
+           account, so it gets a different exit: widen the filter rather than
+           be pushed into creating a task that was never the goal. *@
+        @if (isFiltered)
+        {
+            <h5>No tasks match</h5>
+            <p>
+                @if (term.Length > 0)
+                {
+                    <text>Nothing matches &ldquo;@term&rdquo;</text>
+                }
+                else
+                {
+                    <text>You have no tasks in this view</text>
+                }
+                @if (totalCount > 0)
+                {
+                    <text> — you have @totalCount in total.</text>
+                }
+            </p>
+            <a href="@Url.Action("MyTasks", "Employee")"
+               class="btn-primary-custom">
+                <i class="fas fa-rotate-left me-1" aria-hidden="true"></i>
+                Clear filters
+            </a>
+        }
+        else
+        {
+            <h5>No tasks yet</h5>
+            <p>Create your first task to get started.</p>
+            <a href="@Url.Action("CreateTask", "Employee")"
+               class="btn-primary-custom">
+                <i class="fas fa-plus me-1" aria-hidden="true"></i>
+                Create Task
+            </a>
+        }
     </div>
 }
 

@@ -44,10 +44,11 @@
                     <p class="small text-muted mb-3"
                        id="actionTakenSubtitle"></p>
 
-                    <label for="actionTaken"
+                    <label for="actionTaken" id="actionTakenLabel"
                            class="form-label small fw-semibold">
-                        What did you do?
-                        <span class="text-danger">*</span>
+                        <span id="actionTakenPrompt">What did you do?</span>
+                        <span class="text-danger"
+                              id="actionTakenRequired">*</span>
                     </label>
                     <textarea name="actionTaken" id="actionTaken"
                               class="form-control" rows="4"
@@ -85,6 +86,8 @@
         var statusInput = document.getElementById('statusValue');
         var noteInput   = document.getElementById('actionTaken');
         var subtitle    = document.getElementById('actionTakenSubtitle');
+        var notePrompt  = document.getElementById('actionTakenPrompt');
+        var noteStar    = document.getElementById('actionTakenRequired');
         var modalEl     = document.getElementById('actionTakenModal');
         var modal       = new bootstrap.Modal(modalEl);
 
@@ -112,6 +115,14 @@
             subtitle.textContent = '"' + title + '" will be marked as ' +
                 (labels[status] || status) + '.';
 
+            // The same modal doubles as the confirmation step for statuses
+            // that carry no mandatory note, so the prompt says which it is.
+            var required = needsNote.indexOf(status) !== -1;
+            notePrompt.textContent = required
+                ? 'What did you do?'
+                : 'Add a note (optional)';
+            noteStar.style.display = required ? '' : 'none';
+
             modal.show();
         }
 
@@ -121,7 +132,13 @@
                 select.addEventListener('change', function () {
                     var status = select.value;
 
-                    if (needsNote.indexOf(status) === -1) {
+                    // data-note="optional" asks for a confirmation on every
+                    // transition, not only the ones that need explaining -
+                    // otherwise a mis-click saves straight to the database
+                    // with nothing to undo it.
+                    var alwaysConfirm = select.dataset.note === 'optional';
+
+                    if (!alwaysConfirm && needsNote.indexOf(status) === -1) {
                         submitDirect(select.dataset.taskId, status);
                         return;
                     }

@@ -116,6 +116,12 @@ namespace ESTAFF.Models.ViewModels
         public string AssignedToEmpID { get; set; }
         public string CreatedByName { get; set; }
 
+        // Who raised the task. Ownership decides whether the employee may
+        // delete it, and that has to be judged on the id — comparing display
+        // names gets it wrong the moment two people share a user name or one
+        // of them is renamed.
+        public string CreatedByUserId { get; set; }
+
         public int TaskClassificationId { get; set; }
         public string ClassificationName { get; set; }
         public int? TaskListId { get; set; }
@@ -127,16 +133,60 @@ namespace ESTAFF.Models.ViewModels
         // Newest status transition, shown inline on the task.
         public StatusRemarkViewModel LatestStatusRemark { get; set; }
 
+        // Every status transition on the task, oldest first — rendered as the
+        // action flow in the task table.
+        public List<StatusRemarkViewModel> StatusActions { get; set; }
+            = new List<StatusRemarkViewModel>();
+
         public bool IsOverdue => Status != TaskStatus.Complete
             && DueDate.Date < DateTime.Today;
 
         // CSS modifier suffix for the status badge / dot (badge-pending, ...).
         public string StatusClass => TaskDisplay.StatusClass(Status);
 
-        // Every status transition on the task, oldest first — rendered as the
-        // action flow in the task table.
-        public List<StatusRemarkViewModel> StatusActions { get; set; }
-            = new List<StatusRemarkViewModel>();
+        public string StatusLabel => TaskDisplay.StatusLabel(Status);
+
+        // The due date in the terms the person actually reads it in — "3 days
+        // left", "due tomorrow", "5 days overdue". A date alone makes the
+        // reader do the arithmetic before they can judge urgency.
+        public string DueText
+        {
+            get
+            {
+                if (Status == TaskStatus.Complete)
+                {
+                    return CompletedDate.HasValue
+                        ? "Completed " + CompletedDate.Value.ToString("dd MMM")
+                        : "Completed";
+                }
+
+                var days = (int)(DueDate.Date - DateTime.Today).TotalDays;
+
+                if (days < 0) return Plural(-days, "day") + " overdue";
+                if (days == 0) return "Due today";
+                if (days == 1) return "Due tomorrow";
+                return Plural(days, "day") + " left";
+            }
+        }
+
+        // Urgency band the card border and due line are keyed on. Colour is
+        // never the only carrier — DueText says the same thing in words.
+        public string DueClass
+        {
+            get
+            {
+                if (Status == TaskStatus.Complete) return "done";
+                var days = (int)(DueDate.Date - DateTime.Today).TotalDays;
+                if (days < 0) return "overdue";
+                if (days <= 2) return "soon";
+                return "later";
+            }
+        }
+
+        private static string Plural(int count, string noun)
+        {
+            return count + " " + noun + (count == 1 ? "" : "s");
+        }
 
         public string ClassificationSlug =>
             TaskDisplay.ClassificationSlug(ClassificationName);
@@ -228,7 +278,23 @@ namespace ESTAFF.Models.ViewModels
         public string ChangedByName { get; set; }
         public DateTime ChangedDate { get; set; }
 
+        // Shown wherever a step of the flow carries no note of its own.
+        public const string NoActionText = "No action described";
+
         public bool HasRemark => !string.IsNullOrWhiteSpace(Remark);
+
+        // What was done at this step. The remark is the action the person
+        // described when they moved the task; without one there is nothing to
+        // show but the transition itself.
+        public string ActionText => HasRemark ? Remark : NoActionText;
+
+        // Badge modifier for the status this step moved the task into.
+        public string StatusClass => ToStatus.HasValue
+            ? TaskDisplay.StatusClass(ToStatus.Value)
+            : "draft";
+
+        public string FullTimestamp =>
+            ChangedDate.ToString("dd MMM yyyy, h:mm tt");
 
         // "Pending -> In Progress", or just the new status on the first entry.
         public string TransitionText
@@ -278,23 +344,7 @@ namespace ESTAFF.Models.ViewModels
     public class TaskFormOptions
     {
         public List<ClassificationOption> Classifications { get; set; }
-        // Shown wherever a step of the flow carries no note of its own.
-        public const string NoActionText = "No action described";
-
             = new List<ClassificationOption>();
-
-        // What was done at this step. The remark is the action the person
-        // described when they moved the task; without one there is nothing to
-        // show but the transition itself.
-        public string ActionText => HasRemark ? Remark : NoActionText;
-
-        // Badge modifier for the status this step moved the task into.
-        public string StatusClass => ToStatus.HasValue
-            ? TaskDisplay.StatusClass(ToStatus.Value)
-            : "draft";
-
-        public string FullTimestamp =>
-            ChangedDate.ToString("dd MMM yyyy, h:mm tt");
 
         // All task types across every classification. The form filters them
         // client-side as the classification changes.
