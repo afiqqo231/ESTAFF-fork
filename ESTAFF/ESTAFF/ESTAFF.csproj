@@ -227,18 +227,6 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
-    <Compile Include="Migrations\202607300217099_InitialCreate.cs" />
-    <Compile Include="Migrations\202607300217099_InitialCreate.Designer.cs">
-      <DependentUpon>202607300217099_InitialCreate.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\202607280951407_addTaskClassificationAndTaskList.cs" />
-    <Compile Include="Migrations\202607280951407_addTaskClassificationAndTaskList.Designer.cs">
-      <DependentUpon>202607280951407_addTaskClassificationAndTaskList.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\202607290746208_changeNameCOFIdToSubtaskId.cs" />
-    <Compile Include="Migrations\202607290746208_changeNameCOFIdToSubtaskId.Designer.cs">
-      <DependentUpon>202607290746208_changeNameCOFIdToSubtaskId.cs</DependentUpon>
-    </Compile>
     <Compile Include="Migrations\Configuration.cs" />
     <Compile Include="Models\Data\ApplicationDbContext.cs" />
     <Compile Include="Models\Data\ApplicationIdentity.cs" />
@@ -389,17 +377,6 @@
     <None Include="packages.config" />
     <Content Include="Scripts\jquery-3.7.1.slim.min.map" />
     <Content Include="Scripts\jquery-3.7.1.min.map" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Migrations\202607300217099_InitialCreate.resx">
-      <DependentUpon>202607300217099_InitialCreate.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\202607280951407_addTaskClassificationAndTaskList.resx">
-      <DependentUpon>202607280951407_addTaskClassificationAndTaskList.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Migrations\202607290746208_changeNameCOFIdToSubtaskId.resx">
-      <DependentUpon>202607290746208_changeNameCOFIdToSubtaskId.cs</DependentUpon>
-    </EmbeddedResource>
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
