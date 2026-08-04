@@ -337,6 +337,16 @@
     <Content Include="Scripts\jquery.validate.unobtrusive.min.js" />
     <Content Include="Scripts\modernizr-2.8.3.js" />
     <Content Include="Web.config" />
+    <Content Include="Views\Shared\_ClassificationBadge.cshtml" />
+    <Content Include="Views\Shared\_ClassificationField.cshtml" />
+    <Content Include="Views\Shared\_ClipItemChip.cshtml" />
+    <Content Include="Views\Shared\_ClipPicker.cshtml" />
+    <Content Include="Views\Shared\_ReportTaskTable.cshtml" />
+    <Content Include="Views\Shared\_StatusActionFlow.cshtml" />
+    <Content Include="Views\Shared\_StatusActionModal.cshtml" />
+    <Content Include="Views\Shared\_StatusActionStep.cshtml" />
+    <Content Include="Views\Shared\_StatusRemark.cshtml" />
+    <Content Include="Views\Shared\_StatusRemarkInline.cshtml" />
     <Content Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </Content>

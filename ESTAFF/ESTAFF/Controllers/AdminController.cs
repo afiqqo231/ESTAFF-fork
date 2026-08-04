@@ -790,6 +790,11 @@ namespace ESTAFF.Controllers
 
             };
 
+            // The review table shows the actions taken on each task, so the
+            // page needs the same resolved detail the PDF is built from.
+            vm.TaskDetails = new TaskService(_db)
+                .BuildReportTaskDetails(tasks, Clip.GetItemsForTasks(tasks));
+
             return View(vm);
         }
 

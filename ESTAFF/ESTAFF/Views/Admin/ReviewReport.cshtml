@@ -127,101 +127,11 @@
                     Task Details
                 </h6>
                 <span class="task-count-badge">
-                    @Model.Tasks.Count tasks
+                    @Model.TaskDetails.Count tasks
                 </span>
             </div>
 
-            @if (Model.Tasks.Any())
-            {
-                <table class="data-table" style="width:100%">
-                    <thead>
-                        <tr>
-                            <th style="padding-left:1.5rem">Task</th>
-                            <th>Classification</th>
-                            <th>Priority</th>
-                            <th>Due Date</th>
-                            <th>Completed On</th>
-                            <th style="padding-right:1.5rem">
-                                Status
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var task in Model.Tasks)
-                        {
-                            var tsc = TaskDisplay.StatusClass(task.Status);
-
-                            <tr>
-                                <td style="padding-left:1.5rem">
-                                    <div style="font-weight:600;
-                                                color:var(--text-primary);
-                                                font-size:0.845rem;">
-                                        @task.Title
-                                    </div>
-                                    @if (!string.IsNullOrEmpty(
-                                        task.Description))
-                                    {
-                                        <div style="font-size:0.72rem;
-                                                    color:var(--text-muted);">
-                                            @task.Description
-                                        </div>
-                                    }
-                                </td>
-                                <td>
-                                    @Html.Partial("_ClassificationBadge",
-                                        ClassificationBadgeModel.From(task))
-                                </td>
-                                <td>
-                                    @if (task.Priority.HasValue)
-                                    {
-                                        var pc = task.Priority
-                                            .ToString().ToLower();
-                                        <span class="badge-pill badge-@pc">
-                                            @task.Priority
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span style="color:var(--text-muted);
-                                                     font-size:0.78rem;">
-                                            —
-                                        </span>
-                                    }
-                                </td>
-                                <td>
-                                    <span style="font-size:0.82rem;
-                                                 color:var(--text-secondary);">
-                                        @task.DueDate.ToString("MMM dd")
-                                    </span>
-                                </td>
-                                <td>
-                                    <span style="font-size:0.78rem;
-                                                 color:var(--text-muted);">
-                                        @(task.CompletedDate.HasValue
-                                            ? task.CompletedDate.Value
-                                                .ToString("MMM dd")
-                                            : "—")
-                                    </span>
-                                </td>
-                                <td style="padding-right:1.5rem">
-                                    <span class="badge-pill badge-@tsc">
-                                        @TaskDisplay.StatusLabel(task.Status)
-                                    </span>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            }
-            else
-            {
-                <div class="empty-state" style="padding:2rem 1rem;">
-                    <p style="margin:0; font-size:0.82rem;
-                               color:var(--text-muted);">
-                        No tasks found for this period
-                    </p>
-                </div>
-            }
+            @Html.Partial("_ReportTaskTable", Model.TaskDetails)
         </div>
 
     </div>

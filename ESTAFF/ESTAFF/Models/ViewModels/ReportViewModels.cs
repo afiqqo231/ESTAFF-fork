@@ -25,6 +25,12 @@ namespace ESTAFF.Models.ViewModels
         // Preview tasks
         public List<TaskItem> Tasks { get; set; }
             = new List<TaskItem>();
+
+        // The same tasks with their lookups, linked CLIP record and action
+        // history resolved, so the preview can show the employee exactly the
+        // breakdown the submitted report will carry.
+        public List<ReportTaskDetailViewModel> TaskDetails { get; set; }
+            = new List<ReportTaskDetailViewModel>();
     }
 
     public class ReportListItemViewModel

@@ -814,6 +814,12 @@ namespace ESTAFF.Controllers
                 .ToList();
 
             model.Tasks = tasks;
+
+            // The preview shows the same breakdown as the submitted report, so
+            // the employee can check the actions they recorded before sending.
+            model.TaskDetails = new TaskService(_db)
+                .BuildReportTaskDetails(tasks, Clip.GetItemsForTasks(tasks));
+
             return View("PreviewReport", model);
         }
 
@@ -911,11 +917,16 @@ namespace ESTAFF.Controllers
                     t.Status == TaskStatus.InProgress),
                 OverdueTasks = tasks.Count(t =>
                     t.Status == TaskStatus.Overdue),
-                CompletionRate = tasks.Count > 0 
+                CompletionRate = tasks.Count > 0
                     ? Math.Round(
                         (decimal)completed / tasks.Count * 100, 1)
                     : 0
             };
+
+            // Same resolved detail the PDF is built from, so the page and the
+            // downloaded copy describe each task identically.
+            vm.TaskDetails = new TaskService(_db)
+                .BuildReportTaskDetails(tasks, Clip.GetItemsForTasks(tasks));
 
             return View(vm);
         }

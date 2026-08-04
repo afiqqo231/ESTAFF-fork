@@ -793,6 +793,122 @@
 
 .report-table-header h6 i { color: var(--primary); }
 
+/* ── Report task table ────────────────────────────────────────
+   The per-task breakdown shared by the admin review page and the
+   employee report pages (_ReportTaskTable). Few, wide columns: the
+   progress flow needs room, so the classification, sub-type and CLIP
+   record ride along inside the task cell instead of taking columns. */
+
+/* The report detail grid leaves a narrow left column and the flow carries a
+   min-width of its own, so the table is wrapped in .table-scroll and given a
+   floor to scroll against rather than being squeezed. */
+.report-task-table {
+    width: 100%;
+    min-width: 780px;
+}
+
+/* Rows carry several stacked lines, so align everything to the top. */
+.report-task-table tbody td {
+    vertical-align: top;
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
+}
+
+.report-task-table .rt-num {
+    width: 2.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.report-task-table .rt-col-progress { min-width: 260px; }
+
+.rt-task { min-width: 220px; }
+
+.rt-task-title {
+    font-weight: 600;
+    font-size: 0.845rem;
+    color: var(--text-primary);
+    line-height: 1.35;
+}
+
+.rt-task-desc {
+    margin-top: 0.15rem;
+    font-size: 0.72rem;
+    line-height: 1.45;
+    color: var(--text-muted);
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.rt-task-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 0.4rem;
+}
+
+.rt-schedule { white-space: nowrap; }
+
+.rt-date-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    line-height: 1.6;
+}
+
+.rt-date-label {
+    width: 2.4rem;
+    flex-shrink: 0;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+}
+
+.rt-date-value {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.rt-date-value.is-late {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+/* How the task landed against its due date — the line read first when
+   scanning for slippage, so it gets the colour. */
+.rt-delivery {
+    margin-top: 0.3rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: normal;
+}
+
+.rt-delivery.is-late { color: var(--danger); }
+
+.rt-status .rt-priority { margin-top: 0.3rem; }
+
+.rt-progress-count {
+    margin-bottom: 0.4rem;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+}
+
+/* The flow sets its own max-width for the dense task list; inside a report
+   row it may use the whole column. */
+.rt-progress .action-flow {
+    max-width: none;
+    min-width: 0;
+}
+
 /* Report Detail */
 .report-detail-layout {
     display: grid;
