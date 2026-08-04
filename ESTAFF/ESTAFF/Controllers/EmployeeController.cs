@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data.Entity;
 using System.Linq;
 using System.Web.Mvc;
 using Microsoft.AspNet.Identity;
@@ -931,7 +932,15 @@ namespace ESTAFF.Controllers
                 return HttpNotFound();
 
             var endOfDay = report.PeriodEnd.AddDays(1).AddTicks(-1);
+
+            // The lookups are joined here rather than lazy-loaded: the PDF
+            // prints them for every task, which would otherwise be a query per
+            // task per field.
             var tasks = _db.TaskItems
+                .Include(t => t.TaskClassification)
+                .Include(t => t.TaskList)
+                .Include(t => t.AssignedToUser)
+                .Include(t => t.CreatedByUser)
                 .Where(t => t.AssignedToUserId == userId
                          && t.DueDate >= report.PeriodStart
                          && t.DueDate <= endOfDay)
@@ -968,6 +977,9 @@ namespace ESTAFF.Controllers
                         (decimal)completed / tasks.Count * 100, 1)
                     : 0
             };
+
+            vm.TaskDetails = new TaskService(_db)
+                .BuildReportTaskDetails(tasks, Clip.GetItemsForTasks(tasks));
 
             var pdfService = new ReportPdfService();
             var bytes = pdfService.GeneratePdf(vm);

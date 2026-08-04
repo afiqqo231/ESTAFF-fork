@@ -59,12 +59,137 @@ namespace ESTAFF.Models.ViewModels
         public List<TaskItem> Tasks { get; set; }
             = new List<TaskItem>();
 
+        // The same tasks with their lookups, linked CLIP record and action
+        // history resolved. The on-screen views read Tasks; the PDF reads this,
+        // because a printed report is read away from the system and has to
+        // stand on its own.
+        public List<ReportTaskDetailViewModel> TaskDetails { get; set; }
+            = new List<ReportTaskDetailViewModel>();
+
         // Stats
         public int TotalTasks { get; set; }
         public int CompletedTasks { get; set; }
         public int PendingTasks { get; set; }
         public int OverdueTasks { get; set; }
         public decimal CompletionRate { get; set; }
+
+        // The enum names are lower case, which is not how a report should
+        // introduce itself.
+        public string ReportTypeLabel =>
+            ReportType == ReportType.monthly ? "Monthly" : "Weekly";
+
+        // A quotable identifier for the printed copy.
+        public string Reference => "RPT-" + ReportId.ToString("D5");
+
+        public string PeriodText =>
+            PeriodStart.ToString("dd MMM yyyy") + " to " +
+            PeriodEnd.ToString("dd MMM yyyy");
+
+        public int PeriodDays =>
+            (int)(PeriodEnd.Date - PeriodStart.Date).TotalDays + 1;
+    }
+
+    // Everything the printed report says about one task: its own fields, the
+    // classification it belongs to, the CLIP record it covers, and every action
+    // taken on it. Built by the controllers so the employee and admin downloads
+    // cannot drift apart.
+    public class ReportTaskDetailViewModel
+    {
+        public int TaskId { get; set; }
+        public string Title { get; set; }
+        public string Description { get; set; }
+
+        public string ClassificationName { get; set; }
+        public string TaskListName { get; set; }
+
+        public TaskStatus Status { get; set; }
+        public TaskPriority? Priority { get; set; }
+
+        public DateTime CreatedDate { get; set; }
+        public DateTime AssignedDate { get; set; }
+        public DateTime DueDate { get; set; }
+        public DateTime? CompletedDate { get; set; }
+        public DateTime LastModifiedDate { get; set; }
+
+        public string AssignedToName { get; set; }
+        public string AssignedByName { get; set; }
+
+        // Set only for CLIP-classified tasks that are linked to a record.
+        public ClipItemViewModel ClipItem { get; set; }
+
+        // Status changes with the action described at each, oldest first.
+        public List<StatusRemarkViewModel> Actions { get; set; }
+            = new List<StatusRemarkViewModel>();
+
+        public string StatusLabel => TaskDisplay.StatusLabel(Status);
+
+        public string PriorityLabel =>
+            Priority.HasValue ? Priority.Value.ToString() : "Not set";
+
+        public string ClassificationLabel =>
+            string.IsNullOrWhiteSpace(ClassificationName)
+                ? "Unclassified"
+                : ClassificationName;
+
+        public bool IsOverdue => Status != TaskStatus.Complete
+            && DueDate.Date < DateTime.Today;
+
+        // How the task landed against its due date - the line a manager reads
+        // first when scanning for slippage.
+        public string DeliveryText
+        {
+            get
+            {
+                if (CompletedDate.HasValue)
+                {
+                    var days = (int)(CompletedDate.Value.Date
+                                     - DueDate.Date).TotalDays;
+
+                    if (days > 0) return "Completed " + Plural(days, "day")
+                                       + " after the due date";
+                    if (days == 0) return "Completed on the due date";
+                    return "Completed " + Plural(-days, "day") + " early";
+                }
+
+                var remaining = (int)(DueDate.Date
+                                      - DateTime.Today).TotalDays;
+
+                if (remaining < 0)
+                    return Plural(-remaining, "day") + " overdue";
+                if (remaining == 0) return "Due today";
+                return Plural(remaining, "day") + " remaining";
+            }
+        }
+
+        private static string Plural(int count, string noun)
+        {
+            return count + " " + noun + (count == 1 ? "" : "s");
+        }
+
+        public static ReportTaskDetailViewModel From(TaskItem task,
+            ClipItemViewModel clipItem,
+            List<StatusRemarkViewModel> actions)
+        {
+            return new ReportTaskDetailViewModel
+            {
+                TaskId             = task.TaskId,
+                Title              = task.Title,
+                Description        = task.Description,
+                ClassificationName = task.TaskClassification?.Name,
+                TaskListName       = task.TaskList?.Name,
+                Status             = task.Status,
+                Priority           = task.Priority,
+                CreatedDate        = task.CreatedDate,
+                AssignedDate       = task.AssignedDate,
+                DueDate            = task.DueDate,
+                CompletedDate      = task.CompletedDate,
+                LastModifiedDate   = task.LastModifiedDate,
+                AssignedToName     = task.AssignedToUser?.UserName ?? "-",
+                AssignedByName     = task.CreatedByUser?.UserName ?? "-",
+                ClipItem           = clipItem,
+                Actions            = actions ?? new List<StatusRemarkViewModel>()
+            };
+        }
     }
 
     public class ApproveReportViewModel

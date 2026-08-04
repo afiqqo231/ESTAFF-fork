@@ -894,6 +894,9 @@ namespace ESTAFF.Controllers
                     : 0
             };
 
+            vm.TaskDetails = new TaskService(_db)
+                .BuildReportTaskDetails(tasks, Clip.GetItemsForTasks(tasks));
+
             var pdfService = new ReportPdfService();
             var bytes = pdfService.GeneratePdf(vm);
             var fileName = 
