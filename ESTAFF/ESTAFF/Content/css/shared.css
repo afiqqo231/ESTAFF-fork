@@ -1287,6 +1287,28 @@
     color: var(--text-muted);
 }
 
+/* ── Report pages, narrow screens ─────────────────────────────
+   The report grids are fixed column counts, which squeeze rather than
+   reflow once the viewport narrows. Same 991px breakpoint the taxonomy
+   layout already collapses at, so the two behave alike. */
+@media (max-width: 991px) {
+    /* Decision/actions panel drops below the report instead of holding a
+       280px column open. Sticky is dropped with it: pinned to the top of a
+       full-width block it would cover the content being scrolled. */
+    .report-detail-layout { grid-template-columns: 1fr; }
+
+    .report-side-panel {
+        position: static;
+        top: auto;
+    }
+
+    .report-stats-row { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+    .report-meta-grid { grid-template-columns: 1fr; }
+}
+
 /* ══════════════════════════════════════════
    DEFAULT AVATAR — fa-user icon
 ══════════════════════════════════════════ */

@@ -28,6 +28,9 @@
             </span>
         </div>
 
+        @* Scrolls sideways on narrow screens rather than being clipped by the
+           card or forcing the page itself to scroll. *@
+        <div class="table-scroll">
         <table class="data-table" style="width:100%">
             <thead>
                 <tr>
@@ -55,8 +58,8 @@
                             <span style="font-size:0.82rem;
                                          color:var(--text-secondary);
                                          font-weight:500;">
-                                @r.PeriodStart.ToString("MMM dd")
-                                –
+                                @r.PeriodStart.ToString("MMM dd, yyyy")
+                                -
                                 @r.PeriodEnd.ToString("MMM dd, yyyy")
                             </span>
                         </td>
@@ -118,6 +121,7 @@
                 }
             </tbody>
         </table>
+        </div>
     </div>
 }
 else
