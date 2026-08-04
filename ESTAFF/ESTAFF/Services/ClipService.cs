@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Data.Entity;
 using System.Linq;
 using ESTAFF.Models.Data;
@@ -43,6 +44,30 @@ namespace ESTAFF.Services
             _db = db;
             _clip = clip;
             _ownsClipContext = false;
+        }
+        
+        // ══════════════════════════════════════════
+        // URL BUILDING
+        // ══════════════════════════════════════════
+
+        public static string GetPortalBaseUrl()
+        {
+            return ConfigurationManager.AppSettings["PortalBaseUrl"];
+        }
+
+        public static string BuildProgressUrl(ClipItemKind kind, int id)
+        {
+            var baseUrl = GetPortalBaseUrl();
+            if (string.IsNullOrWhiteSpace(baseUrl) || id <= 0) return null;
+
+            var path = kind == ClipItemKind.COF
+                ? "CLIP/CertificateOfFitness/Details/"
+                : "CLIP/PlantMonitoring/Details/";
+
+            Uri result;
+            return Uri.TryCreate(new Uri(baseUrl.TrimEnd('/') + "/"), path + id, out result)
+                ? result.AbsoluteUri
+                : null;
         }
 
         // ══════════════════════════════════════════

@@ -219,6 +219,8 @@
     <Compile Include="Controllers\AccountController.cs" />
     <Compile Include="Controllers\AdminController.cs" />
     <Compile Include="Controllers\Api\TaskApiController.cs" />
+    <Compile Include="Controllers\ClassificationsController.cs" />
+    <Compile Include="Controllers\ClipController.cs" />
     <Compile Include="Controllers\EmployeeController.cs" />
     <Compile Include="Filters\AdminOnlyAttribute.cs" />
     <Compile Include="Filters\EmployeeOnlyAttribute.cs" />

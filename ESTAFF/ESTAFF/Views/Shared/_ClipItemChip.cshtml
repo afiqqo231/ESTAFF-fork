@@ -15,13 +15,14 @@
         string.IsNullOrWhiteSpace(Model.ProcessStatus)
             ? "" : " · " + Model.ProcessStatus);
 
-    <span class="clip-chip urgency-@Model.UrgencyClass" title="@tooltip">
-        <span class="clip-chip-dot"></span>
-        <i class="fas @Model.KindIcon" style="font-size:0.62rem;"></i>
-        <span class="clip-chip-label">@Model.Title</span>
-        <span class="clip-chip-sep">·</span>
-        <span class="clip-chip-expiry">@Model.ExpiryStatus</span>
-        <span class="clip-chip-sep">·</span>
-        <span class="clip-chip-expiry">@Model.ExpiryText</span>
-    </span>
+    <a href="@Url.Action("Progress", "Clip", new { key = Model.Key })"
+       target="_blank" rel="noopener"
+       class="clip-chip urgency-@Model.UrgencyClass" title="@tooltip">
+        
+            <span class="clip-chip-dot"></span>
+            <i class="fas @Model.KindIcon" style="font-size:0.62rem;"></i>
+            <span class="clip-chip-label">@Model.Title</span>
+            <span class="clip-chip-sep">·</span>
+            <span class="clip-chip-expiry">@Model.ExpiryText</span>
+    </a>
 }
