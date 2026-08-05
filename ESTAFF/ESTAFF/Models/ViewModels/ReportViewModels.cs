@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using ESTAFF.Models.Data;
 
 namespace ESTAFF.Models.ViewModels
@@ -108,6 +109,12 @@ namespace ESTAFF.Models.ViewModels
         public string ClassificationName { get; set; }
         public string TaskListName { get; set; }
 
+        // Which part of the statutory ESH report this task prints under,
+        // inherited from its classification. Null where the classification has
+        // never been mapped; the printed report files those under
+        // EshSections.Default rather than leaving them out of the return.
+        public EshSection? ReportSection { get; set; }
+
         public TaskStatus Status { get; set; }
         public TaskPriority? Priority { get; set; }
 
@@ -139,6 +146,40 @@ namespace ESTAFF.Models.ViewModels
 
         public bool IsOverdue => Status != TaskStatus.Complete
             && DueDate.Date < DateTime.Today;
+
+        // The section this task is actually printed under, with an unmapped
+        // classification resolved to the catch-all.
+        public EshSection EffectiveSection =>
+            EshSections.Sanitise(ReportSection) ?? EshSections.Default;
+
+        // The "Action Taken" cell of the statutory grid. The form asks for one
+        // description of what was done; the task holds a remark per status
+        // change, so they are printed in the order they happened - dropping all
+        // but the last would lose the part of the record an audit reads.
+        //
+        // Steps moved without a note contribute nothing: a row saying only
+        // "no action described" is worse than a shorter list.
+        public string ActionTakenText
+        {
+            get
+            {
+                if (Actions == null) return null;
+
+                var described = Actions
+                    .Where(a => a.HasRemark)
+                    .Select(a => a.Remark.Trim())
+                    .ToList();
+
+                return described.Any()
+                    ? string.Join("\n", described)
+                    : null;
+            }
+        }
+
+        // The date the statutory grid prints against a task: when the work was
+        // actually done, falling back to when it was due for anything still
+        // open. Both are what the officer filling the form in by hand writes.
+        public DateTime EffectiveDate => CompletedDate ?? DueDate;
 
         // How the task landed against its due date - the line a manager reads
         // first when scanning for slippage.
@@ -183,6 +224,8 @@ namespace ESTAFF.Models.ViewModels
                 Description        = task.Description,
                 ClassificationName = task.TaskClassification?.Name,
                 TaskListName       = task.TaskList?.Name,
+                ReportSection      = EshSections.Sanitise(
+                                         task.TaskClassification?.ReportSection),
                 Status             = task.Status,
                 Priority           = task.Priority,
                 CreatedDate        = task.CreatedDate,

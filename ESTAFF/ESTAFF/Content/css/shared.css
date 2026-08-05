@@ -804,7 +804,9 @@
    floor to scroll against rather than being squeezed. */
 .report-task-table {
     width: 100%;
-    min-width: 780px;
+    /* Raised with the Concern/Issue column: below this the concern and the
+       progress flow both fall under their readable width. */
+    min-width: 940px;
 }
 
 /* Rows carry several stacked lines, so align everything to the top. */
@@ -833,13 +835,23 @@
     line-height: 1.35;
 }
 
-.rt-task-desc {
-    margin-top: 0.15rem;
-    font-size: 0.72rem;
+/* The concern a task was raised over, in its own column. Free-text of any
+   length, so it wraps rather than being clipped, and carries the full string
+   on the title attribute for anything the column still cuts short. */
+.rt-concern {
+    min-width: 180px;
+    max-width: 280px;
+    font-size: 0.78rem;
     line-height: 1.45;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     white-space: normal;
     overflow-wrap: anywhere;
+}
+
+.rt-concern-empty {
+    font-size: 0.72rem;
+    font-style: italic;
+    color: var(--text-muted);
 }
 
 .rt-task-tags {

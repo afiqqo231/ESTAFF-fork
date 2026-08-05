@@ -101,6 +101,7 @@
             <thead>
                 <tr>
                     <th style="padding-left:1.5rem">Task</th>
+                    <th class="task-concern-col">Concern/Issue</th>
                     <th>Classification</th>
                     <th>Assigned To</th>
                     <th>Priority</th>
@@ -132,13 +133,23 @@
                                         overflow:hidden; text-overflow:ellipsis">
                                 @task.Title
                             </div>
-                            @if (!string.IsNullOrEmpty(task.Description))
+                        </td>
+                        @* The concern was previously a truncated second line
+                           inside the task cell, clipped to one line at 0.72rem.
+                           It reads as its own field, so it gets its own column
+                           and the room to wrap. *@
+                        <td class="task-concern-cell">
+                            @if (!string.IsNullOrWhiteSpace(task.Description))
                             {
-                                <div style="font-size:0.72rem; color:var(--text-muted);
-                                            margin-top:0.15rem; white-space:nowrap;
-                                            overflow:hidden; text-overflow:ellipsis">
+                                <span title="@task.Description">
                                     @task.Description
-                                </div>
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="task-concern-empty">
+                                    Not recorded
+                                </span>
                             }
                         </td>
                         <td style="max-width:230px">

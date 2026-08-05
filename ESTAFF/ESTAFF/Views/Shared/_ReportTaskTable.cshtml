@@ -35,6 +35,7 @@ else
                 <tr>
                     <th class="rt-num" style="padding-left:1.5rem">#</th>
                     <th class="rt-col-task">Task</th>
+                    <th class="rt-col-concern">Concern/Issue</th>
                     <th class="rt-col-schedule">Schedule</th>
                     <th class="rt-col-status">Status</th>
                     <th class="rt-col-progress" style="padding-right:1.5rem">
@@ -63,11 +64,6 @@ else
                         <td class="rt-task">
                             <div class="rt-task-title">@task.Title</div>
 
-                            @if (!string.IsNullOrWhiteSpace(task.Description))
-                            {
-                                <div class="rt-task-desc">@task.Description</div>
-                            }
-
                             <div class="rt-task-tags">
                                 @Html.Partial("_ClassificationBadge",
                                     new ClassificationBadgeModel
@@ -82,6 +78,34 @@ else
                                     @Html.Partial("_ClipItemChip", task.ClipItem)
                                 }
                             </div>
+
+                            @* The evidence behind the task, where the approver
+                               can see it. Without this an admin approves a
+                               return whose supporting record they would have to
+                               download the PDF to read. *@
+                            @if (task.ClipItem != null)
+                            {
+                                @Html.Partial("_ClipProgress", task.ClipItem)
+                            }
+                        </td>
+
+                        @* The concern the task was raised over. Its own column
+                           rather than a line under the title: on a printed or
+                           reviewed report it is the part a manager reads to
+                           understand why the task existed at all. *@
+                        <td class="rt-concern">
+                            @if (!string.IsNullOrWhiteSpace(task.Description))
+                            {
+                                <span title="@task.Description">
+                                    @task.Description
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="rt-concern-empty">
+                                    Not recorded
+                                </span>
+                            }
                         </td>
 
                         <td class="rt-schedule">

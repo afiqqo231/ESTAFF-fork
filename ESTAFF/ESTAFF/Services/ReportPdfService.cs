@@ -9,13 +9,32 @@ using ESTAFF.Models.ViewModels;
 
 namespace ESTAFF.Services
 {
-    // Produces the printed task report: a document that is signed off, filed
-    // and read away from the system, so every task carries its full record
-    // rather than a summary line that only makes sense next to the screen.
+    // Produces the Environment, Safety and Health Monthly Report: the return a
+    // Safety and Health Officer files under the Occupational Safety & Health
+    // (Safety & Health Officer) Regulations 1997.
     //
-    // Layout is deliberately conservative - one column, repeating table
+    // The document is not ours to design. It has ten numbered parts in a fixed
+    // order, each answering a named regulation, each with the columns the form
+    // gives it - so this service prints all ten every time, in order, whether
+    // or not ESTAFF has anything to put in them. A part with no rows says so;
+    // it is never dropped, because a return that silently omits a part reads as
+    // a complete return that found nothing.
+    //
+    // What ESTAFF supplies is the task rows. A task's classification decides
+    // which part it prints under (TaskClassification.ReportSection), its title
+    // is the item, its Concern/Issue is the concern, and the remarks recorded
+    // against its status changes are the action taken.
+    //
+    // Two parts have no source in ESTAFF at all. Section 3 counts incident
+    // cases and section 6 lists purchase requests, and this application records
+    // neither, so both print as the blank statutory grid for completion by
+    // hand. That is deliberate: leaving them out would make the printed
+    // document non-compliant, and inventing zeroes for incidents nobody has
+    // reported to ESTAFF would be worse than a blank.
+    //
+    // Layout stays conservative - portrait, ruled grids, repeating table
     // headers, a running header and numbered pages - because it is printed,
-    // scanned and attached to audits.
+    // signed, scanned and attached to audits.
     public class ReportPdfService
     {
         // ── Palette ────────────────────────────────────────────
@@ -28,9 +47,11 @@ namespace ESTAFF.Services
         private static readonly BaseColor Accent
             = new BaseColor(16, 185, 129);
         private static readonly BaseColor Rule
-            = new BaseColor(226, 232, 240);
+            = new BaseColor(203, 213, 225);
         private static readonly BaseColor Panel
             = new BaseColor(248, 250, 252);
+        private static readonly BaseColor PanelDeep
+            = new BaseColor(226, 232, 240);
         private static readonly BaseColor White
             = BaseColor.WHITE;
         private static readonly BaseColor Danger
@@ -40,34 +61,41 @@ namespace ESTAFF.Services
         private static readonly BaseColor Info
             = new BaseColor(59, 130, 246);
 
-        private const float ContentWidth = 523f;   // A4 less 36pt margins
+        // How many blank rows a statutory grid with no ESTAFF source behind it
+        // prints. Enough to write a month's worth in by hand without running
+        // the section onto its own page.
+        private const int BlankFormRows = 5;
 
         public byte[] GeneratePdf(ReportDetailViewModel vm)
         {
-            var tasks = ResolveTasks(vm);
+            var tasks    = ResolveTasks(vm);
+            var settings = EshReportSettings.Load();
 
             using (var ms = new MemoryStream())
             {
-                var doc = new Document(PageSize.A4, 36f, 36f, 40f, 46f);
+                // Narrower side margins than a letter would take: the form's
+                // widest grid is five columns of prose and needs the width.
+                var doc = new Document(PageSize.A4, 30f, 30f, 42f, 46f);
                 var writer = PdfWriter.GetInstance(doc, ms);
 
-                writer.PageEvent = new PageFurniture(vm);
+                writer.PageEvent = new PageFurniture(vm, settings);
 
-                doc.AddTitle(vm.ReportTypeLabel + " Task Report - "
+                doc.AddTitle("Environment, Safety and Health "
+                             + vm.ReportTypeLabel + " Report - "
                              + Text(vm.EmpName));
-                doc.AddAuthor("ESTAFF");
-                doc.AddSubject("Task report for " + vm.PeriodText);
+                doc.AddAuthor(Text(settings.Company) ?? "ESTAFF");
+                doc.AddSubject("ESH report for " + vm.PeriodText);
 
                 doc.Open();
 
-                AddTitleBlock(doc, vm);
-                AddReportMeta(doc, vm);
-                AddExecutiveSummary(doc, vm, tasks);
-                AddClassificationBreakdown(doc, tasks);
-                AddTaskSchedule(doc, tasks);
-                AddTaskDetails(doc, tasks);
+                AddLetterhead(doc, vm, settings);
+                AddIdentityBlock(doc, vm, settings);
+
+                foreach (var section in EshSections.InFormOrder())
+                    AddSection(doc, section, tasks);
+
                 AddApprovalTrail(doc, vm);
-                AddSignOff(doc, vm);
+                AddSignOff(doc, vm, settings);
 
                 doc.Close();
                 return ms.ToArray();
@@ -90,442 +118,785 @@ namespace ESTAFF.Services
         }
 
         // ══════════════════════════════════════════════════════
-        // SECTIONS
+        // LETTERHEAD AND IDENTITY
         // ══════════════════════════════════════════════════════
 
-        private static void AddTitleBlock(Document doc,
-            ReportDetailViewModel vm)
+        private static void AddLetterhead(Document doc,
+            ReportDetailViewModel vm, EshReportSettings settings)
         {
-            var band = NewTable(new[] { 2.6f, 1.4f });
-            band.SpacingAfter = 14f;
+            var band = new PdfPTable(1) { WidthPercentage = 100 };
+            band.SpacingAfter = 10f;
 
-            var left = new PdfPCell
+            var cell = new PdfPCell
             {
-                Border          = Rectangle.NO_BORDER,
-                BackgroundColor = Ink,
-                Padding         = 20f,
-                PaddingBottom   = 22f
+                Border      = Rectangle.BOX,
+                BorderWidth = 0.8f,
+                BorderColor = Ink,
+                Padding     = 12f
             };
-            left.AddElement(Para("ESTAFF", Font(15f, Accent, true)));
-            left.AddElement(Para(
-                vm.ReportTypeLabel.ToUpper() + " TASK REPORT",
-                Font(19f, White, true), 6f));
-            left.AddElement(Para(
-                Text(vm.EmpName) + "  |  " + vm.PeriodText,
-                Font(9.5f, new BaseColor(203, 213, 225)), 6f));
-            band.AddCell(left);
 
-            var right = new PdfPCell
+            if (settings.HasLogo)
             {
-                Border          = Rectangle.NO_BORDER,
-                BackgroundColor = Ink,
-                Padding         = 20f,
-                PaddingBottom   = 22f,
-                HorizontalAlignment = Element.ALIGN_RIGHT
-            };
-            right.AddElement(Para("REFERENCE",
-                Font(7f, new BaseColor(148, 163, 184)),
-                0f, Element.ALIGN_RIGHT));
-            right.AddElement(Para(vm.Reference,
-                Font(11f, White, true), 2f, Element.ALIGN_RIGHT));
-            right.AddElement(Para("STATUS",
-                Font(7f, new BaseColor(148, 163, 184)),
-                10f, Element.ALIGN_RIGHT));
-            right.AddElement(Para(vm.Status.ToString().ToUpper(),
-                Font(11f, ReportStatusColor(vm.Status), true),
-                2f, Element.ALIGN_RIGHT));
-            band.AddCell(right);
+                var logo = LoadLogo(settings.LogoPath);
+                if (logo != null) cell.AddElement(logo);
+            }
 
+            cell.AddElement(Para(
+                Blank(settings.Company, "COMPANY NAME NOT CONFIGURED"),
+                Font(13f, Ink, true), 0f, Element.ALIGN_CENTER));
+
+            cell.AddElement(Para(
+                "Environment, Safety and Health " + vm.ReportTypeLabel
+                + " Report",
+                Font(11.5f, Ink, true), 5f, Element.ALIGN_CENTER));
+
+            cell.AddElement(Para(
+                "(In compliance with Occupational Safety & Health "
+                + "(Safety & Health Officer) Regulation 1997)",
+                FontItalic(7.5f, Muted), 4f, Element.ALIGN_CENTER));
+
+            band.AddCell(cell);
             doc.Add(band);
         }
 
-        private static void AddReportMeta(Document doc,
-            ReportDetailViewModel vm)
+        // A logo that has been moved or corrupted must not take the report with
+        // it - the letterhead is the one part of this document nobody reads for
+        // information.
+        private static Image LoadLogo(string path)
+        {
+            try
+            {
+                var logo = Image.GetInstance(path);
+                logo.ScaleToFit(150f, 42f);
+                logo.Alignment = Element.ALIGN_CENTER;
+                logo.SpacingAfter = 6f;
+                return logo;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        // Who filed the return, from Web.config, alongside the period ESTAFF
+        // built it for. The form names two preparers and one verifier.
+        private static void AddIdentityBlock(Document doc,
+            ReportDetailViewModel vm, EshReportSettings settings)
         {
             var table = NewTable(new[] { 1f, 1f, 1f });
-            table.SpacingAfter = 18f;
+            table.SpacingAfter = 16f;
 
-            AddMetaCell(table, "Employee", Text(vm.EmpName));
-            AddMetaCell(table, "Employee No.", Text(vm.EmpNumber));
-            AddMetaCell(table, "Email", Text(vm.EmpEmail));
+            table.AddCell(PremisesCell(vm, settings));
+            table.AddCell(OfficerCell("Prepared by", settings.Sho));
+            table.AddCell(OfficerCell("Prepared by",
+                settings.PreparerFor(Text(vm.EmpName))));
 
-            AddMetaCell(table, "Reporting Period", vm.PeriodText);
-            AddMetaCell(table, "Period Length",
-                vm.PeriodDays + (vm.PeriodDays == 1 ? " day" : " days"));
-            AddMetaCell(table, "Report Type",
-                vm.ReportTypeLabel + " report");
+            table.AddCell(ProvenanceCell(vm));
+            table.AddCell(OfficerCell("Approved and Verified by",
+                settings.Approver, 2));
 
             doc.Add(table);
         }
 
-        private static void AddExecutiveSummary(Document doc,
-            ReportDetailViewModel vm, List<ReportTaskDetailViewModel> tasks)
+        private static PdfPCell PremisesCell(ReportDetailViewModel vm,
+            EshReportSettings settings)
         {
-            doc.Add(Heading("Executive Summary"));
+            var cell = FormCell();
 
-            var total       = tasks.Count;
-            var complete    = tasks.Count(t => t.Status == TaskStatus.Complete);
-            var inProgress  = tasks.Count(t => t.Status == TaskStatus.InProgress);
-            var pending     = tasks.Count(t => t.Status == TaskStatus.Pending);
-            var overdue     = tasks.Count(t => t.Status == TaskStatus.Overdue);
-            var rate        = total > 0
-                ? Math.Round((decimal)complete / total * 100, 1)
-                : 0m;
+            AddLine(cell, "Month", vm.PeriodStart.ToString("MMM-yy"), true);
+            AddLine(cell, "Report Date",
+                DateText(vm.SubmittedDate ?? vm.CreatedDate));
+            AddLine(cell, "Plant", Blank(settings.Plant, null));
+            AddLine(cell, "JKKP No", Blank(settings.Jkkp, null));
 
-            var stats = NewTable(new[] { 1f, 1f, 1f, 1f, 1f });
-            stats.SpacingAfter = 10f;
+            return cell;
+        }
 
-            AddStatCell(stats, "Total Tasks", total, Ink, Panel);
-            AddStatCell(stats, "Completed", complete, Accent,
-                new BaseColor(236, 253, 245));
-            AddStatCell(stats, "In Progress", inProgress, Info,
-                new BaseColor(239, 246, 255));
-            AddStatCell(stats, "Not Started", pending, Warning,
-                new BaseColor(255, 251, 235));
-            AddStatCell(stats, "Overdue", overdue, Danger,
-                new BaseColor(254, 242, 242));
+        private static PdfPCell OfficerCell(string role, EshOfficer officer,
+            int colspan = 1)
+        {
+            var cell = FormCell();
+            cell.Colspan = colspan;
 
-            doc.Add(stats);
-            doc.Add(CompletionBar(rate));
+            cell.AddElement(Para(role.ToUpper(), Font(6.8f, Muted, true)));
+            cell.AddElement(Para(
+                Blank(officer != null ? Text(officer.Name) : null, null),
+                Font(9.5f, Ink, true), 3f));
 
-            // The narrative a manager reads before anything else.
-            var narrative = total == 0
-                ? "No tasks fell within this reporting period."
-                : string.Format(
-                    "{0} of {1} {2} completed ({3}%). {4} in progress, " +
-                    "{5} not started, {6} overdue.",
-                    complete, total, total == 1 ? "task was" : "tasks were",
-                    rate.ToString("0.#"), inProgress, pending, overdue);
+            AddLine(cell, "Position",
+                Blank(officer != null ? Text(officer.Position) : null, null));
+            AddLine(cell, "JKKP No",
+                Blank(officer != null ? Text(officer.Jkkp) : null, null));
 
-            var summary = new PdfPTable(1) { WidthPercentage = 100 };
+            return cell;
+        }
+
+        // ESTAFF's own record of the document: which report this is, what it
+        // covers and where it sits in the approval workflow. The statutory form
+        // has no field for it, but a printed copy that cannot be traced back to
+        // the system it came from is not much use in an audit.
+        private static PdfPCell ProvenanceCell(ReportDetailViewModel vm)
+        {
+            var cell = FormCell();
+
+            AddLine(cell, "Reference", vm.Reference, true);
+            AddLine(cell, "Period Covered", vm.PeriodText);
+            AddLine(cell, "Prepared For",
+                Text(vm.EmpName) + "  (" + Text(vm.EmpNumber) + ")");
+            AddLine(cell, "Report Status", vm.Status.ToString(),
+                false, ReportStatusColor(vm.Status));
+
+            return cell;
+        }
+
+        private static PdfPCell FormCell()
+        {
+            return new PdfPCell
+            {
+                Border      = Rectangle.BOX,
+                BorderWidth = 0.7f,
+                BorderColor = Rule,
+                Padding     = 9f
+            };
+        }
+
+        // "PLANT   P21" - a small caps label with the value under it.
+        private static void AddLine(PdfPCell cell, string label, string value,
+            bool first = false, BaseColor color = null)
+        {
+            cell.AddElement(Para(label.ToUpper(), Font(6.8f, Muted, true),
+                first ? 0f : 6f));
+            cell.AddElement(Para(value, Font(9f, color ?? Ink, true), 2f));
+        }
+
+        // ══════════════════════════════════════════════════════
+        // SECTIONS
+        // ══════════════════════════════════════════════════════
+
+        private static void AddSection(Document doc, EshSectionInfo info,
+            List<ReportTaskDetailViewModel> tasks)
+        {
+            switch (info.Shape)
+            {
+                case EshSectionShape.WorkItem:
+                    AddWorkItemTable(doc, info, TasksIn(tasks, info.Section));
+                    break;
+
+                case EshSectionShape.LayoutChange:
+                    AddLayoutChangeTable(doc, info,
+                        TasksIn(tasks, info.Section));
+                    break;
+
+                case EshSectionShape.Note:
+                    AddNoteTable(doc, info, TasksIn(tasks, info.Section));
+                    break;
+
+                case EshSectionShape.Statistics:
+                    AddStatisticsSection(doc, info);
+                    break;
+
+                case EshSectionShape.PurchaseRequest:
+                    AddPurchaseRequestTable(doc, info);
+                    break;
+            }
+        }
+
+        // Tasks print in the order the work fell due, which is the order an
+        // officer filling the form in by hand would list them.
+        private static List<ReportTaskDetailViewModel> TasksIn(
+            List<ReportTaskDetailViewModel> tasks, EshSection section)
+        {
+            return tasks
+                .Where(t => t.EffectiveSection == section)
+                .OrderBy(t => t.EffectiveDate)
+                .ThenBy(t => t.TaskId)
+                .ToList();
+        }
+
+        // The numbered heading with the regulation it answers to, both fixed by
+        // the form and printed verbatim, written as the opening rows of the
+        // section's own grid rather than as a separate block above it.
+        //
+        // Two things follow from that, and both are the point. A heading can
+        // never be left stranded at the foot of a page with its table overleaf,
+        // because iText will not break a table between its header rows and the
+        // first row under them. And a section long enough to run over a page
+        // reintroduces itself at the top of the next one, so a reader who picks
+        // up a continuation sheet knows which part of the return they are in.
+        //
+        // Returns how many header rows were written, so the caller can set
+        // HeaderRows once it has added its column headings too.
+        private static int AddSectionHeader(PdfPTable table,
+            EshSectionInfo info, int columns, string note = null)
+        {
+            table.SpacingBefore = 14f;
+
+            table.AddCell(SpanCell(columns, info.Heading,
+                Font(9.5f, White, true), Ink, Ink, 8f));
+
+            var rows = 1;
+
+            if (!string.IsNullOrWhiteSpace(info.Regulation))
+            {
+                table.AddCell(SpanCell(columns, info.Regulation,
+                    FontItalic(7.5f, InkSoft), Panel, Rule, 6f));
+                rows++;
+            }
+
+            // Why a statutory section is blank, said inside the grid so it
+            // travels with the heading it explains.
+            if (!string.IsNullOrWhiteSpace(note))
+            {
+                table.AddCell(SpanCell(columns, note,
+                    FontItalic(7.5f, Muted),
+                    new BaseColor(255, 251, 235), Rule, 7f));
+                rows++;
+            }
+
+            return rows;
+        }
+
+        private static PdfPCell SpanCell(int columns, string text, Font font,
+            BaseColor background, BaseColor border, float padding)
+        {
             var cell = new PdfPCell
             {
-                Border          = Rectangle.LEFT_BORDER,
-                BorderWidthLeft = 3f,
-                BorderColorLeft = overdue > 0 ? Danger : Accent,
-                BackgroundColor = Panel,
-                Padding         = 12f
+                Colspan         = columns,
+                Border          = Rectangle.BOX,
+                BorderWidth     = 0.7f,
+                BorderColor     = border,
+                BackgroundColor = background,
+                Padding         = padding
             };
-            cell.AddElement(Para(narrative, Font(9f, InkSoft)));
 
-            if (overdue > 0)
-            {
-                cell.AddElement(Para(
-                    "Attention: " + overdue + (overdue == 1
-                        ? " task passed its due date without completion."
-                        : " tasks passed their due date without completion."),
-                    Font(9f, Danger, true), 5f));
-            }
-
-            summary.AddCell(cell);
-            summary.SpacingAfter = 18f;
-            doc.Add(summary);
+            cell.AddElement(Para(text, font));
+            return cell;
         }
 
-        private static void AddClassificationBreakdown(Document doc,
-            List<ReportTaskDetailViewModel> tasks)
+        // ── 1, 2, 4, 5 ─────────────────────────────────────────
+        // No | Item | Issue / Concern | Action Taken | Remarks-or-Date
+        private static void AddWorkItemTable(Document doc,
+            EshSectionInfo info, List<ReportTaskDetailViewModel> tasks)
         {
-            if (!tasks.Any()) return;
+            // Item is the widest prose column after Action Taken: as well as
+            // the title and the task type it carries the attached CLIP record,
+            // which is two lines of certificate number, plant and expiry.
+            var table = NewTable(new[] { 0.4f, 1.95f, 1.75f, 2.0f, 1.0f });
+            table.SpacingAfter = 4f;
 
-            doc.Add(Heading("Breakdown by Classification"));
+            var header = AddSectionHeader(table, info, 5);
 
-            var table = NewTable(new[] { 2.6f, 0.8f, 0.9f, 0.9f, 0.9f, 1f });
-            table.SpacingAfter = 18f;
-            table.HeaderRows = 1;
+            AddTh(table, "No", Element.ALIGN_CENTER);
+            AddTh(table, "Item");
+            AddTh(table, "Issue / Concern");
+            AddTh(table, "Action Taken");
+            AddTh(table, info.TrailingHeader, Element.ALIGN_CENTER);
 
-            AddTh(table, "Classification");
-            AddTh(table, "Tasks", Element.ALIGN_CENTER);
-            AddTh(table, "Complete", Element.ALIGN_CENTER);
-            AddTh(table, "Ongoing", Element.ALIGN_CENTER);
-            AddTh(table, "Overdue", Element.ALIGN_CENTER);
-            AddTh(table, "Rate", Element.ALIGN_RIGHT);
-
-            var groups = tasks
-                .GroupBy(t => t.ClassificationLabel)
-                .OrderByDescending(g => g.Count())
-                .ThenBy(g => g.Key);
-
-            var alt = false;
-            foreach (var group in groups)
-            {
-                var bg = alt ? Panel : White;
-                alt = !alt;
-
-                var count    = group.Count();
-                var complete = group.Count(t => t.Status == TaskStatus.Complete);
-                var ongoing  = group.Count(t =>
-                    t.Status == TaskStatus.Pending
-                    || t.Status == TaskStatus.InProgress);
-                var overdue  = group.Count(t => t.Status == TaskStatus.Overdue);
-                var rate     = Math.Round(
-                    (decimal)complete / count * 100, 0);
-
-                AddTd(table, Text(group.Key), bg, Ink, true);
-                AddTd(table, count.ToString(), bg,
-                    align: Element.ALIGN_CENTER);
-                AddTd(table, complete.ToString(), bg,
-                    complete > 0 ? Accent : Muted,
-                    align: Element.ALIGN_CENTER);
-                AddTd(table, ongoing.ToString(), bg,
-                    align: Element.ALIGN_CENTER);
-                AddTd(table, overdue.ToString(), bg,
-                    overdue > 0 ? Danger : Muted, overdue > 0,
-                    Element.ALIGN_CENTER);
-                AddTd(table, rate.ToString("0") + "%", bg, Ink, true,
-                    Element.ALIGN_RIGHT);
-            }
-
-            doc.Add(table);
-        }
-
-        private static void AddTaskSchedule(Document doc,
-            List<ReportTaskDetailViewModel> tasks)
-        {
-            doc.Add(Heading("Task Schedule"));
+            table.HeaderRows = header + 1;
 
             if (!tasks.Any())
             {
-                doc.Add(EmptyNote(
-                    "No tasks were recorded for this period."));
+                AddEmptyRow(table, 5);
+                doc.Add(table);
                 return;
             }
 
-            // Widths are set so no column header and no formatted date has to
-            // wrap; only the task title, which is meant to.
-            var table = NewTable(
-                new[] { 0.45f, 2.9f, 1.75f, 1.15f, 1.3f, 1.3f, 1.15f });
-            table.SpacingAfter = 18f;
-            table.HeaderRows = 1;
-
-            AddTh(table, "#", Element.ALIGN_CENTER);
-            AddTh(table, "Task");
-            AddTh(table, "Classification");
-            AddTh(table, "Priority");
-            AddTh(table, "Due");
-            AddTh(table, "Completed");
-            AddTh(table, "Status");
-
             var index = 0;
-            var alt = false;
             foreach (var task in tasks)
             {
                 index++;
-                var bg = alt ? Panel : White;
-                alt = !alt;
+                var bg = index % 2 == 0 ? Panel : White;
 
-                AddTd(table, index.ToString("00"), bg, Muted,
+                AddTd(table, index.ToString(), bg, Muted,
                     align: Element.ALIGN_CENTER);
-                AddTd(table, Text(task.Title), bg, Ink, true);
-                AddTd(table, Text(task.ClassificationLabel), bg);
-                AddTd(table, task.PriorityLabel, bg);
-                AddTd(table, task.DueDate.ToString("dd MMM yyyy"), bg,
-                    task.IsOverdue ? Danger : Muted, task.IsOverdue);
-                AddTd(table, DateText(task.CompletedDate), bg);
-                AddTd(table, task.StatusLabel, bg,
-                    StatusColor(task.Status), true);
+                table.AddCell(ItemCell(task, bg));
+                AddTd(table, Blank(Text(task.Description), null), bg, InkSoft);
+                table.AddCell(ActionCell(task, bg));
+                table.AddCell(TrailingCell(task, info.TrailingHeader, bg));
             }
 
             doc.Add(table);
         }
 
-        private static void AddTaskDetails(Document doc,
-            List<ReportTaskDetailViewModel> tasks)
+        // ── 7 ──────────────────────────────────────────────────
+        // No | Description | Issue / Concern | Recommendation
+        private static void AddLayoutChangeTable(Document doc,
+            EshSectionInfo info, List<ReportTaskDetailViewModel> tasks)
         {
-            if (!tasks.Any()) return;
+            var table = NewTable(new[] { 0.42f, 2.3f, 2.35f, 2.0f });
+            table.SpacingAfter = 4f;
 
-            doc.Add(Heading("Task Details"));
-            doc.Add(Para(
-                "Every task in the period with the actions recorded against it.",
-                Font(8.5f, Muted), 0f, Element.ALIGN_LEFT, 12f));
+            var header = AddSectionHeader(table, info, 4);
+
+            AddTh(table, "No", Element.ALIGN_CENTER);
+            AddTh(table, "Description");
+            AddTh(table, "Issue / Concern");
+            AddTh(table, "Recommendation");
+
+            table.HeaderRows = header + 1;
+
+            if (!tasks.Any())
+            {
+                AddEmptyRow(table, 4);
+                doc.Add(table);
+                return;
+            }
 
             var index = 0;
             foreach (var task in tasks)
             {
                 index++;
-                doc.Add(TaskBlock(task, index));
+                var bg = index % 2 == 0 ? Panel : White;
+
+                AddTd(table, index.ToString(), bg, Muted,
+                    align: Element.ALIGN_CENTER);
+                table.AddCell(ItemCell(task, bg));
+                AddTd(table, Blank(Text(task.Description), null), bg, InkSoft);
+                table.AddCell(ActionCell(task, bg));
             }
+
+            doc.Add(table);
         }
 
-        // One task, printed as a self-contained block.
-        private static PdfPTable TaskBlock(ReportTaskDetailViewModel task,
-            int index)
+        // ── 8, 9, 10 ───────────────────────────────────────────
+        // No | Description | Remarks
+        //
+        // The narrow grid: the form gives these parts one prose column, so the
+        // concern and what was done about it are printed together under the
+        // item rather than lost.
+        private static void AddNoteTable(Document doc, EshSectionInfo info,
+            List<ReportTaskDetailViewModel> tasks)
         {
-            var block = new PdfPTable(1)
-            {
-                WidthPercentage = 100,
-                SpacingAfter    = 14f,
-                KeepTogether    = true
-            };
+            var table = NewTable(new[] { 0.42f, 5.05f, 1.6f });
+            table.SpacingAfter = 4f;
 
-            var shell = new PdfPCell
+            var header = AddSectionHeader(table, info, 3);
+
+            AddTh(table, "No", Element.ALIGN_CENTER);
+            AddTh(table, "Description");
+            AddTh(table, "Remarks", Element.ALIGN_CENTER);
+
+            table.HeaderRows = header + 1;
+
+            if (!tasks.Any())
             {
+                AddEmptyRow(table, 3);
+                doc.Add(table);
+                return;
+            }
+
+            var index = 0;
+            foreach (var task in tasks)
+            {
+                index++;
+                var bg = index % 2 == 0 ? Panel : White;
+
+                AddTd(table, index.ToString(), bg, Muted,
+                    align: Element.ALIGN_CENTER);
+                table.AddCell(NoteCell(task, bg));
+                table.AddCell(TrailingCell(task, "Remarks", bg));
+            }
+
+            doc.Add(table);
+        }
+
+        // ── 3 ──────────────────────────────────────────────────
+        // The incident case matrix. ESTAFF has no incident record, so this
+        // prints as the statutory grid with the counts zeroed and the
+        // occurrence log left ruled and blank.
+        private static void AddStatisticsSection(Document doc,
+            EshSectionInfo info)
+        {
+            // Summary counts
+            var summary = NewTable(new[] { 3.2f, 1.6f, 1.6f });
+            summary.SpacingAfter = 8f;
+
+            var header = AddSectionHeader(summary, info, 3,
+                "ESTAFF does not record incident cases. This section prints "
+                + "the statutory grid for completion from the incident "
+                + "register.");
+
+            AddTh(summary, "Case Categories");
+            AddTh(summary, "Total of Current Month", Element.ALIGN_CENTER);
+            AddTh(summary, "Total of Year", Element.ALIGN_CENTER);
+
+            summary.HeaderRows = header + 1;
+
+            AddCountRow(summary, "Total of First Aid Injuries Cases", White);
+            AddCountRow(summary, "Total of Lost Workday Cases", Panel);
+            AddCountRow(summary, "Number of Lost Workdays", White);
+
+            doc.Add(summary);
+
+            // Occurrence log
+            var log = NewTable(new[] { 0.42f, 1.3f, 3.2f, 2.1f });
+            log.SpacingAfter = 8f;
+            log.HeaderRows = 1;
+
+            AddTh(log, "No", Element.ALIGN_CENTER);
+            AddTh(log, "Date Occurrence", Element.ALIGN_CENTER);
+            AddTh(log, "Accident / Near Miss / Dangerous Occurrence / "
+                     + "Occupational Poisoning / Occupational Disease "
+                     + "Description");
+            AddTh(log, "Action Taken");
+
+            AddBlankRows(log, 4, 3);
+            doc.Add(log);
+
+            // Cumulative matrix
+            var matrix = NewTable(new[] { 0.42f, 2.4f, 1.4f, 1.4f, 1.4f });
+            matrix.SpacingAfter = 4f;
+            matrix.HeaderRows = 1;
+
+            AddTh(matrix, "No", Element.ALIGN_CENTER);
+            AddTh(matrix, "Items");
+            AddTh(matrix, "Previous Cumulative", Element.ALIGN_CENTER);
+            AddTh(matrix, "Current Month", Element.ALIGN_CENTER);
+            AddTh(matrix, "Current Cumulative", Element.ALIGN_CENTER);
+
+            AddMatrixGroup(matrix, "Lost Time Injury", new[]
+            {
+                "Fatality",
+                "Permanent Total Disability",
+                "Permanent Partial Disability",
+                "Lost Work Day Case"
+            });
+
+            AddMatrixGroup(matrix, "Non-Lost Time Injury", new[]
+            {
+                "Restricted Work Case (RWC)",
+                "Medical Treatment Case",
+                "First Aid Treatment Case",
+                "Medical Evacuation"
+            });
+
+            AddMatrixGroup(matrix, "Non-Injurious Case", new[]
+            {
+                "Near Misses",
+                "Fire Incident",
+                "Property Damage",
+                "Chemical Spillage"
+            });
+
+            // Total
+            var total = new PdfPCell(new Phrase("Total Incident Cases",
+                Font(8f, Ink, true)))
+            {
+                Colspan             = 2,
+                BackgroundColor     = PanelDeep,
+                Border              = Rectangle.BOX,
+                BorderWidth         = 0.7f,
+                BorderColor         = Rule,
+                Padding             = 6f
+            };
+            matrix.AddCell(total);
+
+            for (var i = 0; i < 3; i++)
+                AddTd(matrix, "0", PanelDeep, Ink, true,
+                    Element.ALIGN_CENTER);
+
+            doc.Add(matrix);
+        }
+
+        private static void AddMatrixGroup(PdfPTable table, string title,
+            string[] items)
+        {
+            var header = new PdfPCell(new Phrase(title, Font(8f, Ink, true)))
+            {
+                Colspan         = 5,
+                BackgroundColor = PanelDeep,
                 Border          = Rectangle.BOX,
                 BorderWidth     = 0.7f,
                 BorderColor     = Rule,
-                Padding         = 0f
+                Padding         = 5f
             };
+            table.AddCell(header);
 
-            // Title bar
-            var head = NewTable(new[] { 3.4f, 1.1f });
-            var titleCell = new PdfPCell
+            var index = 0;
+            foreach (var item in items)
             {
-                Border          = Rectangle.NO_BORDER,
-                BackgroundColor = Ink,
-                Padding         = 10f
-            };
-            titleCell.AddElement(Para(
-                "TASK " + index.ToString("00") + "  |  ID " + task.TaskId,
-                Font(7f, new BaseColor(148, 163, 184))));
-            titleCell.AddElement(Para(Text(task.Title),
-                Font(11f, White, true), 3f));
-            head.AddCell(titleCell);
+                index++;
+                AddTd(table, index.ToString(), White, Muted,
+                    align: Element.ALIGN_CENTER);
+                AddTd(table, item, White, InkSoft);
 
-            var statusCell = new PdfPCell
-            {
-                Border          = Rectangle.NO_BORDER,
-                BackgroundColor = Ink,
-                Padding         = 10f,
-                HorizontalAlignment = Element.ALIGN_RIGHT
-            };
-            statusCell.AddElement(Para(task.StatusLabel.ToUpper(),
-                Font(10f, StatusColor(task.Status), true),
-                8f, Element.ALIGN_RIGHT));
-            statusCell.AddElement(Para(Text(task.DeliveryText),
-                Font(7.5f, new BaseColor(203, 213, 225)),
-                3f, Element.ALIGN_RIGHT));
-            head.AddCell(statusCell);
-
-            shell.AddElement(head);
-
-            // Field grid
-            var grid = NewTable(new[] { 1.15f, 1.85f, 1.15f, 1.85f });
-            AddField(grid, "Classification", Text(task.ClassificationLabel));
-            AddField(grid, "Task Type",
-                string.IsNullOrWhiteSpace(task.TaskListName)
-                    ? "Not specified"
-                    : Text(task.TaskListName));
-            AddField(grid, "Priority", task.PriorityLabel);
-            AddField(grid, "Status", task.StatusLabel);
-            AddField(grid, "Assigned To", Text(task.AssignedToName));
-            AddField(grid, "Assigned By", Text(task.AssignedByName));
-            AddField(grid, "Assigned On",
-                task.AssignedDate.ToString("dd MMM yyyy"));
-            AddField(grid, "Due Date",
-                task.DueDate.ToString("dd MMM yyyy"),
-                task.IsOverdue ? Danger : Ink);
-            AddField(grid, "Completed On", DateText(task.CompletedDate));
-            AddField(grid, "Last Updated",
-                task.LastModifiedDate.ToString("dd MMM yyyy, h:mm tt"));
-            shell.AddElement(grid);
-
-            // CLIP record, when the task covers one
-            if (task.ClipItem != null)
-            {
-                var clip = task.ClipItem;
-                var line = clip.KindLabel + " - " + Text(clip.Title);
-                if (!string.IsNullOrWhiteSpace(clip.Subtitle))
-                    line += " (" + Text(clip.Subtitle) + ")";
-
-                var detail = "Plant: " + Text(clip.PlantName)
-                    + "   |   Expiry: " + Text(clip.ExpiryDateText)
-                    + "   |   " + Text(clip.ExpiryStatus);
-
-                if (!string.IsNullOrWhiteSpace(clip.ProcessStatus))
-                    detail += "   |   Progress: " + Text(clip.ProcessStatus);
-
-                shell.AddElement(SubSection("CLIP Record", line, detail,
-                    clip.Urgency == ClipUrgency.Expired ? Danger
-                        : clip.Urgency == ClipUrgency.ExpiringSoon ? Warning
-                        : Accent));
+                for (var i = 0; i < 3; i++)
+                    AddTd(table, "0", White, Muted, false,
+                        Element.ALIGN_CENTER);
             }
-
-            // Description
-            shell.AddElement(SubSection("Description",
-                string.IsNullOrWhiteSpace(task.Description)
-                    ? "No description was provided."
-                    : Text(task.Description),
-                null,
-                Rule,
-                string.IsNullOrWhiteSpace(task.Description)));
-
-            // Actions
-            shell.AddElement(ActionsSection(task));
-
-            block.AddCell(shell);
-            return block;
         }
 
-        // The action history: what was done, in the order it happened.
-        private static IElement ActionsSection(
-            ReportTaskDetailViewModel task)
+        private static void AddCountRow(PdfPTable table, string label,
+            BaseColor bg)
         {
-            var wrap = new PdfPTable(1) { WidthPercentage = 100 };
-            var cell = new PdfPCell
+            AddTd(table, label, bg, InkSoft);
+            AddTd(table, "0", bg, Ink, true, Element.ALIGN_CENTER);
+            AddTd(table, "0", bg, Ink, true, Element.ALIGN_CENTER);
+        }
+
+        // ── 6 ──────────────────────────────────────────────────
+        // Purchase requests. ESTAFF holds no purchase order data, so the grid
+        // prints ruled and blank.
+        private static void AddPurchaseRequestTable(Document doc,
+            EshSectionInfo info)
+        {
+            var table = NewTable(new[] { 0.42f, 1.2f, 1.3f, 3.4f, 1.4f });
+            table.SpacingAfter = 4f;
+
+            var header = AddSectionHeader(table, info, 5,
+                "ESTAFF does not record purchase requests. This section "
+                + "prints the statutory grid for completion from the "
+                + "purchasing record.");
+
+            AddTh(table, "No", Element.ALIGN_CENTER);
+            AddTh(table, "Date", Element.ALIGN_CENTER);
+            AddTh(table, "PR No");
+            AddTh(table, "Description");
+            AddTh(table, "Status", Element.ALIGN_CENTER);
+
+            table.HeaderRows = header + 1;
+
+            AddBlankRows(table, 5, BlankFormRows);
+            doc.Add(table);
+        }
+
+        // ══════════════════════════════════════════════════════
+        // ROW CELLS
+        // ══════════════════════════════════════════════════════
+
+        // The item as the form asks for it: what it was, and underneath it the
+        // recurring job it belongs to and the CLIP record it covers, both of
+        // which name the thing being reported on more precisely than the title
+        // does on its own.
+        private static PdfPCell ItemCell(ReportTaskDetailViewModel task,
+            BaseColor bg)
+        {
+            var cell = BodyCell(bg);
+
+            cell.AddElement(Para(Text(task.Title), Font(8f, Ink, true)));
+
+            if (!string.IsNullOrWhiteSpace(task.TaskListName))
+                cell.AddElement(Para(Text(task.TaskListName),
+                    Font(7f, Muted), 2f));
+
+            if (task.ClipItem != null)
+                AddClipBlock(cell, task.ClipItem);
+
+            return cell;
+        }
+
+        // The narrow grid's one prose column: the item, the concern it was
+        // raised for and what was done, stacked rather than dropped.
+        private static PdfPCell NoteCell(ReportTaskDetailViewModel task,
+            BaseColor bg)
+        {
+            var cell = BodyCell(bg);
+
+            cell.AddElement(Para(Text(task.Title), Font(8f, Ink, true)));
+
+            if (!string.IsNullOrWhiteSpace(task.TaskListName))
+                cell.AddElement(Para(Text(task.TaskListName),
+                    Font(7f, Muted), 2f));
+
+            if (task.ClipItem != null)
+                AddClipBlock(cell, task.ClipItem);
+
+            if (!string.IsNullOrWhiteSpace(task.Description))
+                cell.AddElement(Para(Text(task.Description),
+                    Font(7.5f, InkSoft), 3f));
+
+            var actions = task.ActionTakenText;
+            if (!string.IsNullOrWhiteSpace(actions))
             {
-                Border  = Rectangle.TOP_BORDER,
-                BorderWidthTop = 0.7f,
-                BorderColorTop = Rule,
-                Padding = 10f
-            };
+                cell.AddElement(Para("ACTION TAKEN", Font(6.5f, Muted, true),
+                    4f));
+                cell.AddElement(Para(Text(actions), Font(7.5f, InkSoft), 2f));
+            }
 
-            cell.AddElement(Para("ACTIONS TAKEN", Font(7f, Muted, true)));
+            return cell;
+        }
 
-            if (task.Actions == null || !task.Actions.Any())
+        // Every remark recorded against the task's status changes, oldest
+        // first. One line per remark: the form wants a description of what was
+        // done, and the record of what was done is the sequence, not the last
+        // entry in it.
+        private static PdfPCell ActionCell(ReportTaskDetailViewModel task,
+            BaseColor bg)
+        {
+            var cell = BodyCell(bg);
+            var actions = task.ActionTakenText;
+
+            if (string.IsNullOrWhiteSpace(actions))
+            {
+                cell.AddElement(Para("No action recorded.",
+                    FontItalic(8f, Muted)));
+                return cell;
+            }
+
+            cell.AddElement(Para(Text(actions), Font(8f, InkSoft)));
+            return cell;
+        }
+
+        // The last column, which the form calls "Date" in some sections and
+        // "Remarks" in others. Date wants the date the work landed; Remarks
+        // wants where it stands, with the date under it.
+        private static PdfPCell TrailingCell(ReportTaskDetailViewModel task,
+            string header, BaseColor bg)
+        {
+            var cell = BodyCell(bg);
+
+            if (string.Equals(header, "Date", StringComparison.OrdinalIgnoreCase))
             {
                 cell.AddElement(Para(
-                    "No status changes were recorded for this task.",
-                    Font(8.5f, Muted), 5f));
-                wrap.AddCell(cell);
-                return wrap;
+                    task.EffectiveDate.ToString("dd MMM yyyy"),
+                    Font(8f, task.IsOverdue ? Danger : InkSoft),
+                    0f, Element.ALIGN_CENTER));
+                return cell;
             }
 
-            var table = NewTable(new[] { 1.3f, 1.8f, 3.65f, 1.05f });
-            table.SpacingBefore = 6f;
-            table.HeaderRows = 1;
+            cell.AddElement(Para(task.StatusLabel,
+                Font(8f, StatusColor(task.Status), true),
+                0f, Element.ALIGN_CENTER));
 
-            AddTh(table, "When", size: 7f);
-            AddTh(table, "Status Change", size: 7f);
-            AddTh(table, "Action Taken", size: 7f);
-            AddTh(table, "By", size: 7f);
+            cell.AddElement(Para(
+                task.EffectiveDate.ToString("dd MMM yyyy"),
+                Font(7f, Muted), 2f, Element.ALIGN_CENTER));
 
-            var alt = false;
-            foreach (var action in task.Actions)
-            {
-                var bg = alt ? Panel : White;
-                alt = !alt;
-
-                AddTd(table, action.ChangedDate.ToString("dd MMM yyyy\nh:mm tt"),
-                    bg, Muted, size: 7.5f);
-                AddTd(table, Text(action.TransitionText), bg,
-                    StatusColor(action.ToStatus), true, size: 7.5f);
-
-                // The remark is the point of the row: printed in full, never
-                // clipped, and called out when it is missing.
-                AddTd(table,
-                    action.HasRemark
-                        ? Text(action.Remark)
-                        : StatusRemarkViewModel.NoActionText,
-                    bg,
-                    action.HasRemark ? InkSoft : Muted,
-                    size: 8f,
-                    italic: !action.HasRemark);
-
-                AddTd(table, Text(action.ChangedByName), bg, Muted,
-                    size: 7.5f);
-            }
-
-            cell.AddElement(table);
-            wrap.AddCell(cell);
-            return wrap;
+            return cell;
         }
 
+        private static PdfPCell BodyCell(BaseColor bg)
+        {
+            return new PdfPCell
+            {
+                BackgroundColor = bg,
+                Border          = Rectangle.BOX,
+                BorderWidth     = 0.5f,
+                BorderColor     = Rule,
+                Padding         = 6f
+            };
+        }
+
+        // The attached CLIP record, printed under the item it covers, as the
+        // supporting evidence behind whatever the task claims.
+        //
+        // A task covering a CLIP record is reporting on work tracked in another
+        // system. Naming the record is not enough for a statutory return — what
+        // an auditor needs is what EHS_PORTAL actually holds against it: which
+        // phases have happened, when, who owns them and which document backs
+        // each one. All of it is read live at render time, so this is CLIP's
+        // account of the work rather than ours.
+        private static void AddClipBlock(PdfPCell cell, ClipItemViewModel clip)
+        {
+            var accent = ClipColor(clip);
+
+            var heading = clip.KindLabel + ": " + Text(clip.Title);
+            if (!string.IsNullOrWhiteSpace(clip.Subtitle))
+                heading += " (" + Text(clip.Subtitle) + ")";
+
+            cell.AddElement(Para(heading, Font(7f, accent, true), 4f));
+
+            // Where the record stands, on one line.
+            var facts = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(clip.PlantName))
+                facts.Add("Plant " + Text(clip.PlantName));
+
+            facts.Add("Expires " + Text(clip.ExpiryDateText)
+                      + " (" + Text(clip.ExpiryStatus) + ")");
+
+            // How long is left, spelled out: "Expiring Soon" alone does not
+            // tell an auditor whether that means next week or next quarter.
+            if (clip.ExpiryDate.HasValue)
+                facts.Add(Text(clip.ExpiryText));
+
+            if (!string.IsNullOrWhiteSpace(clip.ProcessStatus))
+                facts.Add("CLIP status: " + Text(clip.ProcessStatus));
+
+            // Certificates have no phases - what identifies the thing the
+            // certificate covers is where it is and who runs it.
+            if (!string.IsNullOrWhiteSpace(clip.Location))
+                facts.Add("Location " + Text(clip.Location));
+
+            if (!string.IsNullOrWhiteSpace(clip.Department))
+                facts.Add("Dept " + Text(clip.Department));
+
+            cell.AddElement(Para(string.Join("   |   ", facts),
+                Font(6.8f, Muted), 1f));
+
+            if (!clip.HasProgress) return;
+
+            cell.AddElement(Para("SUPPORTING EVIDENCE (CLIP)",
+                Font(6.2f, Muted, true), 4f));
+
+            // One line per phase that has actually happened: what it was, where
+            // it got to, when, who, and the document CLIP holds for it.
+            foreach (var phase in clip.StartedPhases)
+            {
+                var line = Text(phase.Name) + " - "
+                           + phase.StateLabel.ToLower() + ", "
+                           + Text(phase.TimelineText);
+
+                if (!string.IsNullOrWhiteSpace(phase.AssignedTo))
+                    line += "  |  " + Text(phase.AssignedTo);
+
+                if (phase.HasDocument)
+                    line += "  |  " + Text(phase.DocumentName);
+
+                cell.AddElement(Para(line,
+                    Font(6.8f,
+                        phase.State == ClipPhaseState.Complete
+                            ? InkSoft
+                            : Info),
+                    1.5f));
+            }
+
+            // Everything still outstanding, named on one line rather than given
+            // a line each. A phase nobody has started is evidence too — it is
+            // what an unfinished item looks like — but it has nothing to say
+            // beyond its own name.
+            var outstanding = clip.OutstandingPhases;
+            if (outstanding.Any())
+            {
+                cell.AddElement(Para(
+                    "Not started: "
+                    + string.Join(", ",
+                        outstanding.Select(p => Text(p.Name))),
+                    FontItalic(6.8f, Muted), 1.5f));
+            }
+
+            if (!string.IsNullOrWhiteSpace(clip.Remarks))
+            {
+                cell.AddElement(Para("CLIP remarks: " + Text(clip.Remarks),
+                    Font(6.8f, Muted), 2f));
+            }
+        }
+
+        private static BaseColor ClipColor(ClipItemViewModel clip)
+        {
+            if (clip.Urgency == ClipUrgency.Expired) return Danger;
+            if (clip.Urgency == ClipUrgency.ExpiringSoon) return Warning;
+            return Accent;
+        }
+
+        // ══════════════════════════════════════════════════════
+        // APPROVAL AND SIGN-OFF
+        // ══════════════════════════════════════════════════════
+
+        // ESTAFF's workflow record. Not part of the statutory form, but the
+        // printed copy is what gets filed, and when it was submitted and by
+        // whose approval it stands is the first thing anyone asks of it.
         private static void AddApprovalTrail(Document doc,
             ReportDetailViewModel vm)
         {
-            doc.Add(Heading("Approval Trail"));
+            doc.Add(new Paragraph("Approval Trail", Font(9.5f, Ink, true))
+            {
+                SpacingBefore = 18f,
+                SpacingAfter  = 6f
+            });
 
             var table = NewTable(new[] { 1f, 1f, 1f, 1f });
-            table.SpacingAfter = vm.Status == ReportStatus.Rejected ? 10f : 20f;
+            table.SpacingAfter = vm.Status == ReportStatus.Rejected ? 10f : 18f;
 
             AddMetaCell(table, "Created", DateTimeText(vm.CreatedDate));
             AddMetaCell(table, "Submitted", DateTimeText(vm.SubmittedDate));
@@ -552,28 +923,37 @@ namespace ESTAFF.Services
                 cell.AddElement(Para(Text(vm.RejectionReason),
                     Font(9f, Ink), 4f));
                 reject.AddCell(cell);
-                reject.SpacingAfter = 20f;
+                reject.SpacingAfter = 18f;
                 doc.Add(reject);
             }
         }
 
-        private static void AddSignOff(Document doc,
-            ReportDetailViewModel vm)
+        // Three signature blocks, naming the same officers as the letterhead so
+        // the page that is signed matches the page that is filed.
+        private static void AddSignOff(Document doc, ReportDetailViewModel vm,
+            EshReportSettings settings)
         {
-            var table = NewTable(new[] { 1f, 0.2f, 1f });
+            var table = NewTable(new[] { 1f, 0.12f, 1f, 0.12f, 1f });
             table.SpacingBefore = 6f;
+            table.KeepTogether = true;
 
+            table.AddCell(SignatureCell("Prepared by", settings.Sho));
+            table.AddCell(Spacer());
             table.AddCell(SignatureCell("Prepared by",
-                Text(vm.EmpName), Text(vm.EmpNumber)));
-            table.AddCell(new PdfPCell { Border = Rectangle.NO_BORDER });
-            table.AddCell(SignatureCell("Reviewed and approved by",
-                "", "Name, designation and date"));
+                settings.PreparerFor(Text(vm.EmpName))));
+            table.AddCell(Spacer());
+            table.AddCell(SignatureCell("Approved and Verified by",
+                settings.Approver));
 
             doc.Add(table);
         }
 
-        private static PdfPCell SignatureCell(string role, string name,
-            string caption)
+        private static PdfPCell Spacer()
+        {
+            return new PdfPCell { Border = Rectangle.NO_BORDER };
+        }
+
+        private static PdfPCell SignatureCell(string role, EshOfficer officer)
         {
             var cell = new PdfPCell
             {
@@ -581,28 +961,48 @@ namespace ESTAFF.Services
                 Padding = 0f
             };
 
-            cell.AddElement(Para(role.ToUpper(), Font(7f, Muted, true)));
+            cell.AddElement(Para(role.ToUpper(), Font(6.8f, Muted, true)));
 
             // The rule people actually sign on.
             var line = new PdfPTable(1) { WidthPercentage = 100 };
             var lineCell = new PdfPCell(new Phrase(" ", Font(8f, Ink)))
             {
-                Border          = Rectangle.BOTTOM_BORDER,
+                Border            = Rectangle.BOTTOM_BORDER,
                 BorderWidthBottom = 0.7f,
                 BorderColorBottom = Muted,
-                FixedHeight     = 34f
+                FixedHeight       = 34f
             };
             line.AddCell(lineCell);
             line.SpacingBefore = 4f;
             cell.AddElement(line);
 
-            if (!string.IsNullOrWhiteSpace(name))
-                cell.AddElement(Para(name, Font(9f, Ink, true), 4f));
+            var name = officer != null ? Text(officer.Name) : null;
+            cell.AddElement(Para(
+                string.IsNullOrWhiteSpace(name) ? "Name" : name,
+                Font(8.5f, string.IsNullOrWhiteSpace(name) ? Muted : Ink, true),
+                4f));
 
-            cell.AddElement(Para(caption, Font(7.5f, Muted),
-                string.IsNullOrWhiteSpace(name) ? 4f : 1f));
+            var caption = officer != null
+                ? Join(Text(officer.Position), Text(officer.Jkkp))
+                : null;
+
+            cell.AddElement(Para(
+                string.IsNullOrWhiteSpace(caption)
+                    ? "Position and JKKP No"
+                    : caption,
+                Font(7f, Muted), 1f));
+
+            cell.AddElement(Para("Date: ______________",
+                Font(7f, Muted), 5f));
 
             return cell;
+        }
+
+        private static string Join(string first, string second)
+        {
+            if (string.IsNullOrWhiteSpace(first)) return second;
+            if (string.IsNullOrWhiteSpace(second)) return first;
+            return first + "  |  " + second;
         }
 
         // ══════════════════════════════════════════════════════
@@ -613,19 +1013,23 @@ namespace ESTAFF.Services
         {
             var table = new PdfPTable(widths.Length)
             {
-                WidthPercentage = 100
+                WidthPercentage = 100,
+
+                // A row that will not fit moves to the next page whole rather
+                // than being cut in half by the page break. Splitting a row
+                // leaves the tail of one cell stranded under a repeated header
+                // with the rest of the line blank, which in a form that is
+                // signed and filed reads as a missing entry rather than as a
+                // continuation.
+                //
+                // The trade is that a single row taller than a whole page would
+                // be dropped instead of split. Nothing here can reach that: a
+                // row is one task's title, concern and remarks, and A4 holds
+                // some ninety lines of it.
+                SplitRows = false
             };
             table.SetWidths(widths);
             return table;
-        }
-
-        private static Paragraph Heading(string text)
-        {
-            return new Paragraph(text, Font(12f, Ink, true))
-            {
-                SpacingBefore = 4f,
-                SpacingAfter  = 8f
-            };
         }
 
         private static Paragraph Para(string text, Font font,
@@ -638,7 +1042,7 @@ namespace ESTAFF.Services
                 SpacingBefore = spacingBefore,
                 SpacingAfter  = spacingAfter,
                 Alignment     = alignment,
-                Leading       = font.Size * 1.35f
+                Leading       = font.Size * 1.32f
             };
         }
 
@@ -647,165 +1051,36 @@ namespace ESTAFF.Services
         {
             var cell = new PdfPCell
             {
-                Border          = Rectangle.BOTTOM_BORDER,
-                BorderWidthBottom = 0.7f,
-                BorderColorBottom = Rule,
-                Padding         = 9f,
-                PaddingTop      = 7f
+                Border            = Rectangle.BOX,
+                BorderWidth       = 0.7f,
+                BorderColor       = Rule,
+                Padding           = 8f
             };
             cell.AddElement(Para(label.ToUpper(), Font(6.8f, Muted, true)));
             cell.AddElement(Para(
                 string.IsNullOrWhiteSpace(value) ? "-" : value,
-                Font(9.5f, Ink, true), 3f));
+                Font(9f, Ink, true), 3f));
             table.AddCell(cell);
         }
 
-        private static void AddStatCell(PdfPTable table, string label,
-            int value, BaseColor color, BaseColor background)
-        {
-            var cell = new PdfPCell
-            {
-                Border          = Rectangle.NO_BORDER,
-                BackgroundColor = background,
-                Padding         = 12f
-            };
-            cell.AddElement(Para(value.ToString(), Font(17f, color, true),
-                0f, Element.ALIGN_CENTER));
-            cell.AddElement(Para(label.ToUpper(), Font(6.8f, Muted, true),
-                2f, Element.ALIGN_CENTER));
-            table.AddCell(cell);
-        }
-
-        // A drawn bar rather than a printed percentage: the point of the
-        // number is the comparison, and a bar carries that at a glance.
-        private static PdfPTable CompletionBar(decimal rate)
-        {
-            var wrap = new PdfPTable(1) { WidthPercentage = 100 };
-            wrap.SpacingAfter = 12f;
-
-            var cell = new PdfPCell
-            {
-                Border          = Rectangle.NO_BORDER,
-                BackgroundColor = Panel,
-                Padding         = 12f
-            };
-
-            var caption = NewTable(new[] { 1f, 1f });
-            var label = new PdfPCell(new Phrase("COMPLETION RATE",
-                Font(7f, Muted, true)))
-            {
-                Border = Rectangle.NO_BORDER
-            };
-            var value = new PdfPCell(new Phrase(rate.ToString("0.#") + "%",
-                Font(11f, rate >= 50 ? Accent : Warning, true)))
-            {
-                Border = Rectangle.NO_BORDER,
-                HorizontalAlignment = Element.ALIGN_RIGHT
-            };
-            caption.AddCell(label);
-            caption.AddCell(value);
-            cell.AddElement(caption);
-
-            // Two cells sized to the ratio. Both stay above zero width because
-            // a zero-width column is not a valid table.
-            var filled = (float)Math.Max(0.4m, Math.Min(99.6m, rate));
-            var bar = NewTable(new[] { filled, 100f - filled });
-            bar.SpacingBefore = 5f;
-            bar.AddCell(new PdfPCell(new Phrase(" ", Font(4f, White)))
-            {
-                Border          = Rectangle.NO_BORDER,
-                BackgroundColor = rate >= 50 ? Accent : Warning,
-                FixedHeight     = 7f
-            });
-            bar.AddCell(new PdfPCell(new Phrase(" ", Font(4f, White)))
-            {
-                Border          = Rectangle.NO_BORDER,
-                BackgroundColor = new BaseColor(226, 232, 240),
-                FixedHeight     = 7f
-            });
-            cell.AddElement(bar);
-
-            wrap.AddCell(cell);
-            return wrap;
-        }
-
-        private static void AddField(PdfPTable table, string label,
-            string value, BaseColor color = null)
-        {
-            var labelCell = new PdfPCell(new Phrase(label.ToUpper(),
-                Font(6.8f, Muted, true)))
-            {
-                Border      = Rectangle.NO_BORDER,
-                PaddingLeft = 10f,
-                PaddingTop  = 7f,
-                PaddingBottom = 2f
-            };
-            var valueCell = new PdfPCell(new Phrase(
-                string.IsNullOrWhiteSpace(value) ? "-" : value,
-                Font(8.5f, color ?? Ink)))
-            {
-                Border        = Rectangle.NO_BORDER,
-                PaddingTop    = 7f,
-                PaddingBottom = 2f,
-                PaddingRight  = 10f
-            };
-            table.AddCell(labelCell);
-            table.AddCell(valueCell);
-        }
-
-        private static IElement SubSection(string title, string body,
-            string detail, BaseColor accent, bool bodyMuted = false)
-        {
-            var wrap = new PdfPTable(1) { WidthPercentage = 100 };
-            var cell = new PdfPCell
-            {
-                Border         = Rectangle.TOP_BORDER,
-                BorderWidthTop = 0.7f,
-                BorderColorTop = Rule,
-                Padding        = 10f
-            };
-
-            cell.AddElement(Para(title.ToUpper(), Font(7f, Muted, true)));
-            cell.AddElement(Para(body,
-                bodyMuted
-                    ? FontItalic(8.5f, Muted)
-                    : Font(8.5f, InkSoft), 4f));
-
-            if (!string.IsNullOrWhiteSpace(detail))
-                cell.AddElement(Para(detail, Font(8f, accent, true), 3f));
-
-            wrap.AddCell(cell);
-            return wrap;
-        }
-
-        private static PdfPTable EmptyNote(string text)
-        {
-            var table = new PdfPTable(1) { WidthPercentage = 100 };
-            table.SpacingAfter = 18f;
-            var cell = new PdfPCell(new Phrase(text, FontItalic(9f, Muted)))
-            {
-                Border          = Rectangle.BOX,
-                BorderWidth     = 0.7f,
-                BorderColor     = Rule,
-                BackgroundColor = Panel,
-                Padding         = 14f,
-                HorizontalAlignment = Element.ALIGN_CENTER
-            };
-            table.AddCell(cell);
-            return table;
-        }
-
+        // Composite rather than a plain Phrase cell: the widest heading on the
+        // form runs to three lines, and a Phrase leaves them touching.
         private static void AddTh(PdfPTable table, string text,
             int align = Element.ALIGN_LEFT, float size = 7.5f)
         {
-            table.AddCell(new PdfPCell(new Phrase(text.ToUpper(),
-                Font(size, White, true)))
+            var cell = new PdfPCell
             {
                 BackgroundColor = Ink,
-                Border          = Rectangle.NO_BORDER,
-                Padding         = 7f,
-                HorizontalAlignment = align
-            });
+                Border          = Rectangle.BOX,
+                BorderWidth     = 0.7f,
+                BorderColor     = Ink,
+                Padding         = 6f
+            };
+
+            cell.AddElement(Para(text.ToUpper(), Font(size, White, true),
+                0f, align));
+
+            table.AddCell(cell);
         }
 
         private static void AddTd(PdfPTable table, string text,
@@ -819,13 +1094,56 @@ namespace ESTAFF.Services
 
             table.AddCell(new PdfPCell(new Phrase(text ?? "", font))
             {
-                BackgroundColor = background,
-                Border            = Rectangle.BOTTOM_BORDER,
-                BorderWidthBottom = 0.5f,
-                BorderColorBottom = Rule,
-                Padding           = 6.5f,
+                BackgroundColor     = background,
+                Border              = Rectangle.BOX,
+                BorderWidth         = 0.5f,
+                BorderColor         = Rule,
+                Padding             = 6f,
                 HorizontalAlignment = align
             });
+        }
+
+        // A section of the form that ESTAFF has nothing to put in. The grid is
+        // still printed, with one row saying so, rather than a heading with
+        // nothing under it.
+        private static void AddEmptyRow(PdfPTable table, int columns)
+        {
+            table.AddCell(new PdfPCell(new Phrase(
+                "No items were recorded for this period.",
+                FontItalic(8f, Muted)))
+            {
+                Colspan             = columns,
+                Border              = Rectangle.BOX,
+                BorderWidth         = 0.5f,
+                BorderColor         = Rule,
+                BackgroundColor     = Panel,
+                Padding             = 12f,
+                HorizontalAlignment = Element.ALIGN_CENTER
+            });
+        }
+
+        // Ruled empty rows, numbered, for a grid that is completed by hand.
+        private static void AddBlankRows(PdfPTable table, int columns,
+            int rows)
+        {
+            for (var row = 1; row <= rows; row++)
+            {
+                var bg = row % 2 == 0 ? Panel : White;
+
+                AddTd(table, row.ToString(), bg, Muted,
+                    align: Element.ALIGN_CENTER);
+
+                for (var column = 2; column <= columns; column++)
+                    table.AddCell(new PdfPCell(new Phrase(" ", Font(8f, Ink)))
+                    {
+                        BackgroundColor = bg,
+                        Border          = Rectangle.BOX,
+                        BorderWidth     = 0.5f,
+                        BorderColor     = Rule,
+                        Padding         = 6f,
+                        FixedHeight     = 22f
+                    });
+            }
         }
 
         private static Font Font(float size, BaseColor color,
@@ -859,9 +1177,17 @@ namespace ESTAFF.Services
                 .Replace("←", "<-")
                 .Replace("•", "-")    // bullet
                 .Replace("…", "...")
-                .Replace(" ", " ")    // non-breaking space
+                .Replace(" ", " ")    // non-breaking space
                 .Replace("\r\n", "\n")
                 .Trim();
+        }
+
+        // A field with nothing behind it prints as a rule to write on, not as
+        // an empty cell that reads like an answer of "none".
+        private static string Blank(string value, string fallback)
+        {
+            if (!string.IsNullOrWhiteSpace(value)) return value;
+            return fallback ?? "______________";
         }
 
         private static string DateText(DateTime? value)
@@ -898,7 +1224,7 @@ namespace ESTAFF.Services
                 case ReportStatus.Approved:  return Accent;
                 case ReportStatus.Rejected:  return Danger;
                 case ReportStatus.Submitted: return Info;
-                default:                     return new BaseColor(203, 213, 225);
+                default:                     return Muted;
             }
         }
 
@@ -906,21 +1232,24 @@ namespace ESTAFF.Services
         // PAGE FURNITURE
         // ══════════════════════════════════════════════════════
 
-        // Running header and numbered footer. A report that is printed and
-        // filed has to say what it is on every sheet, and a reader has to be
-        // able to tell whether a page is missing.
+        // Running header and numbered footer. A statutory return that is
+        // printed and filed has to say what it is on every sheet, and a reader
+        // has to be able to tell whether a page is missing.
         private class PageFurniture : PdfPageEventHelper
         {
             private readonly ReportDetailViewModel _vm;
+            private readonly EshReportSettings _settings;
             private readonly string _generated;
 
             private PdfTemplate _pageCount;
             private BaseFont _font;
             private int _pages;
 
-            public PageFurniture(ReportDetailViewModel vm)
+            public PageFurniture(ReportDetailViewModel vm,
+                EshReportSettings settings)
             {
                 _vm = vm;
+                _settings = settings;
                 _generated = DateTime.Now.ToString("dd MMM yyyy, h:mm tt");
             }
 
@@ -942,15 +1271,19 @@ namespace ESTAFF.Services
                 var right  = document.PageSize.Width - document.RightMargin;
 
                 // Running header, from the second page on - the first page
-                // already carries the full title band.
+                // already carries the full letterhead.
                 if (writer.PageNumber > 1)
                 {
                     var top = document.PageSize.Height
                               - document.TopMargin + 18f;
 
+                    var owner = string.IsNullOrWhiteSpace(_settings.Company)
+                        ? "ESTAFF"
+                        : Text(_settings.Company);
+
                     ColumnText.ShowTextAligned(canvas, Element.ALIGN_LEFT,
-                        new Phrase("ESTAFF  |  " + _vm.ReportTypeLabel
-                            + " Task Report",
+                        new Phrase(owner + "  |  ESH "
+                            + _vm.ReportTypeLabel + " Report",
                             Font(7.5f, Ink, true)),
                         left, top, 0);
 
@@ -976,7 +1309,8 @@ namespace ESTAFF.Services
                 canvas.Stroke();
 
                 ColumnText.ShowTextAligned(canvas, Element.ALIGN_LEFT,
-                    new Phrase("ESTAFF  |  Confidential - internal use only",
+                    new Phrase("OSH (SHO) Regulations 1997  |  "
+                        + "Confidential - internal use only",
                         Font(7f, Muted)),
                     left, footerY, 0);
 
