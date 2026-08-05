@@ -7,6 +7,11 @@ body {
     display: flex;
     align-items: center;
     -webkit-font-smoothing: antialiased;
+    /* A centred flex item taller than the viewport overflows equally in both
+       directions, and the overflow above the top edge cannot be scrolled to.
+       The padding gives validation errors somewhere to grow on a short screen
+       (a phone in landscape) without pushing the header out of reach. */
+    padding: 2rem 0;
 }
 
 .auth-card {
@@ -102,10 +107,22 @@ body {
     transition: all 0.2s;
 }
 
+/* The password field is followed by the reveal button, so it is not the end
+   of the group and must not round against it — the rounded edge butted into
+   the button's square left edge and read as a rendering fault. */
+.input-group > .form-control:not(:last-child) {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
 .form-control:focus {
     border-color: #10B981;
     box-shadow: 0 0 0 3px rgba(16,185,129,0.12);
     outline: none;
+    /* Sits above the neighbouring icon and button so the focus ring is not
+       painted over by their borders. */
+    position: relative;
+    z-index: 2;
 }
 
 .input-group:focus-within .input-group-text {
@@ -170,4 +187,27 @@ body {
 .form-check-label {
     font-size: 0.82rem;
     color: #64748B;
+}
+
+/* ── Validation ───────────────────────────────────────────────
+   With ClientValidationEnabled and UnobtrusiveJavaScriptEnabled both on,
+   Html.ValidationSummary always emits its container so client-side script
+   has somewhere to write into — valid or not. The MVC template normally
+   hides the empty state from Site.css, but this page is Layout = null and
+   loads only auth.css, and Content/Site.css does not exist in this project.
+
+   The result was an empty red "alert alert-danger" bar sitting above the
+   form on every single page load, before the user had done anything. Errors
+   still show: MVC swaps the class to validation-summary-errors. */
+.validation-summary-valid {
+    display: none;
+}
+
+.field-validation-valid {
+    display: none;
+}
+
+.validation-summary-errors ul {
+    margin: 0;
+    padding-left: 1.1rem;
 }

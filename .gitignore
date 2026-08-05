@@ -466,3 +466,9 @@ Thumbs.db
 .env
 
 **/Web.config
+
+# Working files kept alongside the source but not part of it: screenshots
+# dropped in while checking a page, and spreadsheets of the statutory forms
+# the reports are modelled on.
+Screenshot*.png
+*.xlsx
