@@ -318,10 +318,23 @@
 .clip-picker-clear:hover { background: #F8FAFC; color: var(--danger); }
 
 /* ── Field wrappers (label + hint + validation) ──────────── */
-.clip-field { display: none; }
-.clip-field.is-visible { display: block; }
 
-.task-list-field.is-hidden { display: none; }
+/* The CLIP field is always shown. It used to be revealed only when the
+   classification named "CLIP" was chosen; attaching a record is now
+   independent of how the task is classified, so there is nothing to toggle. */
+
+.field-optional {
+    margin-left: 0.35rem;
+    padding: 0.05rem 0.4rem;
+    border-radius: 20px;
+    background: var(--bg-subtle, #F1F5F9);
+    color: var(--text-muted);
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    vertical-align: middle;
+}
 
 .clip-field-hint {
     display: block;
@@ -503,6 +516,196 @@
     border-top: 1px solid var(--border-subtle);
     background: #F8FAFC;
 }
+
+/* ── Plant filter inside the picker panel ──────────────────
+   The list carries every CLIP record, so plant is the first cut most
+   people want before searching. */
+.clip-picker-filter-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem 0.5rem;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.clip-picker-filter-label {
+    margin: 0;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.clip-picker-plant {
+    flex: 1;
+    min-width: 0;
+    padding: 0.28rem 0.45rem;
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    background: #fff;
+    font-family: inherit;
+    font-size: 0.74rem;
+    color: var(--text-primary);
+}
+
+.clip-picker-plant:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+/* ── CLIP progress: the supporting evidence block ──────────
+   The phases EHS_PORTAL holds against an attached record, rendered as a
+   timeline. Read-only throughout: nothing here is ESTAFF's data, so it
+   sits in a recessed panel rather than looking like a form. */
+
+.clip-progress {
+    margin-top: 0.6rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--border-subtle);
+    border-left: 3px solid #94A3B8;
+    border-radius: 8px;
+    background: #F8FAFC;
+}
+
+.clip-progress-head {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+/* Says the data is not ours and not stored, which is the whole basis on
+   which it counts as evidence. */
+.clip-progress-source {
+    margin-left: auto;
+    padding: 0.05rem 0.4rem;
+    border-radius: 20px;
+    background: #E2E8F0;
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    color: #475569;
+}
+
+.clip-progress-phases {
+    margin: 0.5rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* The rail is drawn on the item, not behind the list, so it stops at the
+   last phase instead of trailing past it. */
+.clip-phase {
+    position: relative;
+    padding: 0 0 0.55rem 1.1rem;
+}
+
+.clip-phase:not(:last-child)::before {
+    content: "";
+    position: absolute;
+    left: 0.24rem;
+    top: 0.7rem;
+    bottom: -0.1rem;
+    width: 1px;
+    background: var(--border-subtle);
+}
+
+.clip-phase:last-child { padding-bottom: 0; }
+
+.clip-phase-marker {
+    position: absolute;
+    left: 0;
+    top: 0.28rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: #CBD5E1;
+}
+
+.clip-phase.state-complete .clip-phase-marker { background: var(--primary); }
+.clip-phase.state-progress .clip-phase-marker { background: #3B82F6; }
+
+.clip-phase-title {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.clip-phase-state {
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.clip-phase.state-complete .clip-phase-state { color: #065F46; }
+.clip-phase.state-progress .clip-phase-state { color: #1D4ED8; }
+
+.clip-phase-meta {
+    margin-top: 0.1rem;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+}
+
+.clip-phase-sep { margin: 0 0.25rem; opacity: 0.6; }
+
+.clip-phase-doc {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.2rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 5px;
+    background: #EEF2F7;
+    font-size: 0.66rem;
+    color: #475569;
+    word-break: break-all;
+}
+
+.clip-progress-outstanding,
+.clip-progress-remarks {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    margin-top: 0.5rem;
+    padding-top: 0.45rem;
+    border-top: 1px dashed var(--border-subtle);
+    font-size: 0.68rem;
+    color: var(--text-muted);
+}
+
+.clip-progress-remarks-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.clip-progress-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.5rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.clip-progress-link:hover { text-decoration: underline; }
 
 @media (max-width: 640px) {
     .classification-options { flex-wrap: wrap; }

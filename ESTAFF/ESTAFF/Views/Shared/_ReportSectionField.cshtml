@@ -1,0 +1,46 @@
+@model ESTAFF.Models.ViewModels.ClassificationFormViewModel
+
+@* Which numbered part of the statutory ESH monthly report the tasks under this
+   classification are printed in.
+
+   Shared by the create and edit screens so the two cannot describe the same
+   choice differently. Only task-backed sections are offered: sections 3
+   (incident statistics) and 6 (purchase requests) print blank grids and have
+   no row a task could occupy. *@
+
+<div class="mb-3">
+    @Html.LabelFor(m => m.ReportSection, new { @class = "form-label" })
+
+    <div class="input-group">
+        <span class="input-group-text">
+            <i class="fas fa-file-contract"></i>
+        </span>
+        @Html.DropDownListFor(m => m.ReportSection,
+            new SelectList(Model.SectionChoices, "Section", "Heading"),
+            "Not mapped — prints under " + Model.UnmappedFallbackLabel,
+            new { @class = "form-select" })
+    </div>
+
+    @Html.ValidationMessageFor(m => m.ReportSection, "",
+        new { @class = "text-danger small" })
+
+    <p class="form-hint">
+        Where these tasks appear on the downloaded
+        <strong>Environment, Safety and Health</strong> report, filed under the
+        OSH (Safety &amp; Health Officer) Regulations 1997. Every task in the
+        period is printed under one of the ten numbered parts of that form.
+    </p>
+</div>
+
+@if (!Model.ReportSection.HasValue && !Model.IsNew)
+{
+    <div class="taxonomy-info is-warning">
+        <i class="fas fa-triangle-exclamation"></i>
+        <div>
+            <strong>Not mapped to a report section.</strong>
+            Tasks under this classification are printed under
+            <strong>@Model.UnmappedFallbackLabel</strong> — the catch-all part
+            of the form — until a section is chosen here.
+        </div>
+    </div>
+}

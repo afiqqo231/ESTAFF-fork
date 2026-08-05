@@ -54,7 +54,7 @@
                aria-hidden="true"></i>
             <input type="search" id="taskSearch" name="q" value="@term"
                    class="task-search-input"
-                   placeholder="Search title, description or classification"
+                   placeholder="Search title, concern or classification"
                    autocomplete="off" />
             @if (term.Length > 0)
             {
@@ -181,6 +181,14 @@
                             @Html.Partial("_ClipItemChip", task.ClipItem)
                         }
                     </div>
+
+                    @* What CLIP already holds against the attached record, so
+                       the employee can see the evidence their task rests on
+                       without leaving the page for the portal. *@
+                    @if (task.ClipItem != null)
+                    {
+                        @Html.Partial("_ClipProgress", task.ClipItem)
+                    }
                 </div>
 
                 <div class="my-task-meta">

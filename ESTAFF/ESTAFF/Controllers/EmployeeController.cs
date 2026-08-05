@@ -267,31 +267,20 @@ namespace ESTAFF.Controllers
                 TaskLists = TaskDisplay.ToOptions(_db.TaskLists
                     .OrderBy(l => l.Name)
                     .ToList()),
-                ClipItems = clip.GetItemsForUser(User.Identity.GetUserId()),
-                ClipClassificationId =
-                    clip.GetClipClassification()?.TaskClassificationId
+                // Every CLIP record, filtered by plant in the picker. Not just
+                // the employee's own plants: that mapping is EHS_PORTAL's and
+                // is incomplete, so it left the picker empty for anyone
+                // missing a CLIP.UserPlants row. See ClipService.GetAllItems.
+                ClipItems = clip.GetAllItems()
             };
         }
 
-        private bool IsClipClassification(CreateTaskViewModel model)
+        // The one check the data annotations cannot express: a task type has to
+        // belong to the chosen classification, so it is required here rather
+        // than on the model. Attaching a CLIP record stays optional.
+        private void ValidateClassification(CreateTaskViewModel model)
         {
-            return model.TaskClassificationId > 0
-                && model.TaskClassificationId
-                    == model.Options.ClipClassificationId;
-        }
-
-        // Both employee task forms need the same two conditional checks, which
-        // the data annotations cannot express: CLIP work needs a picked record,
-        // anything else needs a task type.
-        private void ValidateClassification(CreateTaskViewModel model, bool isClip)
-        {
-            if (isClip && string.IsNullOrWhiteSpace(model.ClipItemKey))
-            {
-                ModelState.AddModelError("ClipItemKey",
-                    "Select the COF or plant monitoring record this task covers.");
-            }
-
-            if (!isClip && !model.TaskListId.HasValue)
+            if (!model.TaskListId.HasValue)
             {
                 ModelState.AddModelError("TaskListId",
                     "Select the task type this task covers.");
@@ -301,15 +290,16 @@ namespace ESTAFF.Controllers
         // Mirrors AdminController.ApplyClassificationLink: the rule itself lives
         // in ClipService, the controller only reports the rejection.
         private bool ApplyClassificationLink(TaskItem task,
-            int? classificationId, int? taskListId, string clipItemKey,
-            string ownerUserId, bool isClip)
+            int? classificationId, int? taskListId, string clipItemKey)
         {
-            if (Clip.TryApplyClassificationLink(task, classificationId,
-                    taskListId, clipItemKey, ownerUserId, isClip))
+            var result = Clip.TryApplyClassificationLink(task,
+                classificationId, taskListId, clipItemKey);
+
+            if (result != ClipService.ClipAttachResult.Unavailable)
                 return true;
 
             ModelState.AddModelError("ClipItemKey",
-                "That CLIP item is not available for your plants.");
+                "That CLIP item no longer exists in CLIP. Pick another.");
             return false;
         }
 
@@ -356,8 +346,7 @@ namespace ESTAFF.Controllers
 
             model.Options = GetFormOptions();
 
-            var isClip = IsClipClassification(model);
-            ValidateClassification(model, isClip);
+            ValidateClassification(model);
 
             if (!ModelState.IsValid)
                 return View(model);
@@ -378,10 +367,11 @@ namespace ESTAFF.Controllers
                 TaskClassificationId = model.TaskClassificationId
             };
 
-            // Sets TaskListId/SubTaskId. The CLIP item must belong to one of the
-            // employee's own plants — they are the assignee here.
+            // Sets the task type and any attached CLIP record. The record must
+            // belong to one of the employee's own plants — they are the
+            // assignee here.
             if (!ApplyClassificationLink(task, model.TaskClassificationId,
-                    model.TaskListId, model.ClipItemKey, userId, isClip))
+                    model.TaskListId, model.ClipItemKey))
                 return View(model);
 
             _db.TaskItems.Add(task);
@@ -424,7 +414,7 @@ namespace ESTAFF.Controllers
                 Priority = task.Priority,
                 TaskClassificationId = task.TaskClassificationId,
                 TaskListId = task.TaskListId,
-                ClipItemKey = Clip.BuildKeyForTask(task),
+                ClipItemKey = ClipService.BuildKeyForTask(task),
                 Options = GetFormOptions()
             };
 
@@ -455,8 +445,7 @@ namespace ESTAFF.Controllers
 
             model.Options = GetFormOptions();
 
-            var isClip = IsClipClassification(model);
-            ValidateClassification(model, isClip);
+            ValidateClassification(model);
 
             if (!ModelState.IsValid)
                 return View(model);
@@ -471,7 +460,7 @@ namespace ESTAFF.Controllers
 
             if (task.Description != model.Description)
             {
-                changes.Append("description updated. ");
+                changes.Append("Concern/Issue updated. ");
                 task.Description = model.Description;
             }
 
@@ -494,7 +483,7 @@ namespace ESTAFF.Controllers
             task.TaskClassificationId = model.TaskClassificationId;
 
             if (!ApplyClassificationLink(task, model.TaskClassificationId,
-                    model.TaskListId, model.ClipItemKey, userId, isClip))
+                    model.TaskListId, model.ClipItemKey))
                 return View(model);
 
             var after = Clip.DescribeClassification(task);
@@ -1108,10 +1097,13 @@ namespace ESTAFF.Controllers
 
             var pdfService = new ReportPdfService();
             var bytes = pdfService.GeneratePdf(vm);
-            var fileName = 
-                $"Report_{vm.EmpNumber}_" +
-                $"{vm.PeriodStart:yyyMMdd}_" +
-                $"{vm.PeriodEnd:yyyMMdd}.pdf";
+            // Named after the statutory return it is, so a downloaded copy is
+            // filed under the same name as the one the SHO keeps.
+            var fileName =
+                $"ESH_{vm.ReportTypeLabel}_Report_" +
+                $"{vm.EmpNumber}_" +
+                $"{vm.PeriodStart:yyyyMMdd}_" +
+                $"{vm.PeriodEnd:yyyyMMdd}.pdf";
 
             return File(bytes, "application/pdf", fileName);
         }

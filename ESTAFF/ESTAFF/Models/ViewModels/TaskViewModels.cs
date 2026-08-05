@@ -15,7 +15,7 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Task Title")]
         public string Title { get; set; }
 
-        [Display(Name = "Description")]
+        [Display(Name = "Concern/Issue")]
         public string Description { get; set; }
 
         [Required(ErrorMessage = "Please assign to an employee")]
@@ -34,13 +34,13 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Task Classification")]
         public int TaskClassificationId { get; set; }
 
-        // Nullable, and required only for non-CLIP work (checked in the
-        // controller): a CLIP task takes its task type from the picked CLIP
-        // record, so the form deliberately posts no value for it.
+        // Nullable on the model but required in the controller, which is the
+        // only place that can check it belongs to the chosen classification.
         [Display(Name = "Task")]
         public int? TaskListId { get; set; }
 
-        // Posted by the CLIP picker on the admin form as "COF:14" / "PM:3".
+        // Optional. Posted by the CLIP picker as "COF:14" / "PM:3", empty when
+        // the task covers no CLIP record - which is most of them.
         [Display(Name = "CLIP Item")]
         public string ClipItemKey { get; set; }
 
@@ -60,7 +60,7 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Task Title")]
         public string Title { get; set; }
 
-        [Display(Name = "Description")]
+        [Display(Name = "Concern/Issue")]
         public string Description { get; set; }
 
         [Required(ErrorMessage = "Please assign to an employee")]
@@ -127,7 +127,8 @@ namespace ESTAFF.Models.ViewModels
         public int? TaskListId { get; set; }
         public string TaskListName { get; set; }
 
-        // The linked CLIP record, when this task is CLIP-classified and linked.
+        // The attached CLIP record, when the task carries one. Independent of
+        // classification - any task may have one.
         public ClipItemViewModel ClipItem { get; set; }
 
         // Newest status transition, shown inline on the task.
@@ -231,7 +232,7 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Task Title")]
         public string Title { get; set; }
 
-        [Display(Name = "Description")]
+        [Display(Name = "Concern/Issue")]
         public string Description { get; set; }
 
         [Required(ErrorMessage = "Due date is required")]
@@ -243,12 +244,11 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Task Classification")]
         public int TaskClassificationId { get; set; }
 
-        // Nullable for the same reason as AssignTaskViewModel.TaskListId: a CLIP
-        // task takes its task type from the picked record, so nothing is posted.
+        // Nullable for the same reason as AssignTaskViewModel.TaskListId.
         [Display(Name = "Task")]
         public int? TaskListId { get; set; }
 
-        // Posted by the CLIP picker as "COF:14" / "PM:3".
+        // Optional. Posted by the CLIP picker as "COF:14" / "PM:3".
         [Display(Name = "CLIP Item")]
         public string ClipItemKey { get; set; }
 
@@ -352,12 +352,10 @@ namespace ESTAFF.Models.ViewModels
             = new List<TaskListOption>();
 
         // CLIP records for the relevant employee's plants, nearest expiry first.
+        // Offered on every task regardless of classification - attaching one is
+        // optional and always available.
         public List<ClipItemViewModel> ClipItems { get; set; }
             = new List<ClipItemViewModel>();
-
-        // Id of the classification named "CLIP" - the one that reveals the CLIP
-        // picker. Null when that row is missing from the lookup table.
-        public int? ClipClassificationId { get; set; }
     }
 
     public class ClassificationOption
@@ -392,8 +390,10 @@ namespace ESTAFF.Models.ViewModels
         public string ClipReloadTriggerId { get; set; }
 
         public string ClipHint { get; set; } =
-            "Certificates of fitness and plant monitoring records for the " +
-            "assigned plants. Expired items are listed first.";
+            "Optional. Attach the certificate of fitness or plant monitoring " +
+            "record this task covers, and the report will carry its plant, " +
+            "expiry and progress alongside the task. Expired items are " +
+            "listed first.";
 
         public static TaskFormFieldsViewModel From(AssignTaskViewModel m)
         {

@@ -28,19 +28,18 @@ namespace ESTAFF.Controllers
                     : clip.GetMonitoringItem(id);
 
                 if (item == null) return HttpNotFound();
-                
-                // Same rule ApplyKeyToTask enforces on write: a hand-crafted
-                // link must not reach a plant the user isnt assigned to.
-                var user = _db.Users.Find(User.Identity.GetUserId());
-                if (user == null) return new HttpStatusCodeResult(HttpStatusCode.Forbidden);
 
-                if (!user.IsAdmin)
-                {
-                    var allowed = clip.GetPlantIdsForUser(user.Id);
-                    if (!allowed.Contains(item.PlantId))
-                        return new HttpStatusCodeResult(HttpStatusCode.Forbidden);
-                }
-
+                // This used to refuse any record outside the user's
+                // CLIP.UserPlants rows, matching the same restriction the task
+                // form applied on write. Both are gone: ESTAFF now offers every
+                // CLIP record for attaching and prints the attached record's
+                // plant, expiry, phases and documents on the task and in the
+                // report, so refusing to *link* to the same record was
+                // inconsistent rather than protective.
+                //
+                // The redirect leaves ESTAFF entirely. EHS_PORTAL authenticates
+                // and authorises its own pages, which is where that decision
+                // belongs — this action only resolves the key to a URL.
                 var url = ClipService.BuildProgressUrl(kind, id);
                 if (url == null) return new HttpStatusCodeResult(HttpStatusCode.ServiceUnavailable);
 

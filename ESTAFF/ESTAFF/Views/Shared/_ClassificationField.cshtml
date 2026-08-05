@@ -2,12 +2,18 @@
 @model TaskFormFieldsViewModel
 
 @*
-    Classification, task type, and (for CLIP) the CLIP item picker.
+    Classification, task type, and the optional CLIP attachment.
 
-    Laid out as one block because the three controls are a single decision:
-    the classification decides which task types are offered, and choosing CLIP
-    swaps the task-type dropdown for the CLIP picker — which sets the task type
-    itself from whichever record you pick.
+    The first two are one decision — the classification decides which task
+    types are offered — so they sit together. The CLIP field is separate and
+    below them, because attaching a certificate or monitoring record is a
+    different question: it says what this task covers, not how it is filed, and
+    it is available whatever the classification.
+
+    It used to be neither. A task could only reach a CLIP record by being filed
+    under a classification called "CLIP", which swapped the task-type dropdown
+    out entirely — so covering a certificate and describing the kind of work
+    were the same choice, and only one of them could be answered.
 
     Classification is a segmented radio group rather than a <select>: there are
     only a handful, the choice changes what appears below it, and showing them
@@ -25,8 +31,7 @@
         }).ToList());
 }
 
-<div class="classification-field"
-     data-clip-classification="@Model.Options.ClipClassificationId">
+<div class="classification-field">
 
     <label class="form-label">Classification</label>
     <div class="classification-options">
@@ -48,8 +53,7 @@
     @Html.ValidationMessage("TaskClassificationId", "",
         new { @class = "text-danger small" })
 
-    @* Task type — filtered to the selected classification by estaff-clip.js.
-       Hidden for CLIP, where the CLIP picker below sets it instead. *@
+    @* Task type — filtered to the selected classification by estaff-clip.js. *@
     <div class="task-list-field mt-3">
         <label class="form-label" for="TaskListId">Task Type</label>
         <select name="TaskListId" id="TaskListId" class="form-control">
@@ -62,10 +66,11 @@
         </span>
     </div>
 
-    @* CLIP item — revealed only when the CLIP classification is selected. *@
+    @* CLIP item — optional, and offered under every classification. *@
     <div class="clip-field mt-3">
         <label class="form-label" for="ClipItemKey">
             CLIP Item
+            <span class="field-optional">optional</span>
             <span style="font-weight:400; color:var(--text-muted);">
                 — sorted by nearest expiry
             </span>

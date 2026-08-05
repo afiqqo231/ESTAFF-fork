@@ -15,11 +15,14 @@ namespace ESTAFF.Controllers
     // Both are lookup tables the task forms read directly, so a row saved here
     // shows up in the dropdowns on the next page load.
     //
-    // Two rules run through every action:
-    //   - a row that something still points at is never deleted, and the
-    //     screen says what is pointing at it;
-    //   - the CLIP classification is resolved by name in ClipService, so it is
-    //     protected from deletion and flagged before it is renamed.
+    // One rule runs through every action: a row that something still points at
+    // is never deleted, and the screen says what is pointing at it.
+    //
+    // No classification is special. A row named "CLIP" used to be load-bearing
+    // — it was how a task got linked to a certificate — and was protected from
+    // deletion because of it. Attaching a CLIP record is now a property of the
+    // task, so that row is ordinary and can be renamed or removed like any
+    // other once nothing points at it.
     [AdminOnly]
     public class ClassificationsController : Controller
     {
@@ -55,9 +58,9 @@ namespace ESTAFF.Controllers
                 {
                     TaskClassificationId = c.TaskClassificationId,
                     Name          = c.Name,
+                    ReportSection = EshSections.Sanitise(c.ReportSection),
                     TaskTypeCount = Lookup(typeCounts, c.TaskClassificationId),
-                    TaskCount     = Lookup(taskCounts, c.TaskClassificationId),
-                    IsClip        = IsClipName(c.Name)
+                    TaskCount     = Lookup(taskCounts, c.TaskClassificationId)
                 })
                 .ToList();
 
@@ -87,13 +90,25 @@ namespace ESTAFF.Controllers
                 ModelState.AddModelError("Name",
                     "A classification with this name already exists.");
 
+            // Sections 3 and 6 print blank statutory grids and have no row a
+            // task could occupy, so a value that reached the post outside the
+            // dropdown is rejected rather than saved into a column the report
+            // would then have to second-guess.
+            if (!IsMappableSection(model.ReportSection))
+                ModelState.AddModelError("ReportSection",
+                    "Choose a section of the report that lists tasks.");
+
             if (!ModelState.IsValid)
             {
                 ViewBag.PageTitle = "New Classification";
                 return View(model);
             }
 
-            var classification = new TaskClassification { Name = model.Name };
+            var classification = new TaskClassification
+            {
+                Name          = model.Name,
+                ReportSection = model.ReportSection
+            };
             _db.TaskClassifications.Add(classification);
             _db.SaveChanges();
 
@@ -137,34 +152,40 @@ namespace ESTAFF.Controllers
                 ModelState.AddModelError("Name",
                     "A classification with this name already exists.");
 
+            if (!IsMappableSection(model.ReportSection))
+                ModelState.AddModelError("ReportSection",
+                    "Choose a section of the report that lists tasks.");
+
             if (!ModelState.IsValid)
             {
-                // The posted form carries only the name; the task types have to
-                // be read back before the view can be rendered again.
+                // The posted form carries only the name and the section; the
+                // task types have to be read back before the view can be
+                // rendered again.
                 var reloaded = BuildForm(classification.TaskClassificationId);
                 model.TaskTypes = reloaded.TaskTypes;
-                model.IsClip    = reloaded.IsClip;
 
                 ViewBag.PageTitle = "Edit Classification";
                 return View(model);
             }
 
-            var wasClip = IsClipName(classification.Name);
-            classification.Name = model.Name;
+            var wasSection = EshSections.Sanitise(classification.ReportSection);
+
+            classification.Name          = model.Name;
+            classification.ReportSection = model.ReportSection;
             _db.SaveChanges();
 
             TempData["SuccessMessage"] =
                 "Classification updated to '" + classification.Name + "'.";
 
-            // Renaming this row away from "CLIP" leaves ClipService unable to
-            // find it, which silently disables the CLIP picker. Saying so is
-            // more use than refusing the edit.
-            if (wasClip && !IsClipName(classification.Name))
-                TempData["ErrorMessage"] =
-                    "This was the CLIP classification. The CLIP item picker "
-                    + "looks the row up by the name 'CLIP' and will no longer "
-                    + "find it, so CLIP tasks can no longer be linked to a "
-                    + "certificate or monitoring record.";
+            // A remapping moves every task under this classification to a
+            // different part of the next printed report, including ones already
+            // closed. That is the intended effect, but it is not what "saved"
+            // usually means, so it is said out loud.
+            if (wasSection != EshSections.Sanitise(classification.ReportSection))
+                TempData["SuccessMessage"] +=
+                    " Its tasks now print under "
+                    + EshSections.ShortLabel(classification.ReportSection)
+                    + " on the ESH report.";
 
             return RedirectToAction("Edit",
                 new { id = classification.TaskClassificationId });
@@ -306,13 +327,12 @@ namespace ESTAFF.Controllers
                 .ToList()
                 .ToDictionary(x => x.TaskListId.Value, x => x.Count);
 
-            var isClip = IsClipName(classification.Name);
-
             return new ClassificationFormViewModel
             {
                 TaskClassificationId = classification.TaskClassificationId,
-                Name   = classification.Name,
-                IsClip = isClip,
+                Name          = classification.Name,
+                ReportSection = EshSections.Sanitise(
+                                    classification.ReportSection),
                 TaskTypes = taskTypes
                     .Select(l => new TaskTypeRowViewModel
                     {
@@ -320,13 +340,7 @@ namespace ESTAFF.Controllers
                         TaskClassificationId = l.TaskClassificationId,
                         Name                 = l.Name,
                         Description          = l.Description,
-                        TaskCount            = Lookup(taskCounts, l.TaskListId),
-
-                        // Only meaningful under CLIP, where the name decides
-                        // which CLIP table a task links to.
-                        ClipKind = isClip
-                            ? ClipService.ClassifyTaskListName(l.Name)
-                            : null
+                        TaskCount            = Lookup(taskCounts, l.TaskListId)
                     })
                     .ToList()
             };
@@ -360,10 +374,6 @@ namespace ESTAFF.Controllers
 
         private string DeleteBlockedReason(TaskClassification classification)
         {
-            if (IsClipName(classification.Name))
-                return "The CLIP integration looks this classification up by "
-                     + "name, so it cannot be removed.";
-
             var taskCount = _db.TaskItems.Count(t =>
                 t.TaskClassificationId == classification.TaskClassificationId);
 
@@ -394,10 +404,15 @@ namespace ESTAFF.Controllers
                     || c.TaskClassificationId != exceptId.Value));
         }
 
-        private static bool IsClipName(string name)
+        // Null is allowed - a classification can be created before anyone has
+        // decided where its tasks belong, and the report falls back. What is
+        // not allowed is a section that has no task rows to put them in.
+        private static bool IsMappableSection(EshSection? section)
         {
-            return string.Equals(name, TaskClassification.ClipName,
-                StringComparison.OrdinalIgnoreCase);
+            if (!section.HasValue) return true;
+
+            return EshSections.Mappable()
+                .Any(s => s.Section == section.Value);
         }
 
         private static int Lookup(Dictionary<int, int> counts, int key)

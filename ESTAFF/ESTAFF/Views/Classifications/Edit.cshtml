@@ -34,20 +34,7 @@
                     new { @class = "text-danger small" })
             </div>
 
-            @* The CLIP row is found by name in ClipService, so a rename here
-               has consequences the name alone does not suggest. *@
-            if (Model.IsClip)
-            {
-                <div class="taxonomy-info is-warning">
-                    <i class="fas fa-triangle-exclamation"></i>
-                    <div>
-                        <strong>This classification drives the CLIP picker.</strong>
-                        It is matched by the name <code>CLIP</code>. Renaming it
-                        stops CLIP tasks from being linked to a certificate or
-                        monitoring record, and it cannot be deleted.
-                    </div>
-                </div>
-            }
+            @Html.Partial("_ReportSectionField", Model)
 
             <div class="d-flex gap-2 mt-4">
                 <button type="submit" class="btn-primary-custom">
@@ -144,12 +131,6 @@
                     <span>
                         @type.TaskCount task@(type.TaskCount == 1 ? "" : "s")
                     </span>
-                    @if (type.ClipKindLabel != null)
-                    {
-                        <span class="taxonomy-flag">
-                            <i class="fas fa-link"></i> @type.ClipKindLabel
-                        </span>
-                    }
                 </div>
             </div>
         }
@@ -182,15 +163,5 @@
             }
         </div>
 
-        @if (Model.IsClip)
-        {
-            <p class="form-hint mt-3">
-                Under CLIP the name decides which records the picker offers:
-                one containing <strong>fitness</strong> or <strong>COF</strong>
-                links to Certificates of Fitness, one containing
-                <strong>monitoring</strong> links to Plant Monitoring. Any other
-                name gets no picker.
-            </p>
-        }
     </div>
 </div>

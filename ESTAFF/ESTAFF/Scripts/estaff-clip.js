@@ -35,6 +35,7 @@
         this.trigger   = root.querySelector('.clip-picker-trigger');
         this.panel     = root.querySelector('.clip-picker-panel');
         this.search    = root.querySelector('.clip-picker-search');
+        this.plant     = root.querySelector('.clip-picker-plant');
         this.list      = root.querySelector('.clip-picker-list');
         this.clearBtn  = root.querySelector('.clip-picker-clear');
 
@@ -46,6 +47,7 @@
 
         root.classList.add('is-enhanced');
         this.bind();
+        this.buildPlantOptions();
         this.render();
         this.syncTrigger();
     }
@@ -84,6 +86,12 @@
             });
             this.search.addEventListener('keydown', function (e) {
                 self.onListKey(e);
+            });
+        }
+
+        if (this.plant) {
+            this.plant.addEventListener('change', function () {
+                self.render();
             });
         }
 
@@ -244,8 +252,8 @@
 
         if (!item) {
             title.textContent = this.items.length
-                ? 'Select a CLIP item…'
-                : 'No CLIP items for this employee';
+                ? 'No CLIP item attached — click to choose'
+                : 'No CLIP records exist';
             title.classList.add('is-placeholder');
             sub.textContent = '';
             sub.style.color = '';
@@ -268,11 +276,47 @@
         return '';
     }
 
+    // The plants actually represented in the list, each with a count, so the
+    // filter can never offer a plant with nothing under it.
+    ClipPicker.prototype.buildPlantOptions = function () {
+        if (!this.plant) return;
+
+        var counts = {};
+        var names  = {};
+
+        this.items.forEach(function (item) {
+            var id = String(item.plantId || '');
+            if (!id) return;
+            counts[id] = (counts[id] || 0) + 1;
+            names[id]  = item.plant || ('Plant ' + id);
+        });
+
+        var ids = Object.keys(counts).sort(function (a, b) {
+            return names[a].localeCompare(names[b]);
+        });
+
+        while (this.plant.options.length > 1) this.plant.remove(1);
+
+        var self = this;
+        ids.forEach(function (id) {
+            var opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = names[id] + ' (' + counts[id] + ')';
+            self.plant.appendChild(opt);
+        });
+
+        var first = this.plant.options[0];
+        if (first) first.textContent = 'All plants (' + this.items.length + ')';
+    };
+
     ClipPicker.prototype.render = function () {
         var term = (this.search && this.search.value || '')
             .trim().toLowerCase();
 
+        var plantId = (this.plant && this.plant.value || '').trim();
+
         var matches = this.items.filter(function (item) {
+            if (plantId && String(item.plantId) !== plantId) return false;
             if (!term) return true;
             return [item.title, item.subtitle, item.plant,
                     item.kind, item.status, item.processStatus]
@@ -286,9 +330,20 @@
         if (!matches.length) {
             var empty = document.createElement('li');
             empty.className = 'clip-picker-empty';
-            empty.textContent = this.items.length
-                ? 'No CLIP items match “' + (this.search ? this.search.value : '') + '”.'
-                : 'No COF or plant monitoring records are linked to these plants.';
+
+            if (!this.items.length) {
+                empty.textContent =
+                    'No COF or plant monitoring records exist in CLIP.';
+            } else if (term && plantId) {
+                empty.textContent = 'Nothing matches “' + this.search.value +
+                    '” in this plant. Try All plants.';
+            } else if (plantId) {
+                empty.textContent = 'No CLIP records for this plant.';
+            } else {
+                empty.textContent =
+                    'No CLIP items match “' + this.search.value + '”.';
+            }
+
             this.list.appendChild(empty);
             return;
         }
@@ -392,24 +447,24 @@
     }
 
     // ════════════════════════════════════════════
-    // CLASSIFICATION → task type → CLIP picker
+    // CLASSIFICATION → task type
     // ════════════════════════════════════════════
     //
     // Choosing a classification narrows the task-type list to that
-    // classification's own rows. Choosing CLIP hides the task type entirely and
-    // reveals the CLIP picker instead, because picking a COF or plant
-    // monitoring record is what decides the task type in that case.
+    // classification's own rows. That is all it does.
+    //
+    // It used to do more: choosing the classification named "CLIP" hid the
+    // task type, revealed the CLIP picker, and cleared any picked record when
+    // you moved away again. The CLIP attachment is now independent of the
+    // classification, so the picker stays visible and a record you have chosen
+    // survives reclassifying the task — which is the point of the change.
 
     function wireClassificationField(field) {
         var radios    = field.querySelectorAll('.js-classification-radio');
-        var listWrap  = field.querySelector('.task-list-field');
         var listInput = field.querySelector('#TaskListId');
-        var clipWrap  = field.querySelector('.clip-field');
-        var clipNative = field.querySelector('.clip-picker-native');
 
         if (!radios.length || !listInput) return;
 
-        var clipId = field.getAttribute('data-clip-classification');
         var allLists = readJson(field.querySelector('.task-list-data'), []);
         var selectedList = readJson(field.querySelector('.task-list-selected'), null);
 
@@ -420,10 +475,6 @@
 
         function apply() {
             var current = selected();
-            var isClip = !!clipId && current === clipId;
-
-            if (clipWrap) clipWrap.classList.toggle('is-visible', isClip);
-            if (listWrap) listWrap.classList.toggle('is-hidden', isClip);
 
             // Rebuild the task-type list for this classification, keeping the
             // current choice only if it still belongs.
@@ -449,13 +500,6 @@
                     : '';
 
             listInput.disabled = matches.length === 0;
-
-            // Drop a stale CLIP link the moment the task stops being CLIP work,
-            // so it cannot be posted alongside another classification.
-            if (!isClip && clipNative) {
-                clipNative.value = '';
-                if (clipNative.clipPicker) clipNative.clipPicker.syncTrigger();
-            }
         }
 
         for (var i = 0; i < radios.length; i++) {
@@ -475,47 +519,10 @@
         }
     }
 
-    // ════════════════════════════════════════════
-    // ASSIGNEE → reloads the CLIP list
-    // ════════════════════════════════════════════
-
-    function wireReload(root, picker) {
-        var url       = root.getAttribute('data-reload-url');
-        var triggerId = root.getAttribute('data-reload-trigger');
-        if (!url || !triggerId) return;
-
-        var select = document.getElementById(triggerId);
-        if (!select) return;
-
-        select.addEventListener('change', function () {
-            var employeeId = select.value;
-
-            if (!employeeId) {
-                picker.setItems([]);
-                return;
-            }
-
-            var req = new XMLHttpRequest();
-            req.open('GET', url + '?employeeId=' +
-                encodeURIComponent(employeeId), true);
-            req.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-
-            req.onload = function () {
-                if (req.status < 200 || req.status >= 300) {
-                    picker.setItems([]);
-                    return;
-                }
-                try {
-                    picker.setItems(JSON.parse(req.responseText));
-                } catch (e) {
-                    picker.setItems([]);
-                }
-            };
-
-            req.onerror = function () { picker.setItems([]); };
-            req.send();
-        });
-    }
+    // The picker used to refetch its list over XHR whenever the assignee
+    // changed, because the options were the assignee's plants. It now carries
+    // every CLIP record and filters by plant on the client, so there is nothing
+    // to refetch and the list is never empty while an assignee is unchosen.
 
     // ════════════════════════════════════════════
     // BOOT
@@ -529,7 +536,6 @@
             if (!picker.native) continue;
 
             picker.native.clipPicker = picker;
-            wireReload(pickers[i], picker);
         }
 
         var fields = document.querySelectorAll('.classification-field');

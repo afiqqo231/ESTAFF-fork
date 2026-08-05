@@ -35,12 +35,6 @@
                     <div class="col-12">
                         @{
                             var fields = TaskFormFieldsViewModel.From(Model);
-                            fields.ClipReloadUrl = Url.Action("ClipItems", "Admin");
-                            fields.ClipReloadTriggerId = "AssignedToUserId";
-                            fields.ClipHint =
-                                "Certificates of fitness and plant monitoring "
-                                + "records for the assigned employee's plants. "
-                                + "Expired items are listed first.";
                         }
                         @Html.Partial("_ClassificationField", fields)
                     </div>

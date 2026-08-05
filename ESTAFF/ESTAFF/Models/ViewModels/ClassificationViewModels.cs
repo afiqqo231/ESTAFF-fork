@@ -21,16 +21,27 @@ namespace ESTAFF.Models.ViewModels
         public int TaskClassificationId { get; set; }
         public string Name { get; set; }
 
+        // Which part of the printed statutory ESH report these tasks appear
+        // under. Null means nobody has said, and the report files them under
+        // EshSections.Default - worth flagging on the list, because a mapping
+        // is invisible until someone reads the PDF.
+        public EshSection? ReportSection { get; set; }
+
+        public bool IsMapped => ReportSection.HasValue;
+
+        public string ReportSectionLabel =>
+            EshSections.ShortLabel(ReportSection);
+
+        // What the report will actually do with an unmapped row.
+        public string ReportSectionFallback =>
+            EshSections.ShortLabel(EshSections.Default);
+
         // How much depends on this row. Both have to be zero before it can be
         // removed, and both are worth showing before anyone tries.
         public int TaskTypeCount { get; set; }
         public int TaskCount { get; set; }
 
-        // The row ClipService resolves by name. It drives the CLIP item picker,
-        // so the screens treat it as load-bearing rather than ordinary data.
-        public bool IsClip { get; set; }
-
-        public bool CanDelete => !IsClip && TaskCount == 0 && TaskTypeCount == 0;
+        public bool CanDelete => TaskCount == 0 && TaskTypeCount == 0;
 
         public string Slug => TaskDisplay.ClassificationSlug(Name);
         public string Icon => TaskDisplay.ClassificationIcon(Name);
@@ -40,10 +51,6 @@ namespace ESTAFF.Models.ViewModels
         {
             get
             {
-                if (IsClip)
-                    return "The CLIP classification is referenced by name in "
-                         + "the CLIP integration and cannot be removed.";
-
                 if (TaskCount > 0)
                     return "In use by " + Count(TaskCount, "task") + ".";
 
@@ -73,7 +80,22 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Classification Name")]
         public string Name { get; set; }
 
-        public bool IsClip { get; set; }
+        // Which numbered part of the statutory ESH report the tasks under this
+        // classification are printed in. Optional: a classification can be
+        // created before anyone has decided, and the report has a fallback.
+        [Display(Name = "Statutory Report Section")]
+        public EshSection? ReportSection { get; set; }
+
+        // The sections offered on the form - only the ones that read their rows
+        // from tasks. Sections 3 and 6 print blank statutory grids and have
+        // nowhere to put a task, so they are never offered.
+        public IEnumerable<EshSectionInfo> SectionChoices =>
+            EshSections.Mappable();
+
+        // What happens to tasks under an unmapped classification, said on the
+        // form rather than discovered in a printed return.
+        public string UnmappedFallbackLabel =>
+            EshSections.ShortLabel(EshSections.Default);
 
         // Populated on edit only - a classification has to exist before task
         // types can hang off it.
@@ -98,22 +120,6 @@ namespace ESTAFF.Models.ViewModels
         public int TaskCount { get; set; }
 
         public bool CanDelete => TaskCount == 0;
-
-        // Set for task types under CLIP: which CLIP record the picker links a
-        // task to, decided by ClipService.ClassifyTaskListName from this name.
-        public ClipItemKind? ClipKind { get; set; }
-
-        public string ClipKindLabel
-        {
-            get
-            {
-                if (!ClipKind.HasValue) return null;
-
-                return ClipKind.Value == ClipItemKind.COF
-                    ? "Links to Certificate of Fitness records"
-                    : "Links to Plant Monitoring records";
-            }
-        }
     }
 
     // The add/edit form for a task type. Posted from the classification edit

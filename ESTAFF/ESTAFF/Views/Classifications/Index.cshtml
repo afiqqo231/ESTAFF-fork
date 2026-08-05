@@ -36,6 +36,7 @@
             <thead>
                 <tr>
                     <th style="padding-left:1.5rem">Classification</th>
+                    <th>ESH Report Section</th>
                     <th>Task Types</th>
                     <th>Tasks Using It</th>
                     <th style="padding-right:1.5rem">Manage</th>
@@ -51,11 +52,25 @@
                                    style="font-size:0.6rem;"></i>
                                 @item.Name
                             </span>
-                            @if (item.IsClip)
+                        </td>
+                        @* Where these tasks land on the printed statutory
+                           report. An unmapped row still prints - under the
+                           catch-all part - so the column says which, rather
+                           than leaving it blank as though nothing happens. *@
+                        <td>
+                            @if (item.IsMapped)
                             {
-                                <div class="taxonomy-flag">
-                                    <i class="fas fa-lock"></i>
-                                    Linked to the CLIP module by name
+                                <span class="taxonomy-count-text">
+                                    @item.ReportSectionLabel
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="taxonomy-count-text is-muted">
+                                    Not mapped
+                                </span>
+                                <div class="taxonomy-warn">
+                                    Prints under @item.ReportSectionFallback
                                 </div>
                             }
                         </td>
