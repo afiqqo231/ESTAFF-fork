@@ -1,0 +1,60 @@
+@model ESTAFF.Models.ViewModels.ClassificationFormViewModel
+@{
+    ViewBag.Title = "New Classification";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="form-card taxonomy-form">
+    <h5 class="form-card-title">
+        <i class="fas fa-tags"></i>
+        New Classification
+    </h5>
+
+    @using (Html.BeginForm("Create", "Classifications", FormMethod.Post))
+    {
+        @Html.AntiForgeryToken()
+        @Html.ValidationSummary(true, "",
+            new { @class = "alert alert-danger py-2 small" })
+
+        <div class="mb-3">
+            @Html.LabelFor(m => m.Name, new { @class = "form-label" })
+            <div class="input-group">
+                <span class="input-group-text">
+                    <i class="fas fa-tag"></i>
+                </span>
+                @Html.TextBoxFor(m => m.Name, new
+                {
+                    @class = "form-control",
+                    placeholder = "e.g. Environmental",
+                    autofocus = "autofocus"
+                })
+            </div>
+            @Html.ValidationMessageFor(m => m.Name, "",
+                new { @class = "text-danger small" })
+            <p class="form-hint">
+                Shown in the Classification dropdown when a task is assigned.
+            </p>
+        </div>
+
+        @Html.Partial("_ReportSectionField", Model)
+
+        <div class="taxonomy-info">
+            <i class="fas fa-circle-info"></i>
+            <div>
+                <strong>Task types come next.</strong>
+                A task cannot be assigned under a classification that has none,
+                so you will be taken straight to them after saving.
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn-primary-custom">
+                <i class="fas fa-check"></i> Create Classification
+            </button>
+            <a href="@Url.Action("Index", "Classifications")"
+               class="btn-outline-custom">
+                Cancel
+            </a>
+        </div>
+    }
+</div>

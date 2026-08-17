@@ -1,0 +1,93 @@
+@using ESTAFF.Models.ViewModels
+@model ClipItemViewModel
+
+@* The attached CLIP record's own progress, as the supporting evidence behind
+   whatever the task claims.
+
+   A task covering a CLIP record is reporting on work tracked in EHS_PORTAL, so
+   the phases CLIP holds — when each was raised and completed, who owns it, and
+   the document filed against it — are the evidence. Read live, never copied:
+   CLIP is where that work is actually recorded.
+
+   Shown wherever someone has to judge the task: the employee working it, and
+   the admin approving the report that cites it. The chip alone names the
+   record; this says what has actually been done about it. *@
+
+@if (Model != null && Model.HasProgress)
+{
+    <div class="clip-progress">
+        <div class="clip-progress-head">
+            <i class="fas fa-clipboard-check"></i>
+            Supporting evidence
+            <span class="clip-progress-source">
+                live from CLIP
+            </span>
+        </div>
+
+        <ol class="clip-progress-phases">
+            @foreach (var phase in Model.StartedPhases)
+            {
+                <li class="clip-phase state-@phase.StateClass">
+                    <span class="clip-phase-marker" aria-hidden="true"></span>
+
+                    <div class="clip-phase-body">
+                        <div class="clip-phase-title">
+                            @phase.Name
+                            @* State is carried by the word as well as the
+                               marker colour, so it never rests on colour
+                               alone. *@
+                            <span class="clip-phase-state">
+                                @phase.StateLabel
+                            </span>
+                        </div>
+
+                        <div class="clip-phase-meta">
+                            @phase.TimelineText
+                            @if (!string.IsNullOrWhiteSpace(phase.AssignedTo))
+                            {
+                                <span class="clip-phase-sep">·</span>
+                                <span>@phase.AssignedTo</span>
+                            }
+                        </div>
+
+                        @if (phase.HasDocument)
+                        {
+                            @* Named, not linked: the path is EHS_PORTAL's own
+                               and ESTAFF has no route that serves its files.
+                               The record link below reaches the documents. *@
+                            <div class="clip-phase-doc"
+                                 title="Document filed in CLIP: @phase.Document">
+                                <i class="fas fa-paperclip"></i>
+                                @phase.DocumentName
+                            </div>
+                        }
+                    </div>
+                </li>
+            }
+        </ol>
+
+        @if (Model.OutstandingPhases.Any())
+        {
+            <div class="clip-progress-outstanding">
+                <i class="fas fa-hourglass-half"></i>
+                Not started:
+                @string.Join(", ",
+                    Model.OutstandingPhases.Select(p => p.Name))
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Model.Remarks))
+        {
+            <div class="clip-progress-remarks">
+                <span class="clip-progress-remarks-label">CLIP remarks</span>
+                @Model.Remarks
+            </div>
+        }
+
+        <a href="@Url.Action("Progress", "Clip", new { key = Model.Key })"
+           target="_blank" rel="noopener" class="clip-progress-link">
+            Open in CLIP
+            <i class="fas fa-arrow-up-right-from-square"></i>
+        </a>
+    </div>
+}

@@ -1,0 +1,167 @@
+@model ESTAFF.Models.ViewModels.ClassificationFormViewModel
+@{
+    ViewBag.Title = "Edit Classification";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="taxonomy-layout">
+
+    <!-- ── The classification itself ────────────────────────── -->
+    <div class="form-card taxonomy-form">
+        <h5 class="form-card-title">
+            <i class="fas @Model.Icon"></i>
+            Classification
+        </h5>
+
+        @using (Html.BeginForm("Edit", "Classifications", FormMethod.Post,
+            new { id = "classificationForm" }))
+        {
+            @Html.AntiForgeryToken()
+            @Html.HiddenFor(m => m.TaskClassificationId)
+            @Html.ValidationSummary(true, "",
+                new { @class = "alert alert-danger py-2 small" })
+
+            <div class="mb-3">
+                @Html.LabelFor(m => m.Name, new { @class = "form-label" })
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="fas fa-tag"></i>
+                    </span>
+                    @Html.TextBoxFor(m => m.Name,
+                        new { @class = "form-control" })
+                </div>
+                @Html.ValidationMessageFor(m => m.Name, "",
+                    new { @class = "text-danger small" })
+            </div>
+
+            @Html.Partial("_ReportSectionField", Model)
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn-primary-custom">
+                    <i class="fas fa-check"></i> Save Changes
+                </button>
+                <a href="@Url.Action("Index", "Classifications")"
+                   class="btn-outline-custom">
+                    Back to list
+                </a>
+            </div>
+        }
+    </div>
+
+    <!-- ── Its task types ───────────────────────────────────── -->
+    <div class="form-card taxonomy-types">
+        <h5 class="form-card-title">
+            <i class="fas fa-list-check"></i>
+            Task Types
+            <span class="taxonomy-count-chip">@Model.TaskTypes.Count</span>
+        </h5>
+
+        <p class="form-hint mb-3">
+            The options in the <strong>Task</strong> dropdown once this
+            classification is chosen. Each row saves on its own.
+        </p>
+
+        @if (!Model.TaskTypes.Any())
+        {
+            <div class="taxonomy-info is-warning">
+                <i class="fas fa-triangle-exclamation"></i>
+                <div>
+                    No task types yet, so this classification cannot be used
+                    when assigning a task. Add the first one below.
+                </div>
+            </div>
+        }
+
+        @* One form per row rather than one form for the table: a row saves or
+           deletes without touching its neighbours, and no JavaScript is
+           needed to keep them apart. *@
+        @foreach (var type in Model.TaskTypes)
+        {
+            <div class="taxonomy-row">
+                @using (Html.BeginForm("SaveTaskType", "Classifications",
+                    FormMethod.Post, new { @class = "taxonomy-row-form" }))
+                {
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="TaskListId"
+                           value="@type.TaskListId" />
+                    <input type="hidden" name="TaskClassificationId"
+                           value="@type.TaskClassificationId" />
+
+                    <input type="text" name="Name" value="@type.Name"
+                           class="form-control taxonomy-input"
+                           maxlength="100" required
+                           aria-label="Task type name" />
+
+                    <input type="text" name="Description"
+                           value="@type.Description"
+                           class="form-control taxonomy-input"
+                           maxlength="100"
+                           placeholder="Description (optional)"
+                           aria-label="Task type description" />
+
+                    <button type="submit" class="btn-task-action edit"
+                            title="Save this task type">
+                        <i class="fas fa-check"></i>
+                    </button>
+                }
+
+                @if (type.CanDelete)
+                {
+                    using (Html.BeginForm("DeleteTaskType", "Classifications",
+                        new { id = type.TaskListId }, FormMethod.Post,
+                        new { @class = "taxonomy-row-delete" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn-task-action delete"
+                                title="Delete this task type"
+                                onclick="return confirm('Delete \'@type.Name\'?')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    }
+                }
+                else
+                {
+                    <span class="btn-task-action is-disabled taxonomy-row-delete"
+                          title="In use by @type.TaskCount task@(type.TaskCount == 1 ? "" : "s")">
+                        <i class="fas fa-trash"></i>
+                    </span>
+                }
+
+                <div class="taxonomy-row-meta">
+                    <span>
+                        @type.TaskCount task@(type.TaskCount == 1 ? "" : "s")
+                    </span>
+                </div>
+            </div>
+        }
+
+        <!-- Add a new one -->
+        <div class="taxonomy-row is-new">
+            @using (Html.BeginForm("SaveTaskType", "Classifications",
+                FormMethod.Post, new { @class = "taxonomy-row-form" }))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="TaskListId" value="0" />
+                <input type="hidden" name="TaskClassificationId"
+                       value="@Model.TaskClassificationId" />
+
+                <input type="text" name="Name"
+                       class="form-control taxonomy-input"
+                       maxlength="100" required
+                       placeholder="New task type name"
+                       aria-label="New task type name" />
+
+                <input type="text" name="Description"
+                       class="form-control taxonomy-input"
+                       maxlength="100"
+                       placeholder="Description (optional)"
+                       aria-label="New task type description" />
+
+                <button type="submit" class="btn-primary-custom taxonomy-add">
+                    <i class="fas fa-plus"></i> Add
+                </button>
+            }
+        </div>
+
+    </div>
+</div>

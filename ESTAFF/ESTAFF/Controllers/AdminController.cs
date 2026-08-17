@@ -345,33 +345,9 @@ namespace ESTAFF.Controllers
             return View(tasks);
         }
 
-        // ══════════════════════════════════════════
-        // CLIP ITEMS FOR AN EMPLOYEE — JSON
-        // ══════════════════════════════════════════
-        // Feeds the CLIP picker on Assign/Edit Task: which COFs and plant
-        // monitorings the chosen assignee's plants cover, nearest expiry first.
-        [HttpGet]
-        public JsonResult ClipItems(string employeeId)
-        {
-            var items = Clip.GetItemsForUser(employeeId);
-
-            return Json(items.Select(i => new
-            {
-                key         = i.Key,
-                kind        = i.KindShortLabel,
-                kindLabel   = i.KindLabel,
-                icon        = i.KindIcon,
-                title       = i.Title,
-                subtitle    = i.Subtitle,
-                plant       = i.PlantName,
-                status      = i.ExpiryStatus,
-                processStatus = i.ProcessStatus,
-                urgency     = i.UrgencyClass,
-                expiryDate  = i.ExpiryDateText,
-                expiryText  = i.ExpiryText
-            }), JsonRequestBehavior.AllowGet);
-        }
-
+        // The ClipItems JSON action that used to refetch the picker's list when
+        // the assignee changed is gone: the picker now carries every record and
+        // filters by plant on the client, so there is nothing to refetch.
 
         // ══════════════════════════════════════════
         // ASSIGN TASK — GET
@@ -386,7 +362,7 @@ namespace ESTAFF.Controllers
             var vm = new AssignTaskViewModel
             {
                 Employees = GetEmployeeSelectList(),
-                Options   = GetFormOptions(null)
+                Options   = GetFormOptions()
             };
             
             return View(vm);
@@ -403,18 +379,11 @@ namespace ESTAFF.Controllers
             ViewBag.PageSubtitle = "Create and assign a task to an employee.";
 
             model.Employees = GetEmployeeSelectList();
-            model.Options = GetFormOptions(model.AssignedToUserId);
+            model.Options = GetFormOptions();
 
-            var isClip = model.TaskClassificationId > 0
-                && model.TaskClassificationId == model.Options.ClipClassificationId;
-
-            if (isClip && string.IsNullOrWhiteSpace(model.ClipItemKey))
-            {
-                ModelState.AddModelError("ClipItemKey",
-                    "Select the COF or plant monitoring record this task covers.");
-            }
-
-            if (!isClip && !model.TaskListId.HasValue)
+            // Every task has a task type now. Attaching a CLIP record is
+            // optional and independent of it.
+            if (!model.TaskListId.HasValue)
             {
                 ModelState.AddModelError("TaskListId",
                     "Select the task type this task covers.");
@@ -440,10 +409,8 @@ namespace ESTAFF.Controllers
                 LastModifiedDate = DateTime.Now
             };
 
-            // The CLIP item has to belong to a plant the *assignee* can access.
             if (!ApplyClassificationLink(task, model.TaskClassificationId,
-                    model.TaskListId, model.ClipItemKey,
-                    model.AssignedToUserId, isClip))
+                    model.TaskListId, model.ClipItemKey))
                 return View(model);
 
             _db.TaskItems.Add(task);
@@ -485,8 +452,8 @@ namespace ESTAFF.Controllers
                 Status = task.Status,
                 TaskClassificationId = task.TaskClassificationId,
                 TaskListId = task.TaskListId,
-                ClipItemKey = Clip.BuildKeyForTask(task),
-                Options = GetFormOptions(task.AssignedToUserId),
+                ClipItemKey = ClipService.BuildKeyForTask(task),
+                Options = GetFormOptions(),
                 Employees = GetEmployeeSelectList()
             };
 
@@ -507,7 +474,7 @@ namespace ESTAFF.Controllers
             ViewBag.PageSubtitle = "Update task details.";
 
             model.Employees = GetEmployeeSelectList();
-            model.Options = GetFormOptions(model.AssignedToUserId);
+            model.Options = GetFormOptions();
 
             var task = _db.TaskItems.Find(id);
             if (task == null) return HttpNotFound();
@@ -515,13 +482,10 @@ namespace ESTAFF.Controllers
             ViewBag.LatestStatusRemark =
                 new TaskService(_db).GetLatestStatusRemark(task.TaskId);
 
-            var isClip = model.TaskClassificationId > 0
-                && model.TaskClassificationId == model.Options.ClipClassificationId;
-
-            if (isClip && string.IsNullOrWhiteSpace(model.ClipItemKey))
+            if (!model.TaskListId.HasValue)
             {
-                ModelState.AddModelError("ClipItemKey",
-                    "Select the COF or plant monitoring record this task covers.");
+                ModelState.AddModelError("TaskListId",
+                    "Select the task type this task covers.");
             }
 
             if (!ModelState.IsValid)
@@ -583,8 +547,7 @@ namespace ESTAFF.Controllers
             task.TaskClassificationId = model.TaskClassificationId;
 
             if (!ApplyClassificationLink(task, model.TaskClassificationId,
-                    model.TaskListId, model.ClipItemKey,
-                    model.AssignedToUserId, isClip))
+                    model.TaskListId, model.ClipItemKey))
                 return View(model);
 
             var after = DescribeClassification(task);
@@ -790,6 +753,11 @@ namespace ESTAFF.Controllers
 
             };
 
+            // The review table shows the actions taken on each task, so the
+            // page needs the same resolved detail the PDF is built from.
+            vm.TaskDetails = new TaskService(_db)
+                .BuildReportTaskDetails(tasks, Clip.GetItemsForTasks(tasks));
+
             return View(vm);
         }
 
@@ -894,10 +862,16 @@ namespace ESTAFF.Controllers
                     : 0
             };
 
+            vm.TaskDetails = new TaskService(_db)
+                .BuildReportTaskDetails(tasks, Clip.GetItemsForTasks(tasks));
+
             var pdfService = new ReportPdfService();
             var bytes = pdfService.GeneratePdf(vm);
-            var fileName = 
-                $"Report_{vm.EmpNumber}_" +
+            // Named after the statutory return it is, so a downloaded copy is
+            // filed under the same name as the one the SHO keeps.
+            var fileName =
+                $"ESH_{vm.ReportTypeLabel}_Report_" +
+                $"{vm.EmpNumber}_" +
                 $"{vm.PeriodStart:yyyyMMdd}_" +
                 $"{vm.PeriodEnd:yyyyMMdd}.pdf";
 
@@ -935,38 +909,44 @@ namespace ESTAFF.Controllers
         }
 
         // Projects tasks into the list view model, resolving each task's linked
-        // CLIP record and its newest status remark in batched queries.
+        // CLIP record and its status action flow in batched queries.
         private List<TaskListItemViewModel> BuildTaskList(List<TaskItem> tasks)
         {
             var clipItems = Clip.GetItemsForTasks(tasks);
-            var remarks = new TaskService(_db)
-                .GetLatestStatusRemarks(tasks.Select(t => t.TaskId));
+            var flows = new TaskService(_db)
+                .GetStatusActionFlows(tasks.Select(t => t.TaskId));
 
-            return tasks.Select(t => new TaskListItemViewModel
+            return tasks.Select(t =>
             {
-                TaskId               = t.TaskId,
-                Title                = t.Title,
-                Description          = t.Description,
-                TaskClassificationId = t.TaskClassificationId,
-                ClassificationName   = t.TaskClassification?.Name,
-                TaskListId           = t.TaskListId,
-                TaskListName         = t.TaskList?.Name,
-                SubTaskId            = t.SubTaskId,
-                Status               = t.Status,
-                Priority             = t.Priority,
-                DueDate              = t.DueDate,
-                CreatedDate          = t.CreatedDate,
-                CompletedDate        = t.CompletedDate,
-                AssignedToUserId     = t.AssignedToUserId,
-                AssignedToName       = t.AssignedToUser?.UserName ?? "-",
-                AssignedToEmpID      = t.AssignedToUser?.EmpID ?? "-",
-                CreatedByName        = t.CreatedByUser?.UserName ?? "-",
-                ClipItem             = clipItems.ContainsKey(t.TaskId)
-                                           ? clipItems[t.TaskId]
-                                           : null,
-                LatestStatusRemark   = remarks.ContainsKey(t.TaskId)
-                                           ? remarks[t.TaskId]
-                                           : null
+                var flow = flows.ContainsKey(t.TaskId)
+                    ? flows[t.TaskId]
+                    : new List<StatusRemarkViewModel>();
+
+                return new TaskListItemViewModel
+                {
+                    TaskId               = t.TaskId,
+                    Title                = t.Title,
+                    Description          = t.Description,
+                    TaskClassificationId = t.TaskClassificationId,
+                    ClassificationName   = t.TaskClassification?.Name,
+                    TaskListId           = t.TaskListId,
+                    TaskListName         = t.TaskList?.Name,
+                    SubTaskId            = t.SubTaskId,
+                    Status               = t.Status,
+                    Priority             = t.Priority,
+                    DueDate              = t.DueDate,
+                    CreatedDate          = t.CreatedDate,
+                    CompletedDate        = t.CompletedDate,
+                    AssignedToUserId     = t.AssignedToUserId,
+                    AssignedToName       = t.AssignedToUser?.UserName ?? "-",
+                    AssignedToEmpID      = t.AssignedToUser?.EmpID ?? "-",
+                    CreatedByName        = t.CreatedByUser?.UserName ?? "-",
+                    ClipItem             = clipItems.ContainsKey(t.TaskId)
+                                               ? clipItems[t.TaskId]
+                                               : null,
+                    StatusActions        = flow,
+                    LatestStatusRemark   = flow.LastOrDefault()
+                };
             }).ToList();
         }
 
@@ -977,10 +957,10 @@ namespace ESTAFF.Controllers
                 .ToList());
         }
 
-        // Classifications, task types, and the CLIP records for one employee's
-        // plants. Empty CLIP list when no employee is selected yet — the picker
-        // fetches on change via the ClipItems action.
-        private TaskFormOptions GetFormOptions(string employeeId)
+        // Classifications, task types, and every CLIP record, filtered by plant
+        // in the picker itself. No longer depends on which employee is selected
+        // — the list is the same whoever the task goes to.
+        private TaskFormOptions GetFormOptions()
         {
             var clip = Clip;
 
@@ -990,26 +970,24 @@ namespace ESTAFF.Controllers
                 TaskLists = TaskDisplay.ToOptions(_db.TaskLists
                     .OrderBy(l => l.Name)
                     .ToList()),
-                ClipItems = clip.GetItemsForUser(employeeId),
-                ClipClassificationId =
-                    clip.GetClipClassification()?.TaskClassificationId
+                ClipItems = clip.GetAllItems()
             };
         }
 
-        // Sets TaskListId/SubTaskId from the form. For CLIP the picker decides
-        // both; for every other classification the task type is chosen directly
-        // and there is no linked record. Returns false (with a model error) when
-        // the CLIP item is not one the assignee may use.
+        // Sets the task type and the optional CLIP attachment from the form.
+        // Returns false (with a model error) only when the picked record does
+        // not exist — picking none is ordinary.
         private bool ApplyClassificationLink(TaskItem task,
-            int? classificationId, int? taskListId, string clipItemKey,
-            string ownerUserId, bool isClip)
+            int? classificationId, int? taskListId, string clipItemKey)
         {
-            if (Clip.TryApplyClassificationLink(task, classificationId,
-                    taskListId, clipItemKey, ownerUserId, isClip))
+            var result = Clip.TryApplyClassificationLink(task,
+                classificationId, taskListId, clipItemKey);
+
+            if (result != ClipService.ClipAttachResult.Unavailable)
                 return true;
 
             ModelState.AddModelError("ClipItemKey",
-                "That CLIP item is not available for the selected employee's plants.");
+                "That CLIP item no longer exists in CLIP. Pick another.");
             return false;
         }
 

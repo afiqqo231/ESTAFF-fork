@@ -15,6 +15,10 @@ namespace ESTAFF.Models.Data
         [StringLength(256)]
         public string Title { get; set; }
 
+        // The property and column stay "Description": renaming them would mean
+        // a migration against a database shared with EHS_PORTAL. Only what the
+        // user reads changes.
+        [Display(Name = "Concern/Issue")]
         public string Description { get; set; }
 
         [Required]
@@ -25,12 +29,36 @@ namespace ESTAFF.Models.Data
         [Required]
         public DateTime DueDate { get; set; }
 
-        // Link to subtask for CLIP if applicable. Which CLIP table the id refers
-        // to is decided by TaskList: "Certificate Of FItness" means
-        // CLIP.CertificateOfFitness.Id, "Plant Monitoring" means
-        // CLIP.PlantMonitoring.Id. Deliberately not a foreign key - those tables
-        // belong to EHS_PORTAL and ESTAFF only ever reads them.
+        // ── Attached CLIP record (optional) ─────────────────────
+        //
+        // Any task may cover a certificate of fitness or a plant monitoring
+        // record, whatever its classification. The pair below is the whole
+        // attachment: ClipItemKind says which CLIP table, SubTaskId says which
+        // row in it. Both set means attached; either null means not.
+        //
+        // Deliberately not a foreign key - those tables belong to EHS_PORTAL
+        // and ESTAFF only ever reads them.
+        //
+        // This used to be implied rather than stored: a task was CLIP work when
+        // its classification was named "CLIP", and its TaskList name decided
+        // which table SubTaskId meant. That made attaching a record a
+        // consequence of how the task was filed, so the same certificate could
+        // not be covered by a task classified as anything else. Kind is now
+        // recorded outright and the classification is left to mean what it
+        // says.
+        public ClipItemKind? ClipItemKind { get; set; }
+
+        // The id of the attached CLIP row. Keeps the column name SubTaskId: it
+        // is in a database shared with EHS_PORTAL, so renaming it would be a
+        // migration against another application's neighbourhood for no gain.
         public int? SubTaskId { get; set; }
+
+        // True when the task carries a complete CLIP attachment. Half a link -
+        // a kind with no id, or an id with no kind - is treated as none, which
+        // is what rows written before ClipItemKind existed look like until
+        // Add_Task_ClipItemKind.sql backfills them.
+        [NotMapped]
+        public bool HasClipItem => ClipItemKind.HasValue && SubTaskId.HasValue;
 
         // The specific recurring job within the classification. The column keeps
         // the name EF generated from TaskList.TaskItems; mapping it explicitly

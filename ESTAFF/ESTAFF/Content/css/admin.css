@@ -1137,8 +1137,8 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    flex: 1;
-    min-width: 180px;
+    flex: 0 1 auto;
+    min-width: 0;
 }
 
 .filter-label {
@@ -1151,7 +1151,13 @@
 }
 
 .filter-select {
-    flex: 1;
+    /* Size to content, but never collapse small enough for the native
+       dropdown arrow to sit on top of the selected option text. */
+    flex: 0 1 auto;
+    width: auto;
+    min-width: 9rem;
+    max-width: 14rem;
+    text-overflow: ellipsis;
     background: #F8FAF9;
     border: 1.5px solid #E2E8F0;
     border-radius: var(--radius-sm);
@@ -1175,6 +1181,8 @@
     display: flex;
     gap: 0.4rem;
     flex-wrap: wrap;
+    flex: 0 1 auto;
+    min-width: 0;
 }
 
 .status-pill-btn {
@@ -1291,6 +1299,29 @@
 .priority-dot.medium { background: #F59E0B; }
 .priority-dot.high   { background: var(--danger); }
 
+/* ── Concern/Issue column (admin task table) ──────────────────
+   Free text of any length, so it wraps to a few lines inside a bounded
+   column instead of being clipped to one line the way it was when it sat
+   under the task title. The full string stays on the title attribute. */
+.task-concern-col {
+    min-width: 180px;
+}
+
+.task-concern-cell {
+    max-width: 260px;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: var(--text-secondary);
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.task-concern-empty {
+    font-size: 0.72rem;
+    font-style: italic;
+    color: var(--text-muted);
+}
+
 /* Assign Task Form */
 .assign-task-layout {
     display: grid;
@@ -1350,6 +1381,141 @@
     font-size: 0.845rem;
     font-weight: 600;
     color: var(--text-primary);
+    /* A pasted title or a long employee name is one unbroken token as far as
+       the layout is concerned, and would otherwise run past the card edge. */
+    overflow-wrap: anywhere;
+}
+
+/* Badges rendered into the live preview by updatePreview().
+
+   .badge-pill is white-space: nowrap because it was written for table cells,
+   where a status never wraps. Classification names are not statuses — they are
+   sentence-length ("Compliance activity with safety and health related
+   regulation") and the preview column is only 300px wide, so the text ran
+   straight out through the rounded edge and past the side of the card.
+
+   The preview exists to confirm what was picked, so the badge wraps to as many
+   lines as the name needs rather than being cut off with an ellipsis. */
+.preview-badge-slot {
+    display: block;
+    min-width: 0;
+}
+
+.preview-badge-slot .badge-pill {
+    display: inline-flex;
+    align-items: flex-start;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: left;
+    line-height: 1.35;
+    /* A 20px pill radius reads as a lozenge once the text is on two lines. */
+    border-radius: 12px;
+}
+
+/* The icon, when one is present, keeps its size against the wrapping text. */
+.preview-badge-slot .badge-pill i {
+    flex-shrink: 0;
+    margin-top: 0.15rem;
+}
+
+/* Placeholder for a preview row nothing has been chosen for yet. Kept on its
+   own element so the italic does not inherit into a badge that replaces it. */
+.preview-empty {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-style: italic;
+}
+
+/* ── Priority chooser ─────────────────────────────────────────
+   Three radios styled as boxes. The selected state is expressed here, keyed
+   off :checked, rather than being painted by JS on the change event. The old
+   approach built its colours by concatenation — "var(--primary)" + "15" — so
+   Low and High resolved to nothing at all and only Medium, a literal hex,
+   tinted correctly. Driving it from CSS also means a form redisplayed after a
+   validation failure shows the right box already selected. */
+.priority-fieldset {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+}
+
+/* Bootstrap floats legends and scales them up; neither suits a field label. */
+.priority-fieldset > legend {
+    float: none;
+    width: auto;
+    padding: 0;
+    font-size: 0.78rem;
+    line-height: inherit;
+}
+
+.priority-options {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.priority-choice {
+    flex: 1;
+    margin: 0;
+    cursor: pointer;
+}
+
+/* Hidden from view but still focusable and still in the tab order: the radios
+   were display:none, which took the whole group out of keyboard reach. */
+.priority-radio {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+.priority-option {
+    display: block;
+    border: 1.5px solid #E2E8F0;
+    border-radius: var(--radius-sm);
+    padding: 0.6rem;
+    text-align: center;
+    font-size: 0.775rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: white;
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.priority-choice:hover .priority-option {
+    border-color: var(--border);
+}
+
+/* The input is off-screen, so focus has to be shown on the box instead. */
+.priority-radio:focus-visible + .priority-option {
+    box-shadow: var(--shadow-glow);
+    border-color: var(--primary);
+}
+
+.priority-radio:checked + .priority-option-low {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    color: #065F46;
+}
+
+.priority-radio:checked + .priority-option-medium {
+    border-color: #F59E0B;
+    background: #FFFBEB;
+    color: #92400E;
+}
+
+.priority-radio:checked + .priority-option-high {
+    border-color: var(--danger);
+    background: #FEF2F2;
+    color: #991B1B;
 }
 
 /* History Timeline */
@@ -1454,3 +1620,184 @@
 }
 
 .history-by i { color: var(--primary); font-size: 0.65rem; }
+
+/* ============================================================
+   TASK TAXONOMY (Classifications + Task Types)
+   The maintenance screens for the two lookup tables behind the
+   assign task form.
+============================================================ */
+
+/* Two columns on a wide screen, stacked on a narrow one: the
+   classification is a short form, its task types are a long list. */
+.taxonomy-layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) minmax(0, 1.6fr);
+    gap: 1.25rem;
+    align-items: start;
+}
+
+@media (max-width: 991px) {
+    .taxonomy-layout { grid-template-columns: 1fr; }
+}
+
+.taxonomy-form { max-width: 100%; }
+
+/* The line explaining what the screen drives. */
+.taxonomy-note {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0;
+    padding: 0.7rem 1.5rem;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    background: #F8FAF9;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.taxonomy-note i { color: var(--info); }
+
+.form-hint {
+    margin: 0.35rem 0 0;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+/* Callout used for "what happens next" and for the CLIP warning. */
+.taxonomy-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.85rem 1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+    border-left: 3px solid var(--info);
+    background: #F8FAFC;
+    font-size: 0.78rem;
+    line-height: 1.55;
+    color: var(--text-secondary);
+}
+
+.taxonomy-info i { color: var(--info); margin-top: 0.15rem; }
+
+.taxonomy-info.is-warning {
+    border-left-color: #F59E0B;
+    background: #FFFBEB;
+}
+
+.taxonomy-info.is-warning i { color: #F59E0B; }
+
+.taxonomy-info code {
+    padding: 0.05rem 0.3rem;
+    border-radius: 4px;
+    background: rgba(15, 23, 42, 0.06);
+    font-size: 0.72rem;
+}
+
+.taxonomy-count {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* The statutory section a classification maps to. Prose rather than a
+   number, so it wraps instead of stretching the column. */
+.taxonomy-count-text {
+    display: inline-block;
+    max-width: 15rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--text-primary);
+}
+
+.taxonomy-count-text.is-muted {
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.taxonomy-count-chip {
+    margin-left: 0.4rem;
+    padding: 0.1rem 0.5rem;
+    border-radius: 20px;
+    background: var(--primary-light);
+    color: #065F46;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.taxonomy-flag,
+.taxonomy-warn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.25rem;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+}
+
+.taxonomy-warn { color: #B45309; }
+
+/* One task type: name, description, save, delete - each row its own
+   form, so rows never overwrite one another. */
+.taxonomy-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.taxonomy-row:last-of-type { border-bottom: none; }
+
+.taxonomy-row.is-new {
+    margin-top: 0.4rem;
+    padding-top: 0.9rem;
+    border-top: 1px dashed var(--border);
+    border-bottom: none;
+}
+
+.taxonomy-row-form {
+    display: flex;
+    flex: 1 1 320px;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+}
+
+.taxonomy-row-delete { margin: 0; }
+
+.taxonomy-input {
+    flex: 1 1 120px;
+    min-width: 0;
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+}
+
+.taxonomy-add {
+    padding: 0.4rem 0.9rem;
+    font-size: 0.78rem;
+    box-shadow: none;
+}
+
+/* Counts and CLIP linkage sit under the row on their own line. */
+.taxonomy-row-meta {
+    flex: 1 0 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+}
+
+.taxonomy-row-meta .taxonomy-flag { margin-top: 0; }
+
+/* Delete is shown but inert when something still points at the row.
+   The title attribute carries the reason. */
+.btn-task-action.is-disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: #F8FAF9;
+}

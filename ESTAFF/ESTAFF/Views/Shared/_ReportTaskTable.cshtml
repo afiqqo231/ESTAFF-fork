@@ -1,0 +1,168 @@
+@using ESTAFF.Models.ViewModels
+@model List<ReportTaskDetailViewModel>
+
+@* One row per task in the report period: what the task was, when it was due
+   against when it actually landed, where it ended up, and every action the
+   user recorded along the way.
+
+   Shared by the admin review page and both employee report pages so the three
+   cannot end up describing the same task differently — the same reason
+   BuildReportTaskDetails backs both PDF downloads.
+
+   The columns are deliberately few and wide: classification, sub-type and the
+   linked CLIP record sit inside the task cell rather than each taking a narrow
+   column of their own, which leaves the progress flow the width it needs. *@
+@{
+    var tasks = Model ?? new List<ReportTaskDetailViewModel>();
+}
+
+@if (!tasks.Any())
+{
+    <div class="empty-state" style="padding:2rem 1rem;">
+        <i class="fas fa-inbox"
+           style="font-size:1.5rem; opacity:0.2;
+                  display:block; margin-bottom:0.5rem;"></i>
+        <p style="margin:0; font-size:0.82rem; color:var(--text-muted);">
+            No tasks found for this period
+        </p>
+    </div>
+}
+else
+{
+    <div class="table-scroll">
+        <table class="data-table report-task-table">
+            <thead>
+                <tr>
+                    <th class="rt-num" style="padding-left:1.5rem">#</th>
+                    <th class="rt-col-task">Task</th>
+                    <th class="rt-col-concern">Concern/Issue</th>
+                    <th class="rt-col-schedule">Schedule</th>
+                    <th class="rt-col-status">Status</th>
+                    <th class="rt-col-progress" style="padding-right:1.5rem">
+                        Progress &amp; Actions Taken
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (var i = 0; i < tasks.Count; i++)
+                {
+                    var task = tasks[i];
+
+                    // Late either way it happened: finished after the due date,
+                    // or still open past it.
+                    var isLate = task.IsOverdue
+                        || (task.CompletedDate.HasValue
+                            && task.CompletedDate.Value.Date > task.DueDate.Date);
+
+                    var actionCount = task.Actions.Count;
+
+                    <tr>
+                        <td class="rt-num" style="padding-left:1.5rem">
+                            @(i + 1)
+                        </td>
+
+                        <td class="rt-task">
+                            <div class="rt-task-title">@task.Title</div>
+
+                            <div class="rt-task-tags">
+                                @Html.Partial("_ClassificationBadge",
+                                    new ClassificationBadgeModel
+                                    {
+                                        Name = task.ClassificationName,
+                                        TaskListName = task.TaskListName,
+                                        ShowTaskList = true
+                                    })
+
+                                @if (task.ClipItem != null)
+                                {
+                                    @Html.Partial("_ClipItemChip", task.ClipItem)
+                                }
+                            </div>
+
+                            @* The evidence behind the task, where the approver
+                               can see it. Without this an admin approves a
+                               return whose supporting record they would have to
+                               download the PDF to read. *@
+                            @if (task.ClipItem != null)
+                            {
+                                @Html.Partial("_ClipProgress", task.ClipItem)
+                            }
+                        </td>
+
+                        @* The concern the task was raised over. Its own column
+                           rather than a line under the title: on a printed or
+                           reviewed report it is the part a manager reads to
+                           understand why the task existed at all. *@
+                        <td class="rt-concern">
+                            @if (!string.IsNullOrWhiteSpace(task.Description))
+                            {
+                                <span title="@task.Description">
+                                    @task.Description
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="rt-concern-empty">
+                                    Not recorded
+                                </span>
+                            }
+                        </td>
+
+                        <td class="rt-schedule">
+                            <div class="rt-date-row">
+                                <span class="rt-date-label">Due</span>
+                                <span class="rt-date-value @(isLate ? "is-late" : "")">
+                                    @task.DueDate.ToString("dd MMM yyyy")
+                                </span>
+                            </div>
+                            <div class="rt-date-row">
+                                <span class="rt-date-label">Done</span>
+                                <span class="rt-date-value">
+                                    @(task.CompletedDate.HasValue
+                                        ? task.CompletedDate.Value
+                                            .ToString("dd MMM yyyy")
+                                        : "Not yet completed")
+                                </span>
+                            </div>
+                            <div class="rt-delivery @(isLate ? "is-late" : "")">
+                                @task.DeliveryText
+                            </div>
+                        </td>
+
+                        @* Each badge on its own line, so the pair stacks at any
+                           width instead of widening the column. *@
+                        <td class="rt-status">
+                            <div>
+                                <span class="badge-pill badge-@TaskDisplay.StatusClass(task.Status)">
+                                    @task.StatusLabel
+                                </span>
+                            </div>
+
+                            @if (task.Priority.HasValue)
+                            {
+                                var pc = task.Priority.Value.ToString().ToLower();
+                                <div class="rt-priority">
+                                    <span class="badge-pill badge-@pc">
+                                        @task.Priority
+                                    </span>
+                                </div>
+                            }
+                        </td>
+
+                        <td class="rt-progress" style="padding-right:1.5rem">
+                            @if (actionCount > 0)
+                            {
+                                <div class="rt-progress-count">
+                                    @actionCount
+                                    @(actionCount == 1 ? "update" : "updates")
+                                    recorded
+                                </div>
+                            }
+                            @Html.Partial("_StatusActionFlow", task.Actions)
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

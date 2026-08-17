@@ -216,24 +216,6 @@
     border-color: #C7D2FE;
 }
 
-.badge-classification-chemical-legal {
-    background: #F0F9FF;
-    color: #075985;
-    border-color: #BAE6FD;
-}
-
-.badge-classification-dosh-bomba-doe {
-    background: #FDF4FF;
-    color: #86198F;
-    border-color: #F5D0FE;
-}
-
-.badge-classification-environmental {
-    background: #F0FDF4;
-    color: #166534;
-    border-color: #BBF7D0;
-}
-
 /* ── CLIP Item Chip ───────────────────────────────────────────
    Shows the linked COF / Plant Monitoring record on a task, colour-coded
    by how close it is to expiry. */
@@ -377,6 +359,143 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* Wide tables scroll inside their card instead of being clipped by it. */
+.table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ── Action Flow ──────────────────────────────────────────────
+   Every status change on a task as a top-to-bottom flow, with the action
+   described at each step. Sized for a table cell: small type that wraps
+   over as many lines as the sentence needs, never truncated. */
+.data-table td.action-cell {
+    vertical-align: top;
+    padding-top: 0.7rem;
+}
+
+.action-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    min-width: 240px;
+    max-width: 340px;
+}
+
+.action-flow-empty {
+    font-size: 0.72rem;
+    font-style: italic;
+    color: var(--text-muted);
+}
+
+.action-step {
+    position: relative;
+    padding-left: 0.95rem;
+}
+
+/* The connector between consecutive steps. Stretched past the flex gap so
+   the line reads as continuous; dropped after the final step. */
+.action-step::before {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 0.9rem;
+    bottom: -0.75rem;
+    width: 1px;
+    background: var(--border-subtle);
+}
+
+.action-flow > .action-step:last-child::before { display: none; }
+
+.action-step-dot {
+    position: absolute;
+    left: 0;
+    top: 0.32rem;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-muted);
+}
+
+.action-step-dot.pending    { background: #F59E0B; }
+.action-step-dot.inprogress { background: #3B82F6; }
+.action-step-dot.complete   { background: var(--primary); }
+.action-step-dot.overdue    { background: var(--danger); }
+
+.action-step-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.action-step-status {
+    font-size: 0.62rem;
+    padding: 0.15rem 0.5rem;
+}
+
+.action-step-time {
+    font-size: 0.63rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.action-step-text {
+    margin: 0.22rem 0 0;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.action-step-text.is-empty {
+    font-style: italic;
+    color: var(--text-muted);
+}
+
+.action-step-by {
+    margin-top: 0.15rem;
+    font-size: 0.63rem;
+    color: var(--text-muted);
+}
+
+.action-step-by i {
+    font-size: 0.55rem;
+    margin-right: 0.15rem;
+}
+
+/* Older steps, folded away until asked for. */
+.action-flow-earlier { margin-bottom: -0.1rem; }
+
+.action-flow-earlier > summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-bottom: 0.4rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--info);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+
+.action-flow-earlier > summary::-webkit-details-marker { display: none; }
+
+.action-flow-earlier > summary:hover { text-decoration: underline; }
+
+.action-flow-earlier > summary i {
+    font-size: 0.55rem;
+    transition: var(--transition);
+}
+
+.action-flow-earlier[open] > summary i { transform: rotate(90deg); }
+
+/* Inside the fold every step keeps its connector - the flow continues into
+   the steps that stayed visible below. */
+.action-flow-earlier .action-step { margin-bottom: 0.55rem; }
 
 /* ── Buttons ──────────────────────────────────────────────── */
 .btn-primary-custom {
@@ -673,6 +792,134 @@
 }
 
 .report-table-header h6 i { color: var(--primary); }
+
+/* ── Report task table ────────────────────────────────────────
+   The per-task breakdown shared by the admin review page and the
+   employee report pages (_ReportTaskTable). Few, wide columns: the
+   progress flow needs room, so the classification, sub-type and CLIP
+   record ride along inside the task cell instead of taking columns. */
+
+/* The report detail grid leaves a narrow left column and the flow carries a
+   min-width of its own, so the table is wrapped in .table-scroll and given a
+   floor to scroll against rather than being squeezed. */
+.report-task-table {
+    width: 100%;
+    /* Raised with the Concern/Issue column: below this the concern and the
+       progress flow both fall under their readable width. */
+    min-width: 940px;
+}
+
+/* Rows carry several stacked lines, so align everything to the top. */
+.report-task-table tbody td {
+    vertical-align: top;
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
+}
+
+.report-task-table .rt-num {
+    width: 2.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.report-task-table .rt-col-progress { min-width: 260px; }
+
+.rt-task { min-width: 220px; }
+
+.rt-task-title {
+    font-weight: 600;
+    font-size: 0.845rem;
+    color: var(--text-primary);
+    line-height: 1.35;
+}
+
+/* The concern a task was raised over, in its own column. Free-text of any
+   length, so it wraps rather than being clipped, and carries the full string
+   on the title attribute for anything the column still cuts short. */
+.rt-concern {
+    min-width: 180px;
+    max-width: 280px;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: var(--text-secondary);
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.rt-concern-empty {
+    font-size: 0.72rem;
+    font-style: italic;
+    color: var(--text-muted);
+}
+
+.rt-task-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 0.4rem;
+}
+
+.rt-schedule { white-space: nowrap; }
+
+.rt-date-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    line-height: 1.6;
+}
+
+.rt-date-label {
+    width: 2.4rem;
+    flex-shrink: 0;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+}
+
+.rt-date-value {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.rt-date-value.is-late {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+/* How the task landed against its due date — the line read first when
+   scanning for slippage, so it gets the colour. */
+.rt-delivery {
+    margin-top: 0.3rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: normal;
+}
+
+.rt-delivery.is-late { color: var(--danger); }
+
+.rt-status .rt-priority { margin-top: 0.3rem; }
+
+.rt-progress-count {
+    margin-bottom: 0.4rem;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+}
+
+/* The flow sets its own max-width for the dense task list; inside a report
+   row it may use the whole column. */
+.rt-progress .action-flow {
+    max-width: none;
+    min-width: 0;
+}
 
 /* Report Detail */
 .report-detail-layout {
@@ -1050,6 +1297,28 @@
 .report-type-hint {
     font-size: 0.7rem;
     color: var(--text-muted);
+}
+
+/* ── Report pages, narrow screens ─────────────────────────────
+   The report grids are fixed column counts, which squeeze rather than
+   reflow once the viewport narrows. Same 991px breakpoint the taxonomy
+   layout already collapses at, so the two behave alike. */
+@media (max-width: 991px) {
+    /* Decision/actions panel drops below the report instead of holding a
+       280px column open. Sticky is dropped with it: pinned to the top of a
+       full-width block it would cover the content being scrolled. */
+    .report-detail-layout { grid-template-columns: 1fr; }
+
+    .report-side-panel {
+        position: static;
+        top: auto;
+    }
+
+    .report-stats-row { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+    .report-meta-grid { grid-template-columns: 1fr; }
 }
 
 /* ══════════════════════════════════════════

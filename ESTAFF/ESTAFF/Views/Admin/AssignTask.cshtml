@@ -38,13 +38,13 @@
                         new { @class = "text-danger small" })
                 </div>
 
-                <!-- Description -->
+                <!-- Concern / Issue -->
                 <div class="col-12">
                     @Html.LabelFor(m => m.Description,
                         new { @class = "form-label" })
                     @Html.TextAreaFor(m => m.Description,
                         new { @class = "form-control",
-                              placeholder = "Optional task description...",
+                              placeholder = "Describe the concern or issue (optional)...",
                               rows = 3,
                               style = "resize:none;" })
                 </div>
@@ -77,63 +77,46 @@
                         new { @class = "text-danger small" })
                 </div>
 
-                <!-- Classification, task type, and (for CLIP) the item picker -->
+                <!-- Classification, task type, and the optional CLIP item -->
                 <div class="col-12">
                     @{
                         var fields = TaskFormFieldsViewModel.From(Model);
-                        fields.ClipReloadUrl = Url.Action("ClipItems", "Admin");
-                        fields.ClipReloadTriggerId = "assignedTo";
-                        fields.ClipHint =
-                            "Certificates of fitness and plant monitoring records "
-                            + "for the selected employee's plants. Expired items "
-                            + "are listed first — pick an employee to load the list.";
                     }
                     @Html.Partial("_ClassificationField", fields)
                 </div>
 
                 <!-- Priority -->
                 <div class="col-12">
-                    @Html.LabelFor(m => m.Priority,
-                        new { @class = "form-label" })
-                    <div style="display:flex; gap:0.5rem;">
-                        @foreach (ESTAFF.Models.Data.TaskPriority p in
-                            Enum.GetValues(typeof(ESTAFF.Models.Data.TaskPriority)))
-                        {
-                            var colorMap = new Dictionary<string, string>
+                    @* A fieldset/legend rather than a LabelFor: the label had
+                       nowhere to point, because the radios carry a shared name
+                       and no id of their own. *@
+                    <fieldset class="priority-fieldset">
+                        <legend class="form-label">Priority</legend>
+                        <div class="priority-options">
+                            @foreach (ESTAFF.Models.Data.TaskPriority p in
+                                Enum.GetValues(typeof(ESTAFF.Models.Data.TaskPriority)))
                             {
-                                { "Low",    "var(--primary)" },
-                                { "Medium", "#F59E0B" },
-                                { "High",   "var(--danger)" }
-                            };
-                            var col = colorMap.ContainsKey(p.ToString())
-                                ? colorMap[p.ToString()] : "#999";
+                                var level = p.ToString().ToLower();
 
-                            <label style="flex:1; cursor:pointer;">
-                                <input type="radio"
-                                       name="Priority"
-                                       value="@((int)p)"
-                                       style="display:none;"
-                                       class="priority-radio"
-                                       onchange="updatePreview()" />
-                                <div class="priority-option"
-                                     data-color="@col"
-                                     style="border:1.5px solid #E2E8F0;
-                                            border-radius:var(--radius-sm);
-                                            padding:0.6rem;
-                                            text-align:center;
-                                            font-size:0.775rem;
-                                            font-weight:600;
-                                            color:var(--text-muted);
-                                            transition:var(--transition);
-                                            cursor:pointer;">
-                                    <span class="priority-dot @p.ToString().ToLower()"
-                                          style="vertical-align:middle;
-                                                 margin-right:0.3rem;"></span>
-                                    @p
-                                </div>
-                            </label>
-                        }
-                    </div>
+                                <label class="priority-choice">
+                                    @* checked binds the posted value back, so a
+                                       redisplay after a validation failure keeps
+                                       the priority the user already chose. *@
+                                    <input type="radio"
+                                           name="Priority"
+                                           value="@((int)p)"
+                                           class="priority-radio"
+                                           data-level="@level"
+                                           checked="@(Model.Priority == p)"
+                                           onchange="updatePreview()" />
+                                    <span class="priority-option priority-option-@level">
+                                        <span class="priority-dot @level"></span>
+                                        @p
+                                    </span>
+                                </label>
+                            }
+                        </div>
+                    </fieldset>
                 </div>
 
             </div>
@@ -188,12 +171,16 @@
 
         <div class="preview-item">
             <span class="preview-label">Classification</span>
-            <span id="prev-classification"></span>
+            <span id="prev-classification" class="preview-badge-slot"></span>
         </div>
 
+        @* Task type and CLIP item are separate rows because they are separate
+           choices: a task has a type, and may additionally cover a CLIP
+           record. They shared one row when picking a record was what set the
+           type. *@
         <div class="preview-item">
             <span class="preview-label">Task Type</span>
-            <span class="preview-value" id="prev-clip"
+            <span class="preview-value" id="prev-tasktype"
                   style="color:var(--text-muted); font-weight:400;
                          font-style:italic;">
                 Not set
@@ -201,11 +188,21 @@
         </div>
 
         <div class="preview-item">
-            <span class="preview-label">Priority</span>
-            <span id="prev-priority"
-                  style="color:var(--text-muted); font-size:0.78rem;
+            <span class="preview-label">CLIP Item</span>
+            <span class="preview-value" id="prev-clip"
+                  style="color:var(--text-muted); font-weight:400;
                          font-style:italic;">
-                Not set
+                None
+            </span>
+        </div>
+
+        <div class="preview-item">
+            <span class="preview-label">Priority</span>
+            @* The placeholder styling lives on an inner element, not on the
+               slot: set here it was inherited by the badge, which rendered
+               the chosen priority in italic. *@
+            <span id="prev-priority" class="preview-badge-slot">
+                <span class="preview-empty">Not set</span>
             </span>
         </div>
 
@@ -245,21 +242,9 @@
         });
     });
 
-    // Priority radio visual
-    document.querySelectorAll('.priority-radio').forEach(function (radio) {
-        radio.addEventListener('change', function () {
-            document.querySelectorAll('.priority-option').forEach(function (opt) {
-                opt.style.borderColor  = '#E2E8F0';
-                opt.style.background   = 'white';
-                opt.style.color        = 'var(--text-muted)';
-            });
-            var opt       = this.nextElementSibling;
-            var color     = opt.getAttribute('data-color');
-            opt.style.borderColor = color;
-            opt.style.background  = color + '15';
-            opt.style.color       = color;
-        });
-    });
+    // The selected priority box is styled by ".priority-radio:checked + ..."
+    // in admin.css. It used to be painted here by assembling colours in JS,
+    // which also meant the highlight was never restored on a redisplayed form.
 
     // Classification + CLIP selection feed the preview too, so the panel
     // always reflects the whole form rather than half of it.
@@ -329,9 +314,6 @@
         var classInput = document.querySelector(
             '.js-classification-radio:checked');
         var prevClass = document.getElementById('prev-classification');
-        var field = document.querySelector('.classification-field');
-        var clipId = field ? field.getAttribute('data-clip-classification') : '';
-        var isClip = classInput && clipId && classInput.value === clipId;
 
         if (classInput) {
             var box = classInput.nextElementSibling;
@@ -343,27 +325,33 @@
                 box.textContent.trim() + '</span>';
         } else {
             prevClass.innerHTML =
-                '<span style="color:var(--text-muted); font-size:0.78rem; font-style:italic;">Not set</span>';
+                '<span class="preview-empty">Not set</span>';
         }
 
-        // Task type / CLIP item
-        var prevClip = document.getElementById('prev-clip');
-        var clipSelect = document.getElementById('ClipItemKey');
+        // Task type — required, so an empty one reads as unfinished.
+        var prevType   = document.getElementById('prev-tasktype');
         var listSelect = document.getElementById('TaskListId');
 
-        if (isClip && clipSelect && clipSelect.value) {
+        if (listSelect && listSelect.value) {
+            prevType.textContent =
+                listSelect.options[listSelect.selectedIndex].text;
+            setSolid(prevType);
+        } else {
+            prevType.textContent = 'Not set';
+            setMuted(prevType);
+        }
+
+        // CLIP item — optional, so an empty one reads as a deliberate "none"
+        // rather than something still to do.
+        var prevClip   = document.getElementById('prev-clip');
+        var clipSelect = document.getElementById('ClipItemKey');
+
+        if (clipSelect && clipSelect.value) {
             prevClip.textContent =
                 clipSelect.options[clipSelect.selectedIndex].text;
             setSolid(prevClip);
-        } else if (isClip) {
-            prevClip.textContent = 'Select a CLIP item...';
-            setMuted(prevClip);
-        } else if (listSelect && listSelect.value) {
-            prevClip.textContent =
-                listSelect.options[listSelect.selectedIndex].text;
-            setSolid(prevClip);
         } else {
-            prevClip.textContent = 'Not set';
+            prevClip.textContent = 'None';
             setMuted(prevClip);
         }
 
@@ -379,20 +367,22 @@
             el.style.fontStyle = 'italic';
         }
 
-        // Priority
+        // Priority — the same badge the task will carry once assigned, rather
+        // than a one-off built here. The old version appended an alpha suffix
+        // to the colour ("var(--primary)" + "20"), which is not a colour: Low
+        // and High lost their background and border outright, and only Medium
+        // survived because it happened to be a literal hex.
         var prevPriority = document.getElementById('prev-priority');
         if (priority) {
-            var opt   = priority.nextElementSibling;
-            var color = opt.getAttribute('data-color');
-            var label = opt.textContent.trim();
+            var level = priority.dataset.level;
+            var label = priority.nextElementSibling.textContent.trim();
             prevPriority.innerHTML =
-                '<span class="badge-pill" style="background:' + color +
-                '20; color:' + color + '; border:1px solid ' + color +
-                '40; font-size:0.68rem; font-weight:700; padding:0.22rem 0.7rem; border-radius:20px;">' +
+                '<span class="badge-pill badge-' + level + '">' +
+                '<span class="priority-dot ' + level + '"></span>' +
                 label + '</span>';
         } else {
             prevPriority.innerHTML =
-                '<span style="color:var(--text-muted); font-size:0.78rem; font-style:italic;">Not set</span>';
+                '<span class="preview-empty">Not set</span>';
         }
     }
 

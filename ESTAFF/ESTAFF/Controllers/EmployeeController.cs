@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data.Entity;
 using System.Linq;
 using System.Web.Mvc;
 using Microsoft.AspNet.Identity;
@@ -89,7 +90,8 @@ namespace ESTAFF.Controllers
         // ===========
         // Task Management
         // ===========
-        public ActionResult MyTasks(string status = "")
+        public ActionResult MyTasks(string status = "", string q = null,
+            string sort = null)
         {
             SetLayoutData();
             ViewBag.PageTitle = "My Tasks";
@@ -100,53 +102,152 @@ namespace ESTAFF.Controllers
             // Auto-flag overdue
             new TaskService(_db).UpdateOverdueTasks();
 
-            var query = _db.TaskItems
-                .Include("TaskClassification")
-                .Where(t => t.AssignedToUserId == userId)
-                .AsQueryable();
-
-            if (!string.IsNullOrEmpty(status) &&
-                Enum.TryParse<TaskStatus>(status, out var statusEnum))
-                query = query.Where(t => t.Status == statusEnum);
-
-            var tasks = query
-                .OrderByDescending(t => t.CreatedDate)
-                .ToList()
-                .Select(t => new TaskListItemViewModel
-                {
-                    TaskId = t.TaskId,
-                    Title = t.Title,
-                    Description = t.Description,
-                    SubTaskId = t.SubTaskId,
-                    TaskClassificationId = t.TaskClassificationId,
-                    TaskClassificationName = t.TaskClassification?.Name,
-                    Status = t.Status,
-                    Priority = t.Priority,
-                    DueDate = t.DueDate,
-                    CreatedDate = t.CreatedDate,
-                    CompletedDate = t.CompletedDate,
-                    CreatedByName = t.CreatedByUser?.UserName ?? "-"
-
-                })
-                .ToList();
-
-            ViewBag.SelectedStatus = status;
-
-            // Count for tabs
-            var all = _db.TaskItems 
+            // Tab counts are taken from the unfiltered set, so they keep
+            // reading as totals for the whole workload while a search narrows
+            // only the cards below them.
+            var all = _db.TaskItems
                 .Where(t => t.AssignedToUserId == userId)
                 .ToList();
+
             ViewBag.AllCount = all.Count;
             ViewBag.PendingCount = all.Count(t =>
                 t.Status == TaskStatus.Pending);
-            ViewBag.InProgCount = all.Count(t => 
+            ViewBag.InProgCount = all.Count(t =>
                 t.Status == TaskStatus.InProgress);
             ViewBag.CompleteCount = all.Count(t =>
                 t.Status == TaskStatus.Complete);
             ViewBag.OverdueCount = all.Count(t =>
                 t.Status == TaskStatus.Overdue);
 
-            return View(tasks);
+            // The cards show the classification, task type, who raised the
+            // task and its CLIP record, so the lookups are joined rather than
+            // lazily loaded one row at a time.
+            var query = _db.TaskItems
+                .Include(t => t.TaskClassification)
+                .Include(t => t.TaskList)
+                .Include(t => t.CreatedByUser)
+                .Where(t => t.AssignedToUserId == userId);
+
+            if (!string.IsNullOrEmpty(status) &&
+                Enum.TryParse<TaskStatus>(status, out var statusEnum))
+                query = query.Where(t => t.Status == statusEnum);
+
+            var term = (q ?? "").Trim();
+            if (term.Length > 0)
+            {
+                query = query.Where(t => t.Title.Contains(term)
+                    || (t.Description != null && t.Description.Contains(term))
+                    || (t.TaskClassification != null
+                        && t.TaskClassification.Name.Contains(term))
+                    || (t.TaskList != null && t.TaskList.Name.Contains(term)));
+            }
+
+            var tasks = Sort(query.ToList(), sort);
+
+            ViewBag.SelectedStatus = status;
+            ViewBag.SearchTerm = term;
+            ViewBag.SelectedSort = NormaliseSort(sort);
+            ViewBag.TotalCount = all.Count;
+            ViewBag.CurrentUserId = userId;
+
+            return View(BuildMyTaskList(tasks, userId));
+        }
+
+        private static string NormaliseSort(string sort)
+        {
+            switch (sort)
+            {
+                case "created":
+                case "priority":
+                case "title":
+                    return sort;
+                default:
+                    return "due";
+            }
+        }
+
+        // Default order answers "what needs me next": open work by due date,
+        // soonest first, with finished tasks pushed to the end rather than
+        // interleaved. Sorting by creation date — the previous behaviour —
+        // buried an overdue task from last month at the bottom of the page.
+        private static List<TaskItem> Sort(List<TaskItem> tasks, string sort)
+        {
+            switch (NormaliseSort(sort))
+            {
+                case "created":
+                    return tasks
+                        .OrderByDescending(t => t.CreatedDate)
+                        .ToList();
+
+                case "priority":
+                    return tasks
+                        .OrderBy(t => t.Status == TaskStatus.Complete ? 1 : 0)
+                        .ThenByDescending(t => t.Priority.HasValue
+                            ? (int)t.Priority.Value
+                            : 0)
+                        .ThenBy(t => t.DueDate)
+                        .ToList();
+
+                case "title":
+                    return tasks
+                        .OrderBy(t => t.Title)
+                        .ToList();
+
+                default:
+                    return tasks
+                        .OrderBy(t => t.Status == TaskStatus.Complete ? 1 : 0)
+                        .ThenBy(t => t.DueDate)
+                        .ThenByDescending(t => t.Priority.HasValue
+                            ? (int)t.Priority.Value
+                            : 0)
+                        .ToList();
+            }
+        }
+
+        // Mirrors AdminController.BuildTaskList: the CLIP record and the status
+        // action flow are resolved in batched queries rather than per card, so
+        // the employee sees the same detail about their own task that an admin
+        // sees when reviewing it.
+        private List<TaskListItemViewModel> BuildMyTaskList(
+            List<TaskItem> tasks, string userId)
+        {
+            var clipItems = Clip.GetItemsForTasks(tasks);
+            var flows = new TaskService(_db)
+                .GetStatusActionFlows(tasks.Select(t => t.TaskId));
+
+            return tasks.Select(t =>
+            {
+                var flow = flows.ContainsKey(t.TaskId)
+                    ? flows[t.TaskId]
+                    : new List<StatusRemarkViewModel>();
+
+                return new TaskListItemViewModel
+                {
+                    TaskId                 = t.TaskId,
+                    Title                  = t.Title,
+                    Description            = t.Description,
+                    SubTaskId              = t.SubTaskId,
+                    TaskClassificationId   = t.TaskClassificationId,
+                    ClassificationName     = t.TaskClassification?.Name,
+                    TaskListId             = t.TaskListId,
+                    TaskListName           = t.TaskList?.Name,
+                    Status                 = t.Status,
+                    Priority               = t.Priority,
+                    DueDate                = t.DueDate,
+                    CreatedDate            = t.CreatedDate,
+                    CompletedDate          = t.CompletedDate,
+                    AssignedToUserId       = t.AssignedToUserId,
+                    CreatedByUserId        = t.CreatedByUserId,
+                    CreatedByName          = t.CreatedByUserId == userId
+                                                 ? "You"
+                                                 : t.CreatedByUser?.UserName ?? "-",
+                    ClipItem               = clipItems.ContainsKey(t.TaskId)
+                                                 ? clipItems[t.TaskId]
+                                                 : null,
+                    StatusActions          = flow,
+                    LatestStatusRemark     = flow.LastOrDefault()
+                };
+            }).ToList();
         }
 
 
@@ -166,31 +267,20 @@ namespace ESTAFF.Controllers
                 TaskLists = TaskDisplay.ToOptions(_db.TaskLists
                     .OrderBy(l => l.Name)
                     .ToList()),
-                ClipItems = clip.GetItemsForUser(User.Identity.GetUserId()),
-                ClipClassificationId =
-                    clip.GetClipClassification()?.TaskClassificationId
+                // Every CLIP record, filtered by plant in the picker. Not just
+                // the employee's own plants: that mapping is EHS_PORTAL's and
+                // is incomplete, so it left the picker empty for anyone
+                // missing a CLIP.UserPlants row. See ClipService.GetAllItems.
+                ClipItems = clip.GetAllItems()
             };
         }
 
-        private bool IsClipClassification(CreateTaskViewModel model)
+        // The one check the data annotations cannot express: a task type has to
+        // belong to the chosen classification, so it is required here rather
+        // than on the model. Attaching a CLIP record stays optional.
+        private void ValidateClassification(CreateTaskViewModel model)
         {
-            return model.TaskClassificationId > 0
-                && model.TaskClassificationId
-                    == model.Options.ClipClassificationId;
-        }
-
-        // Both employee task forms need the same two conditional checks, which
-        // the data annotations cannot express: CLIP work needs a picked record,
-        // anything else needs a task type.
-        private void ValidateClassification(CreateTaskViewModel model, bool isClip)
-        {
-            if (isClip && string.IsNullOrWhiteSpace(model.ClipItemKey))
-            {
-                ModelState.AddModelError("ClipItemKey",
-                    "Select the COF or plant monitoring record this task covers.");
-            }
-
-            if (!isClip && !model.TaskListId.HasValue)
+            if (!model.TaskListId.HasValue)
             {
                 ModelState.AddModelError("TaskListId",
                     "Select the task type this task covers.");
@@ -200,15 +290,16 @@ namespace ESTAFF.Controllers
         // Mirrors AdminController.ApplyClassificationLink: the rule itself lives
         // in ClipService, the controller only reports the rejection.
         private bool ApplyClassificationLink(TaskItem task,
-            int? classificationId, int? taskListId, string clipItemKey,
-            string ownerUserId, bool isClip)
+            int? classificationId, int? taskListId, string clipItemKey)
         {
-            if (Clip.TryApplyClassificationLink(task, classificationId,
-                    taskListId, clipItemKey, ownerUserId, isClip))
+            var result = Clip.TryApplyClassificationLink(task,
+                classificationId, taskListId, clipItemKey);
+
+            if (result != ClipService.ClipAttachResult.Unavailable)
                 return true;
 
             ModelState.AddModelError("ClipItemKey",
-                "That CLIP item is not available for your plants.");
+                "That CLIP item no longer exists in CLIP. Pick another.");
             return false;
         }
 
@@ -255,8 +346,7 @@ namespace ESTAFF.Controllers
 
             model.Options = GetFormOptions();
 
-            var isClip = IsClipClassification(model);
-            ValidateClassification(model, isClip);
+            ValidateClassification(model);
 
             if (!ModelState.IsValid)
                 return View(model);
@@ -277,10 +367,11 @@ namespace ESTAFF.Controllers
                 TaskClassificationId = model.TaskClassificationId
             };
 
-            // Sets TaskListId/SubTaskId. The CLIP item must belong to one of the
-            // employee's own plants — they are the assignee here.
+            // Sets the task type and any attached CLIP record. The record must
+            // belong to one of the employee's own plants — they are the
+            // assignee here.
             if (!ApplyClassificationLink(task, model.TaskClassificationId,
-                    model.TaskListId, model.ClipItemKey, userId, isClip))
+                    model.TaskListId, model.ClipItemKey))
                 return View(model);
 
             _db.TaskItems.Add(task);
@@ -323,7 +414,7 @@ namespace ESTAFF.Controllers
                 Priority = task.Priority,
                 TaskClassificationId = task.TaskClassificationId,
                 TaskListId = task.TaskListId,
-                ClipItemKey = Clip.BuildKeyForTask(task),
+                ClipItemKey = ClipService.BuildKeyForTask(task),
                 Options = GetFormOptions()
             };
 
@@ -354,8 +445,7 @@ namespace ESTAFF.Controllers
 
             model.Options = GetFormOptions();
 
-            var isClip = IsClipClassification(model);
-            ValidateClassification(model, isClip);
+            ValidateClassification(model);
 
             if (!ModelState.IsValid)
                 return View(model);
@@ -370,7 +460,7 @@ namespace ESTAFF.Controllers
 
             if (task.Description != model.Description)
             {
-                changes.Append("description updated. ");
+                changes.Append("Concern/Issue updated. ");
                 task.Description = model.Description;
             }
 
@@ -393,7 +483,7 @@ namespace ESTAFF.Controllers
             task.TaskClassificationId = model.TaskClassificationId;
 
             if (!ApplyClassificationLink(task, model.TaskClassificationId,
-                    model.TaskListId, model.ClipItemKey, userId, isClip))
+                    model.TaskListId, model.ClipItemKey))
                 return View(model);
 
             var after = Clip.DescribeClassification(task);
@@ -455,18 +545,12 @@ namespace ESTAFF.Controllers
             task.LastModifiedDate = DateTime.Now;
             _db.SaveChanges();
 
-            var detail = $"Status: {StatusLabel(oldStatus)}" +
-                $" -> {StatusLabel(status)}.";
-
-            if (!string.IsNullOrWhiteSpace(actionTaken))
-                detail += $" Action taken: {actionTaken.Trim()}";
-
-            new TaskService(_db).LogHistory(
-                task.TaskId,
-                "StatusChanged",
-                StatusLabel(oldStatus),
-                detail,
-                userId);
+            // The action-taken text belongs in Remark, not folded into the new
+            // value: Remark is the field GetLatestStatusRemark reads back onto
+            // the task. Old/new values stay raw enum names so the transition
+            // parses back into a TaskStatus.
+            new TaskService(_db).LogStatusChange(
+                task.TaskId, oldStatus, status, userId, actionTaken);
 
             TempData["SuccessMessage"] =
                 $"'{task.Title}' marked as {StatusLabel(status)}.";
@@ -811,7 +895,14 @@ namespace ESTAFF.Controllers
             var userId = User.Identity.GetUserId();
             var endOfDay = model.PeriodEnd.AddDays(1).AddTicks(-1);
 
+            // Classification, task type and who acted on each task are shown on
+            // the preview, so load them with the tasks rather than lazily one
+            // row at a time.
             var tasks = _db.TaskItems
+                .Include(t => t.TaskClassification)
+                .Include(t => t.TaskList)
+                .Include(t => t.AssignedToUser)
+                .Include(t => t.CreatedByUser)
                 .Where(t => t.AssignedToUserId == userId
                          && t.DueDate >= model.PeriodStart
                          && t.DueDate <= endOfDay)
@@ -819,6 +910,12 @@ namespace ESTAFF.Controllers
                 .ToList();
 
             model.Tasks = tasks;
+
+            // The preview shows the same breakdown as the submitted report, so
+            // the employee can check the actions they recorded before sending.
+            model.TaskDetails = new TaskService(_db)
+                .BuildReportTaskDetails(tasks, Clip.GetItemsForTasks(tasks));
+
             return View("PreviewReport", model);
         }
 
@@ -884,60 +981,14 @@ namespace ESTAFF.Controllers
 
             var endOfDay = report.PeriodEnd.AddDays(1).AddTicks(-1);
 
+            // The breakdown prints the classification, task type and who acted
+            // on each task, so the lookups are joined here rather than lazily
+            // one row at a time.
             var tasks = _db.TaskItems
-                .Where(t => t.AssignedToUserId == userId
-                         && t.DueDate >= report.PeriodStart
-                         && t.DueDate <= endOfDay)
-                .OrderBy(t => t.DueDate)
-                .ToList();
-
-            var completed = tasks.Count(t =>
-                t.Status == TaskStatus.Complete);
-
-            var vm = new ReportDetailViewModel
-            {
-                ReportId = report.ReportId,
-                EmpName = report.User?.UserName ?? "-",
-                EmpNumber = report.User?.EmpID ?? "-",
-                EmpEmail = report.User?.Email ?? "-",
-                ReportType = report.ReportType,
-                PeriodStart = report.PeriodStart,
-                PeriodEnd = report.PeriodEnd,
-                Status = report.Status,
-                CreatedDate = report.CreatedDate,
-                SubmittedDate = report.SubmittedDate,
-                ApprovedDate = report.ApprovedDate,
-                RejectionReason = report.RejectionReason,
-                Tasks = tasks,
-                TotalTasks = tasks.Count,
-                CompletedTasks = completed,
-                PendingTasks = tasks.Count(t =>
-                    t.Status == TaskStatus.Pending ||
-                    t.Status == TaskStatus.InProgress),
-                OverdueTasks = tasks.Count(t =>
-                    t.Status == TaskStatus.Overdue),
-                CompletionRate = tasks.Count > 0 
-                    ? Math.Round(
-                        (decimal)completed / tasks.Count * 100, 1)
-                    : 0
-            };
-
-            return View(vm);
-        }
-
-        // ===========
-        // Download Report Pdf
-        // ===========
-        public ActionResult DownloadReportPdf(int id)
-        {
-            var userId = User.Identity.GetUserId();
-            var report = _db.Reports.Find(id);
-
-            if (report == null || report.UserId != userId)
-                return HttpNotFound();
-
-            var endOfDay = report.PeriodEnd.AddDays(1).AddTicks(-1);
-            var tasks = _db.TaskItems
+                .Include(t => t.TaskClassification)
+                .Include(t => t.TaskList)
+                .Include(t => t.AssignedToUser)
+                .Include(t => t.CreatedByUser)
                 .Where(t => t.AssignedToUserId == userId
                          && t.DueDate >= report.PeriodStart
                          && t.DueDate <= endOfDay)
@@ -975,12 +1026,84 @@ namespace ESTAFF.Controllers
                     : 0
             };
 
+            // Same resolved detail the PDF is built from, so the page and the
+            // downloaded copy describe each task identically.
+            vm.TaskDetails = new TaskService(_db)
+                .BuildReportTaskDetails(tasks, Clip.GetItemsForTasks(tasks));
+
+            return View(vm);
+        }
+
+        // ===========
+        // Download Report Pdf
+        // ===========
+        public ActionResult DownloadReportPdf(int id)
+        {
+            var userId = User.Identity.GetUserId();
+            var report = _db.Reports.Find(id);
+
+            if (report == null || report.UserId != userId)
+                return HttpNotFound();
+
+            var endOfDay = report.PeriodEnd.AddDays(1).AddTicks(-1);
+
+            // The lookups are joined here rather than lazy-loaded: the PDF
+            // prints them for every task, which would otherwise be a query per
+            // task per field.
+            var tasks = _db.TaskItems
+                .Include(t => t.TaskClassification)
+                .Include(t => t.TaskList)
+                .Include(t => t.AssignedToUser)
+                .Include(t => t.CreatedByUser)
+                .Where(t => t.AssignedToUserId == userId
+                         && t.DueDate >= report.PeriodStart
+                         && t.DueDate <= endOfDay)
+                .OrderBy(t => t.DueDate)
+                .ToList();
+
+            var completed = tasks.Count(t =>
+                t.Status == TaskStatus.Complete);
+
+            var vm = new ReportDetailViewModel
+            {
+                ReportId = report.ReportId,
+                EmpName = report.User?.UserName ?? "-",
+                EmpNumber = report.User?.EmpID ?? "-",
+                EmpEmail = report.User?.Email ?? "-",
+                ReportType = report.ReportType,
+                PeriodStart = report.PeriodStart,
+                PeriodEnd = report.PeriodEnd,
+                Status = report.Status,
+                CreatedDate = report.CreatedDate,
+                SubmittedDate = report.SubmittedDate,
+                ApprovedDate = report.ApprovedDate,
+                RejectionReason = report.RejectionReason,
+                Tasks = tasks,
+                TotalTasks = tasks.Count,
+                CompletedTasks = completed,
+                PendingTasks = tasks.Count(t =>
+                    t.Status == TaskStatus.Pending ||
+                    t.Status == TaskStatus.InProgress),
+                OverdueTasks = tasks.Count(t =>
+                    t.Status == TaskStatus.Overdue),
+                CompletionRate = tasks.Count > 0
+                    ? Math.Round(
+                        (decimal)completed / tasks.Count * 100, 1)
+                    : 0
+            };
+
+            vm.TaskDetails = new TaskService(_db)
+                .BuildReportTaskDetails(tasks, Clip.GetItemsForTasks(tasks));
+
             var pdfService = new ReportPdfService();
             var bytes = pdfService.GeneratePdf(vm);
-            var fileName = 
-                $"Report_{vm.EmpNumber}_" +
-                $"{vm.PeriodStart:yyyMMdd}_" +
-                $"{vm.PeriodEnd:yyyMMdd}.pdf";
+            // Named after the statutory return it is, so a downloaded copy is
+            // filed under the same name as the one the SHO keeps.
+            var fileName =
+                $"ESH_{vm.ReportTypeLabel}_Report_" +
+                $"{vm.EmpNumber}_" +
+                $"{vm.PeriodStart:yyyyMMdd}_" +
+                $"{vm.PeriodEnd:yyyyMMdd}.pdf";
 
             return File(bytes, "application/pdf", fileName);
         }

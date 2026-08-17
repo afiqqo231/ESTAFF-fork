@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Data.Entity;
 using System.Linq;
 using ESTAFF.Models.Data;
@@ -8,12 +9,13 @@ using ESTAFF.Models.ViewModels;
 namespace ESTAFF.Services
 {
     // Read-only access to the CLIP schema that EHS_PORTAL owns, plus the rules
-    // that connect an ESTAFF task to a CLIP record.
+    // that attach an ESTAFF task to a CLIP record.
     //
-    // A task is CLIP work when its TaskClassification is named "CLIP". Which
-    // CLIP table SubTaskId points at is decided by the task's TaskList:
-    //   "Certificate Of FItness" -> CLIP.CertificateOfFitness
-    //   "Plant Monitoring"       -> CLIP.PlantMonitoring
+    // A task carries an attached record when it has both a ClipItemKind and a
+    // SubTaskId. Any task can, whatever its classification: covering a
+    // certificate of fitness is something a task *does*, not a category it
+    // belongs to. The pair is written straight from the picker; nothing is
+    // inferred from the classification or the task type.
     //
     // The expiry rules below deliberately mirror EHS_PORTAL so the two apps
     // never disagree about whether an item is expiring:
@@ -43,6 +45,30 @@ namespace ESTAFF.Services
             _db = db;
             _clip = clip;
             _ownsClipContext = false;
+        }
+        
+        // ══════════════════════════════════════════
+        // URL BUILDING
+        // ══════════════════════════════════════════
+
+        public static string GetPortalBaseUrl()
+        {
+            return ConfigurationManager.AppSettings["PortalBaseUrl"];
+        }
+
+        public static string BuildProgressUrl(ClipItemKind kind, int id)
+        {
+            var baseUrl = GetPortalBaseUrl();
+            if (string.IsNullOrWhiteSpace(baseUrl) || id <= 0) return null;
+
+            var path = kind == ClipItemKind.COF
+                ? "CLIP/CertificateOfFitness/Details/"
+                : "CLIP/PlantMonitoring/Details/";
+
+            Uri result;
+            return Uri.TryCreate(new Uri(baseUrl.TrimEnd('/') + "/"), path + id, out result)
+                ? result.AbsoluteUri
+                : null;
         }
 
         // ══════════════════════════════════════════
@@ -79,117 +105,45 @@ namespace ESTAFF.Services
             }
         }
 
-        // ══════════════════════════════════════════
-        // CLASSIFICATION / TASK LIST RESOLUTION
-        // ══════════════════════════════════════════
-
-        public TaskClassification GetClipClassification()
-        {
-            return _db.TaskClassifications
-                .FirstOrDefault(c => c.Name == TaskClassification.ClipName);
-        }
-
-        public bool IsClipClassification(int? taskClassificationId)
-        {
-            if (!taskClassificationId.HasValue) return false;
-
-            var clip = GetClipClassification();
-            return clip != null
-                && clip.TaskClassificationId == taskClassificationId.Value;
-        }
-
-        // The CLIP classification's task lists, tagged with the CLIP table each
-        // one refers to. Matched on the name rather than a hard-coded id so the
-        // rows stay editable; the match is loose enough to survive the
-        // "Certificate Of FItness" typo in the seeded data.
-        public Dictionary<int, ClipItemKind> GetClipTaskListKinds()
-        {
-            var result = new Dictionary<int, ClipItemKind>();
-
-            var clip = GetClipClassification();
-            if (clip == null) return result;
-
-            var lists = _db.TaskLists
-                .Where(l => l.TaskClassificationId == clip.TaskClassificationId)
-                .ToList();
-
-            foreach (var list in lists)
-            {
-                var kind = ClassifyTaskListName(list.Name);
-                if (kind.HasValue) result[list.TaskListId] = kind.Value;
-            }
-
-            return result;
-        }
-
-        public static ClipItemKind? ClassifyTaskListName(string name)
-        {
-            if (string.IsNullOrWhiteSpace(name)) return null;
-
-            var n = name.ToLowerInvariant();
-
-            if (n.Contains("fitness") || n.Contains("cof"))
-                return ClipItemKind.COF;
-
-            if (n.Contains("monitoring"))
-                return ClipItemKind.PlantMonitoring;
-
-            return null;
-        }
-
-        // The task list id to store for a given CLIP item kind, so picking an
-        // item in the CLIP dropdown also sets the task's sub-type.
-        public int? GetTaskListIdFor(ClipItemKind kind)
-        {
-            foreach (var pair in GetClipTaskListKinds())
-                if (pair.Value == kind) return pair.Key;
-
-            return null;
-        }
-
-        // ══════════════════════════════════════════
-        // PLANT ACCESS
-        // ══════════════════════════════════════════
-
-        public List<int> GetPlantIdsForUser(string userId)
-        {
-            if (string.IsNullOrEmpty(userId)) return new List<int>();
-
-            return _clip.UserPlants
-                .Where(up => up.UserId == userId)
-                .Select(up => up.PlantId)
-                .Distinct()
-                .ToList();
-        }
+        // CLIP.UserPlants is no longer read. It is EHS_PORTAL's own record of
+        // who works where, it is incomplete (four of seventeen users have no
+        // rows, the ESTAFF admin among them), and using it to decide which CLIP
+        // records an ESTAFF task could cite left the picker empty for exactly
+        // those people. The UserPlant projection stays on the context because
+        // it maps a real table, but nothing in ESTAFF depends on it.
 
         // ══════════════════════════════════════════
         // ITEM LOOKUPS
         // ══════════════════════════════════════════
 
-        // Every CLIP record the user can act on, nearest-expiry first
-        // (already-expired items lead, then soonest, undated items last).
-        public List<ClipItemViewModel> GetItemsForUser(string userId)
+        // Every CLIP record there is, nearest-expiry first (already-expired
+        // items lead, then soonest, undated items last). The picker offers all
+        // of them and filters by plant in the UI.
+        //
+        // It used to offer only the records under the assignee's CLIP.UserPlants
+        // rows. That mapping is EHS_PORTAL's own notion of who works where and
+        // is incomplete - four of seventeen users have no rows at all, the
+        // ESTAFF admin among them - so the picker rendered empty and disabled
+        // for exactly the people who needed to attach something, and on the
+        // admin's Assign Task form it was empty on load because no assignee had
+        // been chosen yet.
+        //
+        // Attaching evidence is not an access-control decision. Every ESTAFF
+        // user is staff, the records are internal EHS data that the report
+        // prints anyway, and a task may legitimately concern a plant its
+        // assignee is not mapped to.
+        public List<ClipItemViewModel> GetAllItems()
         {
-            return GetItemsForPlants(GetPlantIdsForUser(userId));
-        }
-
-        public List<ClipItemViewModel> GetItemsForPlants(IEnumerable<int> plantIds)
-        {
-            var ids = (plantIds ?? Enumerable.Empty<int>()).Distinct().ToList();
-            if (!ids.Any()) return new List<ClipItemViewModel>();
-
             var items = new List<ClipItemViewModel>();
 
             items.AddRange(_clip.COFs
                 .Include(c => c.Plant)
-                .Where(c => ids.Contains(c.PlantId))
                 .ToList()
                 .Select(MapCof));
 
             items.AddRange(_clip.PlantMonitoring
                 .Include(pm => pm.Plant)
                 .Include(pm => pm.Monitoring)
-                .Where(pm => ids.Contains(pm.PlantID))
                 .ToList()
                 .Select(MapMonitoring));
 
@@ -232,18 +186,14 @@ namespace ESTAFF.Services
             var list = (tasks ?? Enumerable.Empty<TaskItem>()).ToList();
             var result = new Dictionary<int, ClipItemViewModel>();
 
-            var kinds = GetClipTaskListKinds();
-            if (!kinds.Any()) return result;
-
-            // Pair each task with the CLIP table its task list points at.
+            // The attachment is on the task itself, so no lookup is needed to
+            // work out what each id points at.
             var linked = list
-                .Where(t => t.SubTaskId.HasValue
-                         && t.TaskListId.HasValue
-                         && kinds.ContainsKey(t.TaskListId.Value))
+                .Where(t => t.HasClipItem)
                 .Select(t => new
                 {
                     Task = t,
-                    Kind = kinds[t.TaskListId.Value],
+                    Kind = t.ClipItemKind.Value,
                     Id   = t.SubTaskId.Value
                 })
                 .ToList();
@@ -318,69 +268,72 @@ namespace ESTAFF.Services
             return (kind == ClipItemKind.COF ? "COF:" : "PM:") + subTaskId.Value;
         }
 
-        // The picker key for a task that is already linked, or null.
-        public string BuildKeyForTask(TaskItem task)
+        // The picker key for a task that already has a record attached, or null.
+        public static string BuildKeyForTask(TaskItem task)
         {
-            if (task == null || !task.SubTaskId.HasValue
-                || !task.TaskListId.HasValue) return null;
-
-            var kinds = GetClipTaskListKinds();
-            ClipItemKind kind;
-
-            return kinds.TryGetValue(task.TaskListId.Value, out kind)
-                ? BuildKey(kind, task.SubTaskId)
+            return task != null && task.HasClipItem
+                ? BuildKey(task.ClipItemKind.Value, task.SubTaskId)
                 : null;
         }
 
-        // Resolves a posted picker key onto a task, setting both the task list
-        // and the sub-task id. Rejects anything outside the plants the assignee
-        // is allowed to see, so a hand-crafted post cannot reach another plant.
-        public bool ApplyKeyToTask(TaskItem task, string key, string ownerUserId)
+        // ══════════════════════════════════════════
+        // APPLYING A FORM POST
+        // ══════════════════════════════════════════
+
+        // Why the posted CLIP key was not accepted. The attachment is optional,
+        // so "nothing was picked" is a success with no record attached, not a
+        // failure — only Unavailable is worth telling the user about.
+        public enum ClipAttachResult
         {
+            Cleared,
+            Attached,
+
+            // Parsed, but the record does not exist or belongs to a plant the
+            // task's owner has no access to.
+            Unavailable
+        }
+
+        // Attaches the picked CLIP record to the task, or clears the attachment
+        // when nothing was picked.
+        //
+        // The record has to exist — a posted id that names nothing would print
+        // as a dangling citation in a statutory report. It no longer has to
+        // fall under the task owner's CLIP.UserPlants rows; see GetAllItems for
+        // why that restriction was wrong.
+        public ClipAttachResult ApplyClipItem(TaskItem task, string key)
+        {
+            task.ClipItemKind = null;
             task.SubTaskId = null;
-            task.TaskListId = null;
 
             ClipItemKind kind;
             int id;
-            if (!TryParseKey(key, out kind, out id)) return false;
 
-            var taskListId = GetTaskListIdFor(kind);
-            if (!taskListId.HasValue) return false;
+            // A blank key is the ordinary case: most tasks cover no CLIP
+            // record. An unparseable one is treated the same rather than
+            // rejected, because the only way to produce one is to post by hand.
+            if (!TryParseKey(key, out kind, out id))
+                return ClipAttachResult.Cleared;
 
-            var allowedPlantIds = GetPlantIdsForUser(ownerUserId);
+            var exists = kind == ClipItemKind.COF
+                ? _clip.COFs.Any(c => c.Id == id)
+                : _clip.PlantMonitoring.Any(m => m.Id == id);
 
-            if (kind == ClipItemKind.COF)
-            {
-                var cof = _clip.COFs.FirstOrDefault(c => c.Id == id);
-                if (cof == null || !allowedPlantIds.Contains(cof.PlantId))
-                    return false;
-            }
-            else
-            {
-                var pm = _clip.PlantMonitoring.FirstOrDefault(m => m.Id == id);
-                if (pm == null || !allowedPlantIds.Contains(pm.PlantID))
-                    return false;
-            }
+            if (!exists) return ClipAttachResult.Unavailable;
 
-            task.TaskListId = taskListId;
+            task.ClipItemKind = kind;
             task.SubTaskId = id;
-            return true;
+            return ClipAttachResult.Attached;
         }
 
-        // Sets TaskListId/SubTaskId from what a task form posted. For CLIP the
-        // picked record decides both; every other classification picks a task
-        // type directly and links no record. False only when the CLIP item is
-        // not one the task's owner may use — the caller reports that.
+        // Sets the task type, then the optional CLIP attachment. The two are
+        // independent now: a task type says what kind of job this is, an
+        // attached record says which certificate or monitoring row it covers,
+        // and any combination of the two is legitimate.
         //
-        // Shared by the admin and employee forms so the rule cannot drift.
-        public bool TryApplyClassificationLink(TaskItem task,
-            int? classificationId, int? taskListId, string clipItemKey,
-            string ownerUserId, bool isClip)
+        // Shared by the admin and employee forms so the rules cannot drift.
+        public ClipAttachResult TryApplyClassificationLink(TaskItem task,
+            int? classificationId, int? taskListId, string clipItemKey)
         {
-            if (isClip)
-                return ApplyKeyToTask(task, clipItemKey, ownerUserId);
-
-            task.SubTaskId = null;
             task.TaskListId = null;
 
             // Only accept a task type that actually belongs to the chosen
@@ -394,10 +347,12 @@ namespace ESTAFF.Services
                 if (belongs) task.TaskListId = taskListId;
             }
 
-            return true;
+            return ApplyClipItem(task, clipItemKey);
         }
 
-        // "CLIP / Plant Monitoring / #12" — a stable string for the audit trail.
+        // "Environmental / Weekly Patrol / COF #12" — a stable string for the
+        // audit trail, so a change of classification, task type or attached
+        // record all read the same way in the history.
         public string DescribeClassification(TaskItem task)
         {
             var classification = _db.TaskClassifications
@@ -416,7 +371,13 @@ namespace ESTAFF.Services
                 parts.Add(list?.Name ?? ("#" + task.TaskListId.Value));
             }
 
-            if (task.SubTaskId.HasValue) parts.Add("#" + task.SubTaskId.Value);
+            if (task.HasClipItem)
+            {
+                parts.Add((task.ClipItemKind.Value == ClipItemKind.COF
+                              ? "COF #"
+                              : "Monitoring #")
+                          + task.SubTaskId.Value);
+            }
 
             return string.Join(" / ", parts);
         }
@@ -441,7 +402,14 @@ namespace ESTAFF.Services
                                    : cof.Location,
                 ExpiryDate   = cof.ExpiryDate,
                 ExpiryStatus = status,
-                Urgency      = ToUrgency(status)
+                Urgency      = ToUrgency(status),
+
+                // A certificate has no phases: it is valid or it is not, and
+                // where the machine is and who owns it is what identifies the
+                // thing the certificate covers.
+                RecordStatus = cof.Status,
+                Location     = cof.Location,
+                Department   = cof.Department
             };
         }
 
@@ -466,7 +434,53 @@ namespace ESTAFF.Services
                 ExpiryDate    = pm.ExpDate,
                 ExpiryStatus  = status,
                 ProcessStatus = CalculateProcStatus(pm),
-                Urgency       = ToUrgency(status)
+                Urgency       = ToUrgency(status),
+                Remarks       = pm.Remarks,
+                Phases        = BuildPhases(pm)
+            };
+        }
+
+        // The three phases CLIP tracks against a monitoring record, in the
+        // order they happen. All three are returned even when untouched: a
+        // phase nobody has started is as much a part of the evidence as one
+        // that is finished, because it is what "still outstanding" looks like.
+        //
+        // Read live rather than copied onto the task. CLIP is where this work
+        // is actually recorded, so a snapshot would start lying the moment the
+        // vendor moved on - and the whole point of citing it is that it is the
+        // other system's account, not ours.
+        private static List<ClipPhaseViewModel> BuildPhases(PlantMonitoring pm)
+        {
+            return new List<ClipPhaseViewModel>
+            {
+                new ClipPhaseViewModel
+                {
+                    Name          = "Quotation",
+                    StartedDate   = pm.QuoteDate,
+                    CompletedDate = pm.QuoteCompleteDate,
+                    AssignedTo    = pm.QuoteUserAssign,
+                    Document      = pm.QuoteDoc
+                },
+                new ClipPhaseViewModel
+                {
+                    Name          = "Preparation (ePR)",
+                    StartedDate   = pm.EprDate,
+                    CompletedDate = pm.EprCompleteDate,
+                    AssignedTo    = pm.EprUserAssign,
+                    Document      = pm.EprDoc
+                },
+                new ClipPhaseViewModel
+                {
+                    Name          = "Work Execution",
+                    StartedDate   = pm.WorkDate,
+
+                    // The only phase whose submitted date ESTAFF's projection
+                    // maps; QuoteSubmitDate and EprSubmitDate are not read.
+                    SubmittedDate = pm.WorkSubmitDate,
+                    CompletedDate = pm.WorkCompleteDate,
+                    AssignedTo    = pm.WorkUserAssign,
+                    Document      = pm.WorkDoc
+                }
             };
         }
 

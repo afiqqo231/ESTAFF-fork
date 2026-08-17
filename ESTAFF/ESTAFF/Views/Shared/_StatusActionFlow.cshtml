@@ -1,0 +1,45 @@
+@using ESTAFF.Models.ViewModels
+@model List<StatusRemarkViewModel>
+
+@* Every action taken on a task, oldest first, read top to bottom. Only the
+   three most recent steps stay open; anything older folds behind a toggle so
+   a long history cannot stretch the table row.
+
+   The text comes from the "Action Taken" note captured by
+   _StatusActionModal when the status was changed. *@
+@{
+    var steps = Model ?? new List<StatusRemarkViewModel>();
+    const int openSteps = 3;
+
+    var olderCount = Math.Max(0, steps.Count - openSteps);
+    var older      = steps.Take(olderCount).ToList();
+    var recent     = steps.Skip(olderCount).ToList();
+}
+
+@if (!steps.Any())
+{
+    <span class="action-flow-empty">@StatusRemarkViewModel.NoActionText</span>
+}
+else
+{
+    <div class="action-flow">
+        @if (older.Any())
+        {
+            <details class="action-flow-earlier">
+                <summary>
+                    <i class="fas fa-chevron-right"></i>
+                    Show @older.Count earlier @(older.Count == 1 ? "action" : "actions")
+                </summary>
+                @foreach (var step in older)
+                {
+                    @Html.Partial("_StatusActionStep", step)
+                }
+            </details>
+        }
+
+        @foreach (var step in recent)
+        {
+            @Html.Partial("_StatusActionStep", step)
+        }
+    </div>
+}

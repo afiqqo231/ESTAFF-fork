@@ -94,18 +94,25 @@
 
     @if (Model.Count > 0)
     {
+        @* The action column is wide by design, so the table scrolls sideways
+           on narrow screens rather than being clipped by the card. *@
+        <div class="table-scroll">
         <table class="data-table" style="width: 100%">
             <thead>
                 <tr>
                     <th style="padding-left:1.5rem">Task</th>
+                    <th class="task-concern-col">Concern/Issue</th>
                     <th>Classification</th>
                     <th>Assigned To</th>
                     <th>Priority</th>
                     <th>Due Date</th>
                     <th>Status</th>
-                    <th>Latest Status Remark</th>
+                    <th style="min-width:260px">Action</th>
                     <th>Created </th>
-                    <th style="padding-right:1.5rem">Actions</th>
+                    @* "Manage", not "Actions" — the Action column above is the
+                       flow of actions taken, and two similar headings side by
+                       side read as the same thing. *@
+                    <th style="padding-right:1.5rem">Manage</th>
                 </tr>
             </thead>
             <tbody>
@@ -126,13 +133,23 @@
                                         overflow:hidden; text-overflow:ellipsis">
                                 @task.Title
                             </div>
-                            @if (!string.IsNullOrEmpty(task.Description))
+                        </td>
+                        @* The concern was previously a truncated second line
+                           inside the task cell, clipped to one line at 0.72rem.
+                           It reads as its own field, so it gets its own column
+                           and the room to wrap. *@
+                        <td class="task-concern-cell">
+                            @if (!string.IsNullOrWhiteSpace(task.Description))
                             {
-                                <div style="font-size:0.72rem; color:var(--text-muted);
-                                            margin-top:0.15rem; white-space:nowrap;
-                                            overflow:hidden; text-overflow:ellipsis">
+                                <span title="@task.Description">
                                     @task.Description
-                                </div>
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="task-concern-empty">
+                                    Not recorded
+                                </span>
                             }
                         </td>
                         <td style="max-width:230px">
@@ -186,17 +203,9 @@
                                 @TaskDisplay.StatusLabel(task.Status)
                             </span>
                         </td>
-                        <td style="max-width:260px">
-                            @if (task.LatestStatusRemark != null)
-                            {
-                                @Html.Partial("_StatusRemarkInline",
-                                    task.LatestStatusRemark)
-                            }
-                            else
-                            {
-                                <span style="color:var(--text-muted);
-                                             font-size:0.78rem">—</span>
-                            }
+                        <td class="action-cell">
+                            @Html.Partial("_StatusActionFlow",
+                                task.StatusActions)
                         </td>
                         <td>
                             <span style="font-size:0.78rem;
@@ -230,6 +239,7 @@
                 }
             </tbody>
         </table>
+        </div>
     }
     else
     {

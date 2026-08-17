@@ -24,6 +24,7 @@
             title         = i.Title,
             subtitle      = i.Subtitle,
             plant         = i.PlantName,
+            plantId       = i.PlantId,
             status        = i.ExpiryStatus,
             processStatus = i.ProcessStatus,
             urgency       = i.UrgencyClass,
@@ -37,16 +38,26 @@
      data-reload-url="@Model.ReloadUrl"
      data-reload-trigger="@Model.ReloadTriggerId">
 
+    @* Grouped by plant so the plain <select> is navigable too: the list runs
+       to every COF and monitoring record there is, and without the grouping a
+       no-JS user would face one flat list of a couple of hundred rows. *@
     <select name="@Model.FieldName"
             id="@Model.FieldName"
             class="form-control clip-picker-native">
-        <option value="">— Select a CLIP item —</option>
-        @foreach (var item in Model.Items)
+        <option value="">— No CLIP item —</option>
+        @foreach (var plant in Model.Items
+            .GroupBy(i => i.PlantName ?? "Unassigned plant")
+            .OrderBy(g => g.Key))
         {
-            <option value="@item.Key"
-                    selected="@(item.Key == Model.SelectedKey)">
-                @item.OptionLabel
-            </option>
+            <optgroup label="@plant.Key">
+                @foreach (var item in plant)
+                {
+                    <option value="@item.Key"
+                            selected="@(item.Key == Model.SelectedKey)">
+                        @item.OptionLabel
+                    </option>
+                }
+            </optgroup>
         }
     </select>
 
@@ -71,6 +82,20 @@
                    class="clip-picker-search"
                    placeholder="Search by registration, machine, area or plant…"
                    autocomplete="off" />
+        </div>
+
+        @* Plant filter. The picker carries every record in CLIP, so plant is
+           the first cut most people want — the options are built by
+           estaff-clip.js from the payload rather than listed here, so they
+           always match whatever the list actually contains. *@
+        <div class="clip-picker-filter-wrap">
+            <label class="clip-picker-filter-label"
+                   for="@(pickerId)-plant">
+                Plant
+            </label>
+            <select class="clip-picker-plant" id="@(pickerId)-plant">
+                <option value="">All plants</option>
+            </select>
         </div>
 
         <ul class="clip-picker-list"
