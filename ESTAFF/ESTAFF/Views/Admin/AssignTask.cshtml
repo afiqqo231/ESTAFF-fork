@@ -77,9 +77,9 @@
                         new { @class = "text-danger small" })
                 </div>
 
-                @* The hours the work runs between, from _PeriodField so all
-                   four task forms offer the same list. *@
-                @Html.Partial("_PeriodField", PeriodFieldViewModel.From(Model))
+                @* Daily-or-long-term, and the period. The model goes straight
+                   through: this view model implements ITaskPeriodFields. *@
+                @Html.Partial("_PeriodField", Model)
 
                 <!-- Classification, task type, and the optional CLIP item -->
                 <div class="col-12">

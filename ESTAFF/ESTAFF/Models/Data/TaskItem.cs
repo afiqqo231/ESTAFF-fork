@@ -29,20 +29,40 @@ namespace ESTAFF.Models.Data
         [Required]
         public DateTime DueDate { get; set; }
 
-        // The hours of the day the task's work runs between - 08:00 to 17:00 -
-        // recorded by whoever raises the task, employee or admin alike. Times
-        // of day, not dates: which day the work belongs to is already DueDate,
-        // and these say when on it. Both forms offer whole hours only.
+        // Which kind of task this is, chosen by whoever raises it. Daily work
+        // is done on one named day between two hours; long-term work is
+        // tracked to a due date. The difference is what the form insists on:
+        // a daily task has to carry a period, a long-term one may.
         //
-        // TimeSpan rather than DateTime because there is no date here to store.
+        // Not nullable, and existing rows read as LongTerm - a task with a due
+        // date and no period is exactly what that means, so nothing is being
+        // guessed on their behalf.
+        [Required]
+        [Display(Name = "Task Type")]
+        public TaskScheduleType ScheduleType { get; set; }
+            = TaskScheduleType.LongTerm;
+
+        // The day the period falls on. Separate from DueDate: a task worked on
+        // the 25th may still not be due until the 28th, and both forms ask for
+        // the two independently.
+        //
+        // DATE rather than DATETIME - the time of day is the pair below.
+        [Column(TypeName = "date")]
+        [DataType(DataType.Date)]
+        [Display(Name = "Period Date")]
+        public DateTime? PeriodDate { get; set; }
+
+        // The hours of the day the work runs between - 08:00 to 17:00 - on
+        // PeriodDate. Both forms offer whole hours only.
+        //
+        // TimeSpan rather than DateTime because there is no date here to store;
         // EF6 maps it to SQL Server's TIME, so a row cannot carry a stray date
         // component that nothing would ever read.
         //
-        // Nullable in the database because the tasks already in ESTAFF were
-        // written before these columns existed and there is no honest value to
-        // backfill them with: nobody recorded hours for them. The forms require
-        // them going forward; a blank pair means "raised before this was asked
-        // for", not "a period of nothing".
+        // All three are nullable because a long-term task need not have a
+        // period at all, and because the tasks already in ESTAFF were written
+        // before these columns existed. Which combinations are acceptable is a
+        // question about the form, not the column, and lives in TaskPeriod.
         //
         // PeriodEnd earlier than PeriodStart is legitimate and means the work
         // carried past midnight - a night shift of 22:00 to 06:00. Nothing
@@ -55,10 +75,13 @@ namespace ESTAFF.Models.Data
         [Display(Name = "Period End")]
         public TimeSpan? PeriodEnd { get; set; }
 
-        // True when the task carries a complete period. Half a range is
-        // treated as none, the same way HasClipItem treats half a link.
+        // True when the task carries a complete period: a day and both hours.
+        // Anything less is treated as none, the same way HasClipItem treats
+        // half a link.
         [NotMapped]
-        public bool HasPeriod => PeriodStart.HasValue && PeriodEnd.HasValue;
+        public bool HasPeriod => PeriodDate.HasValue
+            && PeriodStart.HasValue
+            && PeriodEnd.HasValue;
 
         // ── Attached CLIP record (optional) ─────────────────────
         //
@@ -138,6 +161,17 @@ namespace ESTAFF.Models.Data
         Low = 1,
         Medium = 2,
         High = 3
+    }
+
+    // Whether a task is a day's work or something tracked to a deadline.
+    //
+    // Both kinds carry a DueDate. What differs is the period: Daily requires
+    // one, LongTerm merely allows it, which is why this cannot be inferred
+    // from whether the period columns are filled in.
+    public enum TaskScheduleType
+    {
+        Daily = 1,
+        LongTerm = 2
     }
 
 }

@@ -525,6 +525,62 @@
     // to refetch and the list is never empty while an assignee is unchosen.
 
     // ════════════════════════════════════════════
+    // SCHEDULE TYPE — daily or long term
+    // ════════════════════════════════════════════
+
+    // Dims the period fields when the task is long term, where they are
+    // optional, and undims them for a daily task, where they are required.
+    //
+    // Appearance only. The rule itself is TaskPeriod.Validate's on the server,
+    // which is what actually refuses an incomplete daily task — this just
+    // stops the form from asking with equal weight for something it does not
+    // need. Without this file the fields simply stay at full strength and
+    // everything still submits.
+    function wireScheduleChoice(group) {
+        var form = group.form || group.closest('form');
+        if (!form) return;
+
+        var radios = form.querySelectorAll('input[name="ScheduleType"]');
+        if (!radios.length) return;
+
+        var fields = [];
+        var names = ['PeriodDate', 'PeriodStart', 'PeriodEnd'];
+
+        for (var i = 0; i < names.length; i++) {
+            var el = form.querySelector('[name="' + names[i] + '"]');
+            if (el) fields.push(el);
+        }
+
+        if (!fields.length) return;
+
+        function selectedValue() {
+            for (var i = 0; i < radios.length; i++) {
+                if (radios[i].checked) return radios[i].value;
+            }
+            return null;
+        }
+
+        function sync() {
+            // "1" is TaskScheduleType.Daily. Kept as the posted string rather
+            // than mirrored into JS, so the two cannot drift apart.
+            var daily = selectedValue() === '1';
+
+            for (var i = 0; i < fields.length; i++) {
+                var wrap = fields[i].parentNode;
+                if (!wrap) continue;
+
+                wrap.style.opacity = daily ? '' : '0.6';
+            }
+        }
+
+        for (var j = 0; j < radios.length; j++) {
+            radios[j].addEventListener('change', sync);
+        }
+
+        sync();
+    }
+
+    // ════════════════════════════════════════════
     // BOOT
     // ════════════════════════════════════════════
 
@@ -540,6 +596,9 @@
 
         var fields = document.querySelectorAll('.classification-field');
         for (var j = 0; j < fields.length; j++) wireClassificationField(fields[j]);
+
+        var choices = document.querySelectorAll('.task-schedule-choice');
+        for (var k = 0; k < choices.length; k++) wireScheduleChoice(choices[k]);
     }
 
     if (document.readyState === 'loading') {

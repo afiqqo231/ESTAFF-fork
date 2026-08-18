@@ -8,7 +8,7 @@ using Newtonsoft.Json;
 
 namespace ESTAFF.Models.ViewModels
 {
-    public class AssignTaskViewModel
+    public class AssignTaskViewModel : ITaskPeriodFields
     {
         [Required(ErrorMessage = "Title is required")]
         [StringLength(256)]
@@ -27,18 +27,24 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Due Date")]
         public DateTime DueDate { get; set; } = DateTime.Today.AddDays(7);
 
-        // The hours the work runs between, distinct from DueDate, which is the
-        // day it must be finished by. Required here even though the column is
-        // nullable: tasks raised before these existed have no period, but every
-        // new one has to say.
+        // ITaskPeriodFields. Daily work happens on one named day between two
+        // hours; long-term work is tracked to the due date above and may
+        // record hours as well.
         //
-        // An end earlier than the start is a night shift, not an error, so
-        // nothing validates the ordering.
-        [Required(ErrorMessage = "Period start is required")]
+        // No [Required] on the period: whether it is needed depends on
+        // ScheduleType, which an annotation cannot see. TaskPeriod.Validate
+        // holds that rule, and the controllers report what it returns.
+        [Display(Name = "Task Type")]
+        public TaskScheduleType ScheduleType { get; set; }
+            = TaskScheduleType.LongTerm;
+
+        [DataType(DataType.Date)]
+        [Display(Name = "Period Date")]
+        public DateTime? PeriodDate { get; set; }
+
         [Display(Name = "Period Start")]
         public TimeSpan? PeriodStart { get; set; }
 
-        [Required(ErrorMessage = "Period end is required")]
         [Display(Name = "Period End")]
         public TimeSpan? PeriodEnd { get; set; }
 
@@ -66,7 +72,7 @@ namespace ESTAFF.Models.ViewModels
             = new List<EmployeeSelectItem>();
     }
 
-    public class EditTaskViewModel
+    public class EditTaskViewModel : ITaskPeriodFields
     {
         public int TaskId { get; set; }
 
@@ -87,18 +93,24 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Due Date")]
         public DateTime DueDate { get; set; }
 
-        // The hours the work runs between, distinct from DueDate, which is the
-        // day it must be finished by. Required here even though the column is
-        // nullable: tasks raised before these existed have no period, but every
-        // new one has to say.
+        // ITaskPeriodFields. Daily work happens on one named day between two
+        // hours; long-term work is tracked to the due date above and may
+        // record hours as well.
         //
-        // An end earlier than the start is a night shift, not an error, so
-        // nothing validates the ordering.
-        [Required(ErrorMessage = "Period start is required")]
+        // No [Required] on the period: whether it is needed depends on
+        // ScheduleType, which an annotation cannot see. TaskPeriod.Validate
+        // holds that rule, and the controllers report what it returns.
+        [Display(Name = "Task Type")]
+        public TaskScheduleType ScheduleType { get; set; }
+            = TaskScheduleType.LongTerm;
+
+        [DataType(DataType.Date)]
+        [Display(Name = "Period Date")]
+        public DateTime? PeriodDate { get; set; }
+
         [Display(Name = "Period Start")]
         public TimeSpan? PeriodStart { get; set; }
 
-        [Required(ErrorMessage = "Period end is required")]
         [Display(Name = "Period End")]
         public TimeSpan? PeriodEnd { get; set; }
 
@@ -255,7 +267,7 @@ namespace ESTAFF.Models.ViewModels
 
     // Employee Side. Carries the same classification/task-type/CLIP trio as the
     // admin forms so both routes can render _ClassificationField.
-    public class CreateTaskViewModel
+    public class CreateTaskViewModel : ITaskPeriodFields
     {
         // Optional: blank assigns the task to whoever is creating it. Only
         // employees sharing a plant with the creator may be chosen, which the
@@ -276,18 +288,24 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Due Date")]
         public DateTime DueDate { get; set; } = DateTime.Today.AddDays(1);
 
-        // The hours the work runs between, distinct from DueDate, which is the
-        // day it must be finished by. Required here even though the column is
-        // nullable: tasks raised before these existed have no period, but every
-        // new one has to say.
+        // ITaskPeriodFields. Daily work happens on one named day between two
+        // hours; long-term work is tracked to the due date above and may
+        // record hours as well.
         //
-        // An end earlier than the start is a night shift, not an error, so
-        // nothing validates the ordering.
-        [Required(ErrorMessage = "Period start is required")]
+        // No [Required] on the period: whether it is needed depends on
+        // ScheduleType, which an annotation cannot see. TaskPeriod.Validate
+        // holds that rule, and the controllers report what it returns.
+        [Display(Name = "Task Type")]
+        public TaskScheduleType ScheduleType { get; set; }
+            = TaskScheduleType.LongTerm;
+
+        [DataType(DataType.Date)]
+        [Display(Name = "Period Date")]
+        public DateTime? PeriodDate { get; set; }
+
         [Display(Name = "Period Start")]
         public TimeSpan? PeriodStart { get; set; }
 
-        [Required(ErrorMessage = "Period end is required")]
         [Display(Name = "Period End")]
         public TimeSpan? PeriodEnd { get; set; }
 
@@ -432,84 +450,6 @@ namespace ESTAFF.Models.ViewModels
 
     // What the _ClassificationField partial needs, so the admin task forms can
     // render the same block from their own view models.
-    // The two hour dropdowns, so all four task forms offer the same list and
-    // post the same field names. Mirrors TaskFormFieldsViewModel: a small
-    // projection with a From() per form model, rendered by _PeriodField.
-    public class PeriodFieldViewModel
-    {
-        public TimeSpan? PeriodStart { get; set; }
-        public TimeSpan? PeriodEnd { get; set; }
-
-        // Whole hours only, 00:00 through 23:00. The value is a full TimeSpan
-        // so the default model binder parses it without a custom binder; the
-        // text is what the user reads.
-        public static List<HourOption> Hours()
-        {
-            var hours = new List<HourOption>();
-
-            for (var h = 0; h < 24; h++)
-            {
-                hours.Add(new HourOption
-                {
-                    Value = new TimeSpan(h, 0, 0).ToString(@"hh\:mm\:ss"),
-                    Text  = new TimeSpan(h, 0, 0).ToString(@"hh\:mm")
-                });
-            }
-
-            return hours;
-        }
-
-        // The posted value matching the current selection, or null when the
-        // task has no period recorded. A stored time that is not on the hour -
-        // written before the picker was narrowed to whole hours, or by hand -
-        // matches no option, so the dropdown would silently fall back to the
-        // first one. Truncating it to its own hour instead keeps the form
-        // showing something close to the truth.
-        public static string ValueFor(TimeSpan? time)
-        {
-            if (!time.HasValue) return null;
-
-            var rounded = new TimeSpan(time.Value.Hours, 0, 0);
-            return rounded.ToString(@"hh\:mm\:ss");
-        }
-
-        public string StartValue { get { return ValueFor(PeriodStart); } }
-        public string EndValue { get { return ValueFor(PeriodEnd); } }
-
-        public static PeriodFieldViewModel From(AssignTaskViewModel m)
-        {
-            return new PeriodFieldViewModel
-            {
-                PeriodStart = m.PeriodStart,
-                PeriodEnd = m.PeriodEnd
-            };
-        }
-
-        public static PeriodFieldViewModel From(EditTaskViewModel m)
-        {
-            return new PeriodFieldViewModel
-            {
-                PeriodStart = m.PeriodStart,
-                PeriodEnd = m.PeriodEnd
-            };
-        }
-
-        public static PeriodFieldViewModel From(CreateTaskViewModel m)
-        {
-            return new PeriodFieldViewModel
-            {
-                PeriodStart = m.PeriodStart,
-                PeriodEnd = m.PeriodEnd
-            };
-        }
-    }
-
-    public class HourOption
-    {
-        public string Value { get; set; }
-        public string Text { get; set; }
-    }
-
     public class TaskFormFieldsViewModel
     {
         public int? TaskClassificationId { get; set; }

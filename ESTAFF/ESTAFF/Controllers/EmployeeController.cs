@@ -287,6 +287,15 @@ namespace ESTAFF.Controllers
             }
         }
 
+        // The period rules live in TaskPeriod because both forms answer to
+        // them; the controller only reports what they return. Whether a period
+        // is required depends on ScheduleType, which no annotation can see.
+        private void ValidatePeriod(ITaskPeriodFields fields)
+        {
+            foreach (var error in TaskPeriod.Validate(fields))
+                ModelState.AddModelError(error.Key, error.Value);
+        }
+
         // Mirrors AdminController.ApplyClassificationLink: the rule itself lives
         // in ClipService, the controller only reports the rejection.
         private bool ApplyClassificationLink(TaskItem task,
@@ -318,11 +327,10 @@ namespace ESTAFF.Controllers
                 // exception, not the usual case.
                 AssignedToUserId = User.Identity.GetUserId(),
 
-                // An ordinary working day, so the dropdowns open on
-                // plausible hours rather than both reading 00:00. Only a
-                // starting point - the user sets the real ones.
-                PeriodStart = new TimeSpan(8, 0, 0),
-                PeriodEnd = new TimeSpan(17, 0, 0),
+                // Long term with no period is the ordinary task, so the
+                // form opens on it and asks for nothing extra. Choosing
+                // "Daily" is what brings the period into play.
+                ScheduleType = TaskScheduleType.LongTerm,
 
                 Options = GetFormOptions(),
                 Employees = GetEmployeeSelectList()
@@ -376,6 +384,7 @@ namespace ESTAFF.Controllers
             }
 
             ValidateClassification(model);
+            ValidatePeriod(model);
 
             if (!ModelState.IsValid)
                 return View(model);
@@ -387,14 +396,16 @@ namespace ESTAFF.Controllers
                 AssignedToUserId = assigneeId,
                 CreatedByUserId = userId,
                 DueDate = model.DueDate,
-                PeriodStart = model.PeriodStart,
-                PeriodEnd = model.PeriodEnd,
                 Priority = model.Priority,
                 Status = TaskStatus.Pending,
                 CreatedDate = DateTime.Now,
                 LastModifiedDate = DateTime.Now,
                 TaskClassificationId = model.TaskClassificationId
             };
+
+            // Schedule type and the period, cleared together if the task is
+            // long term and none was given.
+            TaskPeriod.ApplyTo(task, model);
 
             // Sets the task type and any attached CLIP record. Any task may
             // carry one, whoever it is assigned to.
@@ -447,11 +458,14 @@ namespace ESTAFF.Controllers
                 Description = task.Description,
                 DueDate = task.DueDate,
 
-                // A task raised before periods existed has none stored, and
-                // the form requires one, so editing is where it gets filled in.
-                // The same working day the create form suggests.
-                PeriodStart = task.PeriodStart ?? new TimeSpan(8, 0, 0),
-                PeriodEnd = task.PeriodEnd ?? new TimeSpan(17, 0, 0),
+                // Shown exactly as stored. A task with no period keeps none:
+                // the form only insists on one if it is switched to Daily, and
+                // filling the hours in here would put a period on a long-term
+                // task nobody asked to change.
+                ScheduleType = task.ScheduleType,
+                PeriodDate = task.PeriodDate,
+                PeriodStart = task.PeriodStart,
+                PeriodEnd = task.PeriodEnd,
 
                 Priority = task.Priority,
                 TaskClassificationId = task.TaskClassificationId,
@@ -488,6 +502,7 @@ namespace ESTAFF.Controllers
             model.Options = GetFormOptions();
 
             ValidateClassification(model);
+            ValidatePeriod(model);
 
             if (!ModelState.IsValid)
                 return View(model);
@@ -513,14 +528,16 @@ namespace ESTAFF.Controllers
                 task.DueDate = model.DueDate;
             }
 
-            if (task.PeriodStart != model.PeriodStart
-                || task.PeriodEnd != model.PeriodEnd)
-            {
-                changes.Append($"Period: '{PeriodText(task.PeriodStart, task.PeriodEnd)}'" +
-                    $" -> '{PeriodText(model.PeriodStart, model.PeriodEnd)}'. ");
-                task.PeriodStart = model.PeriodStart;
-                task.PeriodEnd = model.PeriodEnd;
-            }
+            // Schedule type and period read as one thing in the history:
+            // "Daily, 25 Aug 08:00 - 17:00", so a change to any part of it is
+            // one legible line rather than three.
+            var scheduleBefore = TaskPeriod.Describe(task);
+            TaskPeriod.ApplyTo(task, model);
+            var scheduleAfter = TaskPeriod.Describe(task);
+
+            if (scheduleBefore != scheduleAfter)
+                changes.Append(
+                    $"Schedule: '{scheduleBefore}' -> '{scheduleAfter}'. ");
 
             if (task.Priority != model.Priority)
             {
@@ -606,20 +623,6 @@ namespace ESTAFF.Controllers
             TempData["SuccessMessage"] =
                 $"'{task.Title}' marked as {StatusLabel(status)}.";
             return RedirectBack(returnUrl);
-        }
-
-        // How a period reads in the audit trail. A task that had none says so
-        // rather than printing an empty arrow, which is what every task raised
-        // before these columns existed looks like the first time it is edited.
-        private static string PeriodText(TimeSpan? start, TimeSpan? end)
-        {
-            if (!start.HasValue || !end.HasValue) return "none";
-
-            var text = $"{start.Value:hh\\:mm} - {end.Value:hh\\:mm}";
-
-            // Worth saying outright in the history: the pair reads backwards
-            // otherwise, and a reader cannot tell a night shift from a slip.
-            return end.Value < start.Value ? text + " (overnight)" : text;
         }
 
         private static bool RequiresActionTaken(TaskStatus status)

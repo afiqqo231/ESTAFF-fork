@@ -1,41 +1,108 @@
-﻿@model PeriodFieldViewModel
+﻿@using ESTAFF.Models.Data
+@model ITaskPeriodFields
 
 @*
-    The hours a task's work runs between.
-
-    Whole hours only, so these are dropdowns rather than a time input: the
-    choice is "which o'clock", and a free-text time box invites 08:37 into a
-    column that nothing asks for to that precision.
+    How the task is scheduled: a day's work between two hours, or something
+    tracked to the due date.
 
     Rendered by all four task forms — employee create and edit, admin assign
-    and edit — from their own view models via PeriodFieldViewModel.From, so
-    the list and the posted field names cannot drift between them.
+    and edit — which pass their own view model straight through. They can,
+    because each one implements ITaskPeriodFields; there is nothing to reshape,
+    so there is no projection class in between.
 
-    The fields are named without a prefix on purpose. This partial takes its
-    own model, but the values post straight onto the parent form's
-    PeriodStart / PeriodEnd, which is where the controllers read them.
+    Both kinds keep the Due Date asked for elsewhere on the form. What changes
+    is the period: a daily task must carry one, a long-term task may. That rule
+    is TaskPeriod.Validate's, enforced on the server — the script below only
+    dims the fields so the form reads the way it behaves.
 
-    An end earlier than the start is a night shift (22:00 → 06:00), not a
-    mistake, so nothing here or in the controllers rejects that ordering.
+    The fields are named without a prefix on purpose. This partial takes the
+    interface as its model, but the values post straight onto the parent form's
+    ScheduleType / PeriodDate / PeriodStart / PeriodEnd, which is where the
+    controllers read them.
+
+    Whole hours only, so the times are dropdowns rather than a time input: the
+    choice is "which o'clock", and a free-text box invites 08:37 into a column
+    nothing asks for to that precision. An end hour earlier than the start is a
+    night shift, not a mistake.
 *@
 
 @{
-    var hours = PeriodFieldViewModel.Hours();
+    var hours = TaskPeriod.HourOptions();
+    var isDaily = Model.ScheduleType == TaskScheduleType.Daily;
 }
 
-<div class="col-md-6">
+<div class="col-12">
+    <label class="form-label">Task Type</label>
+
+    @* The same segmented control the classification field uses: a handful of
+       options shown up front, because the choice changes what the form asks
+       for underneath it. One line each, with the explanation as a hint below
+       the group rather than inside the boxes, so these stay the same height
+       as every other segmented option on the form. *@
+    <div class="segmented-options task-schedule-choice">
+        <label class="segmented-option">
+            <input type="radio"
+                   name="ScheduleType"
+                   value="@((int)TaskScheduleType.Daily)"
+                   checked="@isDaily" />
+            <span class="segmented-option-box">
+                <i class="fas fa-clock"></i>
+                Daily task
+            </span>
+        </label>
+
+        <label class="segmented-option">
+            <input type="radio"
+                   name="ScheduleType"
+                   value="@((int)TaskScheduleType.LongTerm)"
+                   checked="@(!isDaily)" />
+            <span class="segmented-option-box">
+                <i class="fas fa-calendar-check"></i>
+                Long-term task
+            </span>
+        </label>
+    </div>
+
+    @Html.ValidationMessage("ScheduleType", "",
+        new { @class = "text-danger small" })
+
+    <span class="clip-field-hint">
+        A daily task records the day and hours the work is done, and needs
+        them. A long-term task is tracked to its due date; the period below
+        is optional.
+    </span>
+</div>
+
+<div class="col-md-4">
+    <label for="PeriodDate" class="form-label">Period Date</label>
+    <input type="date"
+           id="PeriodDate"
+           name="PeriodDate"
+           class="form-control"
+           value="@(Model.PeriodDate.HasValue
+                        ? Model.PeriodDate.Value.ToString("yyyy-MM-dd")
+                        : "")" />
+    @Html.ValidationMessage("PeriodDate", "",
+        new { @class = "text-danger small" })
+</div>
+
+<div class="col-md-4">
     <label for="PeriodStart" class="form-label">Period Start</label>
     @Html.DropDownList("PeriodStart",
-        new SelectList(hours, "Value", "Text", Model.StartValue),
+        new SelectList(hours, "Value", "Text",
+            TaskPeriod.HourValue(Model.PeriodStart)),
+        "— None —",
         new { @class = "form-control" })
     @Html.ValidationMessage("PeriodStart", "",
         new { @class = "text-danger small" })
 </div>
 
-<div class="col-md-6">
+<div class="col-md-4">
     <label for="PeriodEnd" class="form-label">Period End</label>
     @Html.DropDownList("PeriodEnd",
-        new SelectList(hours, "Value", "Text", Model.EndValue),
+        new SelectList(hours, "Value", "Text",
+            TaskPeriod.HourValue(Model.PeriodEnd)),
+        "— None —",
         new { @class = "form-control" })
     @Html.ValidationMessage("PeriodEnd", "",
         new { @class = "text-danger small" })
