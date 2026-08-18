@@ -362,7 +362,13 @@ namespace ESTAFF.Controllers
             var vm = new AssignTaskViewModel
             {
                 Employees = GetEmployeeSelectList(),
-                Options   = GetFormOptions()
+                Options   = GetFormOptions(),
+
+                // An ordinary working day, so the dropdowns open on
+                // plausible hours rather than both reading 00:00. Only a
+                // suggestion - the admin sets the real ones.
+                PeriodStart = new TimeSpan(8, 0, 0),
+                PeriodEnd   = new TimeSpan(17, 0, 0)
             };
             
             return View(vm);
@@ -403,6 +409,8 @@ namespace ESTAFF.Controllers
                 CreatedByUserId = adminId,
                 TaskClassificationId = model.TaskClassificationId,
                 DueDate = model.DueDate,
+                PeriodStart = model.PeriodStart,
+                PeriodEnd = model.PeriodEnd,
                 Priority = model.Priority,
                 Status = TaskStatus.Pending,
                 CreatedDate = DateTime.Now,
@@ -448,6 +456,13 @@ namespace ESTAFF.Controllers
                 Description = task.Description,
                 AssignedToUserId = task.AssignedToUserId,
                 DueDate = task.DueDate,
+
+                // A task raised before periods existed has none stored, and
+                // the form requires one, so editing is where it gets filled in.
+                // The same working day the assign form suggests.
+                PeriodStart = task.PeriodStart ?? new TimeSpan(8, 0, 0),
+                PeriodEnd = task.PeriodEnd ?? new TimeSpan(17, 0, 0),
+
                 Priority = task.Priority,
                 Status = task.Status,
                 TaskClassificationId = task.TaskClassificationId,
@@ -517,6 +532,15 @@ namespace ESTAFF.Controllers
                 changes.Append($"Due Date: '{task.DueDate:MMM dd}'" + 
                     $" → '{model.DueDate:MMM dd}'. ");
                 task.DueDate = model.DueDate;
+            }
+
+            if (task.PeriodStart != model.PeriodStart
+                || task.PeriodEnd != model.PeriodEnd)
+            {
+                changes.Append($"Period: '{PeriodText(task.PeriodStart, task.PeriodEnd)}'" +
+                    $" → '{PeriodText(model.PeriodStart, model.PeriodEnd)}'. ");
+                task.PeriodStart = model.PeriodStart;
+                task.PeriodEnd = model.PeriodEnd;
             }
 
             if (task.Priority != model.Priority)
@@ -899,6 +923,20 @@ namespace ESTAFF.Controllers
         // ══════════════════════════════════════════
         // HELPER
         // ══════════════════════════════════════════
+
+        // How a period reads in the audit trail. A task that had none says so
+        // rather than printing an empty arrow, which is what every task raised
+        // before these columns existed looks like the first time it is edited.
+        private static string PeriodText(TimeSpan? start, TimeSpan? end)
+        {
+            if (!start.HasValue || !end.HasValue) return "none";
+
+            var text = $"{start.Value:hh\\:mm} - {end.Value:hh\\:mm}";
+
+            // Worth saying outright in the history: the pair reads backwards
+            // otherwise, and a reader cannot tell a night shift from a slip.
+            return end.Value < start.Value ? text + " (overnight)" : text;
+        }
 
         // Tasks with the lookups the list view model needs already joined.
         private IQueryable<TaskItem> TaskQuery()

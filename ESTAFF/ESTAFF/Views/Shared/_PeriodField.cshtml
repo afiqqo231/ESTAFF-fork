@@ -1,0 +1,45 @@
+﻿@model PeriodFieldViewModel
+
+@*
+    The hours a task's work runs between.
+
+    Whole hours only, so these are dropdowns rather than a time input: the
+    choice is "which o'clock", and a free-text time box invites 08:37 into a
+    column that nothing asks for to that precision.
+
+    Rendered by all four task forms — employee create and edit, admin assign
+    and edit — from their own view models via PeriodFieldViewModel.From, so
+    the list and the posted field names cannot drift between them.
+
+    The fields are named without a prefix on purpose. This partial takes its
+    own model, but the values post straight onto the parent form's
+    PeriodStart / PeriodEnd, which is where the controllers read them.
+
+    An end earlier than the start is a night shift (22:00 → 06:00), not a
+    mistake, so nothing here or in the controllers rejects that ordering.
+*@
+
+@{
+    var hours = PeriodFieldViewModel.Hours();
+}
+
+<div class="col-md-6">
+    <label for="PeriodStart" class="form-label">Period Start</label>
+    @Html.DropDownList("PeriodStart",
+        new SelectList(hours, "Value", "Text", Model.StartValue),
+        new { @class = "form-control" })
+    @Html.ValidationMessage("PeriodStart", "",
+        new { @class = "text-danger small" })
+</div>
+
+<div class="col-md-6">
+    <label for="PeriodEnd" class="form-label">Period End</label>
+    @Html.DropDownList("PeriodEnd",
+        new SelectList(hours, "Value", "Text", Model.EndValue),
+        new { @class = "form-control" })
+    @Html.ValidationMessage("PeriodEnd", "",
+        new { @class = "text-danger small" })
+    <div class="form-text small text-muted">
+        Earlier than the start means the work runs past midnight.
+    </div>
+</div>

@@ -29,6 +29,37 @@ namespace ESTAFF.Models.Data
         [Required]
         public DateTime DueDate { get; set; }
 
+        // The hours of the day the task's work runs between - 08:00 to 17:00 -
+        // recorded by whoever raises the task, employee or admin alike. Times
+        // of day, not dates: which day the work belongs to is already DueDate,
+        // and these say when on it. Both forms offer whole hours only.
+        //
+        // TimeSpan rather than DateTime because there is no date here to store.
+        // EF6 maps it to SQL Server's TIME, so a row cannot carry a stray date
+        // component that nothing would ever read.
+        //
+        // Nullable in the database because the tasks already in ESTAFF were
+        // written before these columns existed and there is no honest value to
+        // backfill them with: nobody recorded hours for them. The forms require
+        // them going forward; a blank pair means "raised before this was asked
+        // for", not "a period of nothing".
+        //
+        // PeriodEnd earlier than PeriodStart is legitimate and means the work
+        // carried past midnight - a night shift of 22:00 to 06:00. Nothing
+        // rejects that ordering, so nothing here assumes end > start.
+        [Column(TypeName = "time")]
+        [Display(Name = "Period Start")]
+        public TimeSpan? PeriodStart { get; set; }
+
+        [Column(TypeName = "time")]
+        [Display(Name = "Period End")]
+        public TimeSpan? PeriodEnd { get; set; }
+
+        // True when the task carries a complete period. Half a range is
+        // treated as none, the same way HasClipItem treats half a link.
+        [NotMapped]
+        public bool HasPeriod => PeriodStart.HasValue && PeriodEnd.HasValue;
+
         // ── Attached CLIP record (optional) ─────────────────────
         //
         // Any task may cover a certificate of fitness or a plant monitoring

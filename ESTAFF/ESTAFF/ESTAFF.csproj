@@ -279,9 +279,6 @@
     <Content Include="Content\css\admin.css" />
     <Content Include="Content\css\auth.css" />
     <Content Include="Content\css\clip-picker.css" />
-    <None Include="DATABASE\Add_Classification_ReportSection.sql" />
-    <None Include="DATABASE\Add_Task_ClipItemKind.sql" />
-    <None Include="DATABASE\Add_Task_Status_Remark.sql" />
     <Content Include="Content\css\employee.css" />
     <Content Include="Content\css\layout.css" />
     <Content Include="Content\css\Manager.css" />
@@ -382,6 +379,7 @@
   <ItemGroup>
     <Folder Include="App_Data\profiles\" />
     <Folder Include="Controllers\Api\" />
+    <Folder Include="DATABASE\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

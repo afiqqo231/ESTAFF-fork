@@ -65,6 +65,10 @@
                                 style = "resize:none;" })
                     </div>
 
+                    @* The hours the work runs between, from _PeriodField so all
+                       four task forms offer the same list. *@
+                    @Html.Partial("_PeriodField", PeriodFieldViewModel.From(Model))
+
                     <div class="col-md-6">
                         @Html.LabelFor(m => m.DueDate,
                             new { @class = "form-label" })

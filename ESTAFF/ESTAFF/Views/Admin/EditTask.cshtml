@@ -71,6 +71,10 @@
                             new { @class = "text-danger small" })
                     </div>
 
+                    @* The hours the work runs between, from _PeriodField so all
+                       four task forms offer the same list. *@
+                    @Html.Partial("_PeriodField", PeriodFieldViewModel.From(Model))
+
                     <div class="col-md-6">
                         @Html.LabelFor(m => m.Priority,
                             new { @class = "form-label" })
