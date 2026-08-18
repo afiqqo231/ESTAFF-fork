@@ -227,6 +227,12 @@ namespace ESTAFF.Models.ViewModels
     // admin forms so both routes can render _ClassificationField.
     public class CreateTaskViewModel
     {
+        // Optional: blank assigns the task to whoever is creating it. Only
+        // employees sharing a plant with the creator may be chosen, which the
+        // controller re-checks on post.
+        [Display(Name = "Assign To")]
+        public string AssignedToUserId { get; set; }
+
         [Required(ErrorMessage = "Title is required")]
         [StringLength(256)]
         [Display(Name = "Task Title")]
@@ -256,6 +262,10 @@ namespace ESTAFF.Models.ViewModels
         public TaskPriority? Priority { get; set; }
 
         public TaskFormOptions Options { get; set; } = new TaskFormOptions();
+        
+        // Dropdown List
+        public List<EmployeeSelectItem> Employees { get; set; }
+            = new List<EmployeeSelectItem>();
     }
 
     public class UpdateTaskStatusViewModel

@@ -184,6 +184,37 @@ namespace ESTAFF.Services
         // REPORT DETAIL
         // ══════════════════════════════════════════
 
+        // The tasks one report covers: everything assigned to the report's
+        // owner whose due date falls inside the period, with the lookups every
+        // report surface prints already joined.
+        //
+        // Both the employee's copy and the admin's review read a report through
+        // here. They used to run this query themselves and disagreed about
+        // which date decided membership - the employee's pages filtered on
+        // DueDate, the admin's on CreatedDate - so an approver could be reading
+        // a different set of tasks than the employee submitted, and the two
+        // PDFs of one report could differ.
+        //
+        // DueDate is the one that decides. The form prints CompletedDate ??
+        // DueDate as each task's date, so a task raised in January but due in
+        // March belongs to March's return, not January's.
+        public List<TaskItem> GetTasksForReportPeriod(
+            string userId, DateTime periodStart, DateTime periodEnd)
+        {
+            var endOfDay = periodEnd.AddDays(1).AddTicks(-1);
+
+            return _db.TaskItems
+                .Include(t => t.TaskClassification)
+                .Include(t => t.TaskList)
+                .Include(t => t.AssignedToUser)
+                .Include(t => t.CreatedByUser)
+                .Where(t => t.AssignedToUserId == userId
+                         && t.DueDate >= periodStart
+                         && t.DueDate <= endOfDay)
+                .OrderBy(t => t.DueDate)
+                .ToList();
+        }
+
         // Tasks with everything the printed report needs. Both download paths
         // (employee and admin) go through here so the two copies of the same
         // report cannot describe a task differently.

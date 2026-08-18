@@ -24,6 +24,21 @@
 
                 <div class="row g-3">
 
+                    @* Colleagues at the same plant, from the controller. Leaving
+                       it on the placeholder assigns the task to yourself. *@
+                    <div class="col-12">
+                        @Html.LabelFor(m => m.AssignedToUserId,
+                            new { @class = "form-label" })
+                        @Html.DropDownListFor(m => m.AssignedToUserId,
+                            new SelectList(Model.Employees, "UserId", "Display",
+                                Model.AssignedToUserId),
+                            "— Myself —",
+                            new { @class = "form-control",
+                                id = "assignedTo" })
+                        @Html.ValidationMessageFor(m => m.AssignedToUserId, "",
+                            new { @class = "text-danger small" })
+                    </div>
+
                     <div class="col-12">
                         @Html.LabelFor(m => m.Title,
                             new { @class = "form-label" })

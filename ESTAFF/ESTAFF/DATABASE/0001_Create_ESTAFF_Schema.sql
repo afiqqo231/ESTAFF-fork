@@ -1,0 +1,313 @@
+USE [ESH]
+GO
+/****** Object:  Schema [ESTAFF]    Script Date: 8/17/2026 4:57:09 PM ******/
+CREATE SCHEMA [ESTAFF]
+GO
+/****** Object:  Table [ESTAFF].[ReportApprovals]    Script Date: 8/17/2026 4:57:09 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [ESTAFF].[ReportApprovals](
+	[ApprovalId] [int] IDENTITY(1,1) NOT NULL,
+	[ReportId] [int] NOT NULL,
+	[ManagerId] [nvarchar](128) NOT NULL,
+	[ApprovalStatus] [int] NOT NULL,
+	[Comments] [nvarchar](max) NULL,
+	[ActionDate] [datetime] NOT NULL,
+ CONSTRAINT [PK_ESTAFF.ReportApprovals] PRIMARY KEY CLUSTERED 
+(
+	[ApprovalId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [ESTAFF].[Reports]    Script Date: 8/17/2026 4:57:10 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [ESTAFF].[Reports](
+	[ReportId] [int] IDENTITY(1,1) NOT NULL,
+	[UserId] [nvarchar](128) NOT NULL,
+	[ReportType] [int] NOT NULL,
+	[PeriodStart] [datetime] NOT NULL,
+	[PeriodEnd] [datetime] NOT NULL,
+	[Content] [nvarchar](max) NULL,
+	[Status] [int] NOT NULL,
+	[SubmittedDate] [datetime] NULL,
+	[ApprovedDate] [datetime] NULL,
+	[RejectionReason] [nvarchar](max) NULL,
+	[CreatedDate] [datetime] NOT NULL,
+	[LastModifiedDate] [datetime] NOT NULL,
+ CONSTRAINT [PK_ESTAFF.Reports] PRIMARY KEY CLUSTERED 
+(
+	[ReportId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [ESTAFF].[Staffs]    Script Date: 8/17/2026 4:57:10 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [ESTAFF].[Staffs](
+	[StaffId] [nvarchar](128) NOT NULL,
+	[UserId] [nvarchar](128) NOT NULL,
+	[ManagerId] [nvarchar](128) NOT NULL,
+	[Department] [nvarchar](100) NULL,
+	[HireDate] [datetime] NOT NULL,
+	[CreatedDate] [datetime] NOT NULL,
+ CONSTRAINT [PK_ESTAFF.Staffs] PRIMARY KEY CLUSTERED 
+(
+	[StaffId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [ESTAFF].[TaskClassifications]    Script Date: 8/17/2026 4:57:10 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [ESTAFF].[TaskClassifications](
+	[TaskClassificationId] [int] IDENTITY(1,1) NOT NULL,
+	[Name] [nvarchar](100) NOT NULL,
+	[ReportSection] [int] NULL,
+ CONSTRAINT [PK_ESTAFF.TaskClassifications] PRIMARY KEY CLUSTERED 
+(
+	[TaskClassificationId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [ESTAFF].[TaskHistories]    Script Date: 8/17/2026 4:57:10 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [ESTAFF].[TaskHistories](
+	[HistoryId] [int] IDENTITY(1,1) NOT NULL,
+	[TaskId] [int] NOT NULL,
+	[Action] [nvarchar](50) NOT NULL,
+	[OldValue] [nvarchar](max) NULL,
+	[NewValue] [nvarchar](max) NULL,
+	[ChangedByUserId] [nvarchar](128) NOT NULL,
+	[ChangedDate] [datetime] NOT NULL,
+	[Remark] [nvarchar](500) NULL,
+ CONSTRAINT [PK_ESTAFF.TaskHistories] PRIMARY KEY CLUSTERED 
+(
+	[HistoryId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [ESTAFF].[TaskItems]    Script Date: 8/17/2026 4:57:10 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [ESTAFF].[TaskItems](
+	[TaskId] [int] IDENTITY(1,1) NOT NULL,
+	[Title] [nvarchar](256) NOT NULL,
+	[Description] [nvarchar](max) NULL,
+	[Status] [int] NOT NULL,
+	[Priority] [int] NULL,
+	[DueDate] [datetime] NOT NULL,
+	[AssignedToUserId] [nvarchar](128) NOT NULL,
+	[CreatedByUserId] [nvarchar](128) NOT NULL,
+	[AssignedDate] [datetime] NOT NULL,
+	[CompletedDate] [datetime] NULL,
+	[CreatedDate] [datetime] NOT NULL,
+	[LastModifiedDate] [datetime] NOT NULL,
+	[TaskList_TaskListId] [int] NULL,
+	[SubTaskId] [int] NULL,
+	[TaskClassificationId] [int] NOT NULL,
+	[ClipItemKind] [int] NULL,
+ CONSTRAINT [PK_ESTAFF.TaskItems] PRIMARY KEY CLUSTERED 
+(
+	[TaskId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [ESTAFF].[TaskLists]    Script Date: 8/17/2026 4:57:10 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [ESTAFF].[TaskLists](
+	[TaskListId] [int] IDENTITY(1,1) NOT NULL,
+	[Name] [nvarchar](100) NOT NULL,
+	[Description] [nvarchar](100) NULL,
+	[TaskClassificationId] [int] NOT NULL,
+ CONSTRAINT [PK_ESTAFF.TaskLists] PRIMARY KEY CLUSTERED 
+(
+	[TaskListId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [IX_ManagerId]    Script Date: 8/17/2026 4:57:10 PM ******/
+CREATE NONCLUSTERED INDEX [IX_ManagerId] ON [ESTAFF].[ReportApprovals]
+(
+	[ManagerId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [IX_ReportId]    Script Date: 8/17/2026 4:57:10 PM ******/
+CREATE NONCLUSTERED INDEX [IX_ReportId] ON [ESTAFF].[ReportApprovals]
+(
+	[ReportId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [IX_UserId]    Script Date: 8/17/2026 4:57:10 PM ******/
+CREATE NONCLUSTERED INDEX [IX_UserId] ON [ESTAFF].[Reports]
+(
+	[UserId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [IX_ManagerId]    Script Date: 8/17/2026 4:57:10 PM ******/
+CREATE NONCLUSTERED INDEX [IX_ManagerId] ON [ESTAFF].[Staffs]
+(
+	[ManagerId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [IX_UserId]    Script Date: 8/17/2026 4:57:10 PM ******/
+CREATE NONCLUSTERED INDEX [IX_UserId] ON [ESTAFF].[Staffs]
+(
+	[UserId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [IX_ChangedByUserId]    Script Date: 8/17/2026 4:57:10 PM ******/
+CREATE NONCLUSTERED INDEX [IX_ChangedByUserId] ON [ESTAFF].[TaskHistories]
+(
+	[ChangedByUserId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [IX_TaskHistories_TaskId_Action_ChangedDate]    Script Date: 8/17/2026 4:57:10 PM ******/
+CREATE NONCLUSTERED INDEX [IX_TaskHistories_TaskId_Action_ChangedDate] ON [ESTAFF].[TaskHistories]
+(
+	[TaskId] ASC,
+	[Action] ASC,
+	[ChangedDate] DESC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [IX_TaskId]    Script Date: 8/17/2026 4:57:10 PM ******/
+CREATE NONCLUSTERED INDEX [IX_TaskId] ON [ESTAFF].[TaskHistories]
+(
+	[TaskId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [IX_AssignedToUserId]    Script Date: 8/17/2026 4:57:10 PM ******/
+CREATE NONCLUSTERED INDEX [IX_AssignedToUserId] ON [ESTAFF].[TaskItems]
+(
+	[AssignedToUserId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [IX_CreatedByUserId]    Script Date: 8/17/2026 4:57:10 PM ******/
+CREATE NONCLUSTERED INDEX [IX_CreatedByUserId] ON [ESTAFF].[TaskItems]
+(
+	[CreatedByUserId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [IX_TaskClassificationId]    Script Date: 8/17/2026 4:57:10 PM ******/
+CREATE NONCLUSTERED INDEX [IX_TaskClassificationId] ON [ESTAFF].[TaskItems]
+(
+	[TaskClassificationId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [IX_TaskList_TaskListId]    Script Date: 8/17/2026 4:57:10 PM ******/
+CREATE NONCLUSTERED INDEX [IX_TaskList_TaskListId] ON [ESTAFF].[TaskItems]
+(
+	[TaskList_TaskListId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [IX_TaskClassificationId]    Script Date: 8/17/2026 4:57:10 PM ******/
+CREATE NONCLUSTERED INDEX [IX_TaskClassificationId] ON [ESTAFF].[TaskLists]
+(
+	[TaskClassificationId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+ALTER TABLE [ESTAFF].[TaskItems] ADD  DEFAULT ((0)) FOR [TaskClassificationId]
+GO
+ALTER TABLE [ESTAFF].[ReportApprovals]  WITH CHECK ADD  CONSTRAINT [FK_ESTAFF.ReportApprovals_CLIP.AspNetUsers_ManagerId] FOREIGN KEY([ManagerId])
+REFERENCES [CLIP].[AspNetUsers] ([Id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [ESTAFF].[ReportApprovals] CHECK CONSTRAINT [FK_ESTAFF.ReportApprovals_CLIP.AspNetUsers_ManagerId]
+GO
+ALTER TABLE [ESTAFF].[ReportApprovals]  WITH CHECK ADD  CONSTRAINT [FK_ESTAFF.ReportApprovals_ESTAFF.Reports_ReportId] FOREIGN KEY([ReportId])
+REFERENCES [ESTAFF].[Reports] ([ReportId])
+ON DELETE CASCADE
+GO
+ALTER TABLE [ESTAFF].[ReportApprovals] CHECK CONSTRAINT [FK_ESTAFF.ReportApprovals_ESTAFF.Reports_ReportId]
+GO
+ALTER TABLE [ESTAFF].[Reports]  WITH CHECK ADD  CONSTRAINT [FK_ESTAFF.Reports_CLIP.AspNetUsers_UserId] FOREIGN KEY([UserId])
+REFERENCES [CLIP].[AspNetUsers] ([Id])
+GO
+ALTER TABLE [ESTAFF].[Reports] CHECK CONSTRAINT [FK_ESTAFF.Reports_CLIP.AspNetUsers_UserId]
+GO
+ALTER TABLE [ESTAFF].[Staffs]  WITH CHECK ADD  CONSTRAINT [FK_ESTAFF.Staffs_CLIP.AspNetUsers_ManagerId] FOREIGN KEY([ManagerId])
+REFERENCES [CLIP].[AspNetUsers] ([Id])
+GO
+ALTER TABLE [ESTAFF].[Staffs] CHECK CONSTRAINT [FK_ESTAFF.Staffs_CLIP.AspNetUsers_ManagerId]
+GO
+ALTER TABLE [ESTAFF].[Staffs]  WITH CHECK ADD  CONSTRAINT [FK_ESTAFF.Staffs_CLIP.AspNetUsers_UserId] FOREIGN KEY([UserId])
+REFERENCES [CLIP].[AspNetUsers] ([Id])
+GO
+ALTER TABLE [ESTAFF].[Staffs] CHECK CONSTRAINT [FK_ESTAFF.Staffs_CLIP.AspNetUsers_UserId]
+GO
+ALTER TABLE [ESTAFF].[TaskHistories]  WITH CHECK ADD  CONSTRAINT [FK_ESTAFF.TaskHistories_CLIP.AspNetUsers_ChangedByUserId] FOREIGN KEY([ChangedByUserId])
+REFERENCES [CLIP].[AspNetUsers] ([Id])
+GO
+ALTER TABLE [ESTAFF].[TaskHistories] CHECK CONSTRAINT [FK_ESTAFF.TaskHistories_CLIP.AspNetUsers_ChangedByUserId]
+GO
+ALTER TABLE [ESTAFF].[TaskHistories]  WITH CHECK ADD  CONSTRAINT [FK_ESTAFF.TaskHistories_ESTAFF.TaskItems_TaskId] FOREIGN KEY([TaskId])
+REFERENCES [ESTAFF].[TaskItems] ([TaskId])
+ON DELETE CASCADE
+GO
+ALTER TABLE [ESTAFF].[TaskHistories] CHECK CONSTRAINT [FK_ESTAFF.TaskHistories_ESTAFF.TaskItems_TaskId]
+GO
+ALTER TABLE [ESTAFF].[TaskItems]  WITH CHECK ADD  CONSTRAINT [FK_ESTAFF.TaskItems_CLIP.AspNetUsers_AssignedToUserId] FOREIGN KEY([AssignedToUserId])
+REFERENCES [CLIP].[AspNetUsers] ([Id])
+GO
+ALTER TABLE [ESTAFF].[TaskItems] CHECK CONSTRAINT [FK_ESTAFF.TaskItems_CLIP.AspNetUsers_AssignedToUserId]
+GO
+ALTER TABLE [ESTAFF].[TaskItems]  WITH CHECK ADD  CONSTRAINT [FK_ESTAFF.TaskItems_CLIP.AspNetUsers_CreatedByUserId] FOREIGN KEY([CreatedByUserId])
+REFERENCES [CLIP].[AspNetUsers] ([Id])
+GO
+ALTER TABLE [ESTAFF].[TaskItems] CHECK CONSTRAINT [FK_ESTAFF.TaskItems_CLIP.AspNetUsers_CreatedByUserId]
+GO
+ALTER TABLE [ESTAFF].[TaskItems]  WITH CHECK ADD  CONSTRAINT [FK_ESTAFF.TaskItems_ESTAFF.TaskClassifications_TaskClassificationId] FOREIGN KEY([TaskClassificationId])
+REFERENCES [ESTAFF].[TaskClassifications] ([TaskClassificationId])
+GO
+ALTER TABLE [ESTAFF].[TaskItems] CHECK CONSTRAINT [FK_ESTAFF.TaskItems_ESTAFF.TaskClassifications_TaskClassificationId]
+GO
+ALTER TABLE [ESTAFF].[TaskItems]  WITH CHECK ADD  CONSTRAINT [FK_ESTAFF.TaskItems_ESTAFF.TaskLists_TaskListId] FOREIGN KEY([TaskList_TaskListId])
+REFERENCES [ESTAFF].[TaskLists] ([TaskListId])
+GO
+ALTER TABLE [ESTAFF].[TaskItems] CHECK CONSTRAINT [FK_ESTAFF.TaskItems_ESTAFF.TaskLists_TaskListId]
+GO
+ALTER TABLE [ESTAFF].[TaskLists]  WITH CHECK ADD  CONSTRAINT [FK_ESTAFF.TaskLists_ESTAFF.TaskClassifications_TaskClassificationId] FOREIGN KEY([TaskClassificationId])
+REFERENCES [ESTAFF].[TaskClassifications] ([TaskClassificationId])
+GO
+ALTER TABLE [ESTAFF].[TaskLists] CHECK CONSTRAINT [FK_ESTAFF.TaskLists_ESTAFF.TaskClassifications_TaskClassificationId]
+GO
+ALTER TABLE [ESTAFF].[TaskClassifications]  WITH CHECK ADD  CONSTRAINT [CK_TaskClassifications_ReportSection] CHECK  (([ReportSection] IS NULL OR ([ReportSection]=(10) OR [ReportSection]=(9) OR [ReportSection]=(8) OR [ReportSection]=(7) OR [ReportSection]=(5) OR [ReportSection]=(4) OR [ReportSection]=(2) OR [ReportSection]=(1))))
+GO
+ALTER TABLE [ESTAFF].[TaskClassifications] CHECK CONSTRAINT [CK_TaskClassifications_ReportSection]
+GO
+ALTER TABLE [ESTAFF].[TaskItems]  WITH CHECK ADD  CONSTRAINT [CK_TaskItems_ClipItemKind] CHECK  (([ClipItemKind] IS NULL OR ([ClipItemKind]=(2) OR [ClipItemKind]=(1))))
+GO
+ALTER TABLE [ESTAFF].[TaskItems] CHECK CONSTRAINT [CK_TaskItems_ClipItemKind]
+GO

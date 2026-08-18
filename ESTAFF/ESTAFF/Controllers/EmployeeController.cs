@@ -314,7 +314,11 @@ namespace ESTAFF.Controllers
 
             return View(new CreateTaskViewModel
             {
-                Options = GetFormOptions()
+                // Yourself by default - assigning to a plant colleague is the
+                // exception, not the usual case.
+                AssignedToUserId = User.Identity.GetUserId(),
+                Options = GetFormOptions(),
+                Employees = GetEmployeeSelectList()
             });
         }
 
@@ -345,19 +349,35 @@ namespace ESTAFF.Controllers
             ViewBag.PageSubtitle = "Add a new task to your list.";
 
             model.Options = GetFormOptions();
+            model.Employees = GetEmployeeSelectList();
+
+            var userId = User.Identity.GetUserId();
+
+            // Blank means "mine". Anything else has to be somebody the picker
+            // actually offered: sharing a plant is the authorisation here, so
+            // it is re-checked against the database rather than trusted from
+            // the form, which a caller can post anything into.
+            var assigneeId = string.IsNullOrWhiteSpace(model.AssignedToUserId)
+                ? userId
+                : model.AssignedToUserId;
+
+            if (assigneeId != userId &&
+                model.Employees.All(e => e.UserId != assigneeId))
+            {
+                ModelState.AddModelError("AssignedToUserId",
+                    "You can only assign tasks to employees at your own plant.");
+            }
 
             ValidateClassification(model);
 
             if (!ModelState.IsValid)
                 return View(model);
 
-            var userId = User.Identity.GetUserId();
-
             var task = new TaskItem
             {
                 Title = model.Title,
                 Description = model.Description,
-                AssignedToUserId = userId,
+                AssignedToUserId = assigneeId,
                 CreatedByUserId = userId,
                 DueDate = model.DueDate,
                 Priority = model.Priority,
@@ -367,9 +387,8 @@ namespace ESTAFF.Controllers
                 TaskClassificationId = model.TaskClassificationId
             };
 
-            // Sets the task type and any attached CLIP record. The record must
-            // belong to one of the employee's own plants — they are the
-            // assignee here.
+            // Sets the task type and any attached CLIP record. Any task may
+            // carry one, whoever it is assigned to.
             if (!ApplyClassificationLink(task, model.TaskClassificationId,
                     model.TaskListId, model.ClipItemKey))
                 return View(model);
@@ -377,15 +396,22 @@ namespace ESTAFF.Controllers
             _db.TaskItems.Add(task);
             _db.SaveChanges();
 
+            var assigneeName = assigneeId == userId
+                ? null
+                : model.Employees.First(e => e.UserId == assigneeId).FullName;
+
             new TaskService(_db).LogHistory(
                 task.TaskId,
                 "Created",
                 null,
-                $"Task '{task.Title}' created by employee.",
+                assigneeName == null
+                    ? $"Task '{task.Title}' created by employee."
+                    : $"Task '{task.Title}' created and assigned to {assigneeName}.",
                 userId);
 
-            TempData["SuccessMessage"] = 
-                $"Task '{model.Title}' created successfully.";
+            TempData["SuccessMessage"] = assigneeName == null
+                ? $"Task '{model.Title}' created successfully."
+                : $"Task '{model.Title}' assigned to {assigneeName}.";
             return RedirectToAction("MyTasks");
             
         }
@@ -893,27 +919,19 @@ namespace ESTAFF.Controllers
                 return View("GenerateReport", model);
 
             var userId = User.Identity.GetUserId();
-            var endOfDay = model.PeriodEnd.AddDays(1).AddTicks(-1);
+            var taskService = new TaskService(_db);
 
-            // Classification, task type and who acted on each task are shown on
-            // the preview, so load them with the tasks rather than lazily one
-            // row at a time.
-            var tasks = _db.TaskItems
-                .Include(t => t.TaskClassification)
-                .Include(t => t.TaskList)
-                .Include(t => t.AssignedToUser)
-                .Include(t => t.CreatedByUser)
-                .Where(t => t.AssignedToUserId == userId
-                         && t.DueDate >= model.PeriodStart
-                         && t.DueDate <= endOfDay)
-                .OrderBy(t => t.DueDate)
-                .ToList();
+            // The same period query the submitted report is read back through,
+            // so the preview cannot show a different set of tasks than the one
+            // that gets filed.
+            var tasks = taskService.GetTasksForReportPeriod(
+                userId, model.PeriodStart, model.PeriodEnd);
 
             model.Tasks = tasks;
 
             // The preview shows the same breakdown as the submitted report, so
             // the employee can check the actions they recorded before sending.
-            model.TaskDetails = new TaskService(_db)
+            model.TaskDetails = taskService
                 .BuildReportTaskDetails(tasks, Clip.GetItemsForTasks(tasks));
 
             return View("PreviewReport", model);
@@ -979,21 +997,10 @@ namespace ESTAFF.Controllers
             if (report == null || report.UserId != userId)
                 return HttpNotFound();
 
-            var endOfDay = report.PeriodEnd.AddDays(1).AddTicks(-1);
+            var taskService = new TaskService(_db);
 
-            // The breakdown prints the classification, task type and who acted
-            // on each task, so the lookups are joined here rather than lazily
-            // one row at a time.
-            var tasks = _db.TaskItems
-                .Include(t => t.TaskClassification)
-                .Include(t => t.TaskList)
-                .Include(t => t.AssignedToUser)
-                .Include(t => t.CreatedByUser)
-                .Where(t => t.AssignedToUserId == userId
-                         && t.DueDate >= report.PeriodStart
-                         && t.DueDate <= endOfDay)
-                .OrderBy(t => t.DueDate)
-                .ToList();
+            var tasks = taskService.GetTasksForReportPeriod(
+                userId, report.PeriodStart, report.PeriodEnd);
 
             var completed = tasks.Count(t =>
                 t.Status == TaskStatus.Complete);
@@ -1028,7 +1035,7 @@ namespace ESTAFF.Controllers
 
             // Same resolved detail the PDF is built from, so the page and the
             // downloaded copy describe each task identically.
-            vm.TaskDetails = new TaskService(_db)
+            vm.TaskDetails = taskService
                 .BuildReportTaskDetails(tasks, Clip.GetItemsForTasks(tasks));
 
             return View(vm);
@@ -1045,21 +1052,10 @@ namespace ESTAFF.Controllers
             if (report == null || report.UserId != userId)
                 return HttpNotFound();
 
-            var endOfDay = report.PeriodEnd.AddDays(1).AddTicks(-1);
+            var taskService = new TaskService(_db);
 
-            // The lookups are joined here rather than lazy-loaded: the PDF
-            // prints them for every task, which would otherwise be a query per
-            // task per field.
-            var tasks = _db.TaskItems
-                .Include(t => t.TaskClassification)
-                .Include(t => t.TaskList)
-                .Include(t => t.AssignedToUser)
-                .Include(t => t.CreatedByUser)
-                .Where(t => t.AssignedToUserId == userId
-                         && t.DueDate >= report.PeriodStart
-                         && t.DueDate <= endOfDay)
-                .OrderBy(t => t.DueDate)
-                .ToList();
+            var tasks = taskService.GetTasksForReportPeriod(
+                userId, report.PeriodStart, report.PeriodEnd);
 
             var completed = tasks.Count(t =>
                 t.Status == TaskStatus.Complete);
@@ -1092,7 +1088,7 @@ namespace ESTAFF.Controllers
                     : 0
             };
 
-            vm.TaskDetails = new TaskService(_db)
+            vm.TaskDetails = taskService
                 .BuildReportTaskDetails(tasks, Clip.GetItemsForTasks(tasks));
 
             var pdfService = new ReportPdfService();
@@ -1142,6 +1138,52 @@ namespace ESTAFF.Controllers
                 _clip.Dispose();
             }
             base.Dispose(disposing);
+        }
+        
+        // Colleagues the signed-in employee may assign work to: every active,
+        // non-admin user who shares at least one plant with them.
+        //
+        // There is no PlantId on ApplicationUser to filter by — AspNetUsers is
+        // EHS_PORTAL's table and ESTAFF does not add columns to it. Who works
+        // where is CLIP.UserPlants, a user-to-plant many-to-many, so "same
+        // plant" means "shares a row in that table", not an equality test.
+        //
+        // The caller is always included, so creating a task for yourself still
+        // works. Be aware CLIP.UserPlants is EHS_PORTAL's own record and is
+        // incomplete — an employee with no rows there sees only themselves.
+        private List<EmployeeSelectItem> GetEmployeeSelectList()
+        {
+            var userId = User.Identity.GetUserId();
+
+            // Materialised rather than left as a subquery: both lists are tiny
+            // and it keeps the final query a plain IN (...).
+            var myPlantIds = _db.UserPlants
+                .Where(up => up.UserId == userId)
+                .Select(up => up.PlantId)
+                .Distinct()
+                .ToList();
+
+            var plantMateIds = _db.UserPlants
+                .Where(up => myPlantIds.Contains(up.PlantId))
+                .Select(up => up.UserId)
+                .Distinct()
+                .ToList();
+
+            if (!plantMateIds.Contains(userId))
+                plantMateIds.Add(userId);
+
+            return _db.Users
+                .Where(u => !u.IsAdmin
+                            && u.IsActive
+                            && plantMateIds.Contains(u.Id))
+                .OrderBy(u => u.UserName)
+                .Select(u => new EmployeeSelectItem
+                {
+                    UserId = u.Id,
+                    FullName = u.UserName,
+                    EmpID = u.EmpID
+                })
+                .ToList();
         }
     }
 

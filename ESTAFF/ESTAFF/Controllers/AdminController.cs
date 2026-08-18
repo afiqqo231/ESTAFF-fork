@@ -713,14 +713,15 @@ namespace ESTAFF.Controllers
             if (report == null) return HttpNotFound();
 
             var userId = report.UserId;
-            var endOfDay = report.PeriodEnd.AddDays(1).AddTicks(-1);
+            var taskService = new TaskService(_db);
 
-            var tasks = TaskQuery()
-                .Where(t => t.AssignedToUserId == userId
-                         && t.CreatedDate >= report.PeriodStart
-                         && t.CreatedDate <= endOfDay)
-                .OrderBy(t => t.DueDate)
-                .ToList();
+            // Read through TaskService so the admin's copy of a report covers
+            // exactly the tasks the employee submitted. This used to run its
+            // own query filtered on CreatedDate while every employee-facing
+            // page filtered on DueDate, which meant an approver could be
+            // reviewing a different set of tasks than the one that was filed.
+            var tasks = taskService.GetTasksForReportPeriod(
+                userId, report.PeriodStart, report.PeriodEnd);
 
             var completed = tasks.Count(t =>
                 t.Status == TaskStatus.Complete);
@@ -755,7 +756,7 @@ namespace ESTAFF.Controllers
 
             // The review table shows the actions taken on each task, so the
             // page needs the same resolved detail the PDF is built from.
-            vm.TaskDetails = new TaskService(_db)
+            vm.TaskDetails = taskService
                 .BuildReportTaskDetails(tasks, Clip.GetItemsForTasks(tasks));
 
             return View(vm);
@@ -823,14 +824,15 @@ namespace ESTAFF.Controllers
             if (report == null) return HttpNotFound();
 
             var userId = report.UserId;
-            var endOfDay = report.PeriodEnd.AddDays(1).AddTicks(-1);
+            var taskService = new TaskService(_db);
 
-            var tasks = TaskQuery()
-                .Where(t => t.AssignedToUserId == userId
-                         && t.CreatedDate >= report.PeriodStart
-                         && t.CreatedDate <= endOfDay)
-                .OrderBy(t => t.DueDate)
-                .ToList();
+            // Read through TaskService so the admin's copy of a report covers
+            // exactly the tasks the employee submitted. This used to run its
+            // own query filtered on CreatedDate while every employee-facing
+            // page filtered on DueDate, which meant an approver could be
+            // reviewing a different set of tasks than the one that was filed.
+            var tasks = taskService.GetTasksForReportPeriod(
+                userId, report.PeriodStart, report.PeriodEnd);
 
             var completed = tasks.Count(t =>
                 t.Status == TaskStatus.Complete);
@@ -862,7 +864,7 @@ namespace ESTAFF.Controllers
                     : 0
             };
 
-            vm.TaskDetails = new TaskService(_db)
+            vm.TaskDetails = taskService
                 .BuildReportTaskDetails(tasks, Clip.GetItemsForTasks(tasks));
 
             var pdfService = new ReportPdfService();
