@@ -16,6 +16,21 @@ namespace ESTAFF.Models.Data
         [ForeignKey("User")]
         public string UserId { get; set; }
 
+        // The plant this return covers. A report lists every task belonging
+        // to the plant for the period, so the plant - not the employee who
+        // generated it - is what the document is about.
+        //
+        // Nullable because the reports submitted before this existed were
+        // personal ones covering one employee's tasks. There is no honest
+        // plant to backfill them with, so they keep none and read as legacy.
+        //
+        // No [ForeignKey] attribute and no database constraint: CLIP.Plants
+        // belongs to EHS_PORTAL, and a submitted report is a historical record
+        // that should survive a plant being removed there. The navigation
+        // below is mapped as optional in ApplicationDbContext purely so the
+        // name can be read back.
+        public int? PlantId { get; set; }
+
         [Required]
         public ReportType ReportType { get; set; }
 
@@ -42,6 +57,10 @@ namespace ESTAFF.Models.Data
 
         // Navigation
         public virtual ApplicationUser User { get; set; }
+
+        // Read-only, like every other CLIP projection. Null when the report is
+        // a legacy personal one, or when EHS_PORTAL no longer has the plant.
+        public virtual Plant Plant { get; set; }
     }
 
     public enum ReportType

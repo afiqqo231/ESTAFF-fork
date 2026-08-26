@@ -1,0 +1,694 @@
+/* ============================================================
+   ESTAFF — ADMIN CALENDAR
+
+   Every employee's tasks on the day they are due, in a day, week
+   or month frame. Namespaced .acal-* so it cannot collide with the
+   employee calendar's .cal-* rules in employee.css: the two look
+   alike on purpose but answer to different pages.
+
+   Two colour channels, kept apart so a glance can read both:
+
+     • the PLANT owns the left stripe and the round dot. It says
+       where the work belongs.
+     • the STATUS owns the pill badge, in the amber/blue/green/red
+       scale the rest of the admin side already uses. It says how
+       the work is going.
+
+   Neither channel is load-bearing on its own — every item spells
+   its status out in words on the badge, and names its plant in the
+   detail panel — so the calendar still reads for someone who
+   cannot separate the hues.
+============================================================ */
+
+/* ── Plant palette ────────────────────────────────────────────
+   Twelve slots, assigned by CalendarPalette.SlotsFor from each
+   plant's position in the plant list. A thirteenth plant wraps
+   around and shares a colour with the first — the legend is on the
+   page for exactly that reason, and always names what it shows. */
+.plant-0  { --plant: #2563EB; --plant-soft: #EFF6FF; }
+.plant-1  { --plant: #DB2777; --plant-soft: #FDF2F8; }
+.plant-2  { --plant: #7C3AED; --plant-soft: #F5F3FF; }
+.plant-3  { --plant: #EA580C; --plant-soft: #FFF7ED; }
+.plant-4  { --plant: #0891B2; --plant-soft: #ECFEFF; }
+.plant-5  { --plant: #65A30D; --plant-soft: #F7FEE7; }
+.plant-6  { --plant: #C026D3; --plant-soft: #FDF4FF; }
+.plant-7  { --plant: #0D9488; --plant-soft: #F0FDFA; }
+.plant-8  { --plant: #E11D48; --plant-soft: #FFF1F2; }
+.plant-9  { --plant: #4F46E5; --plant-soft: #EEF2FF; }
+.plant-10 { --plant: #CA8A04; --plant-soft: #FEFCE8; }
+.plant-11 { --plant: #475569; --plant-soft: #F8FAFC; }
+
+/* Not a plant but a gap in EHS_PORTAL's records: neutral grey, so
+   it never passes for one of the real ones. */
+.plant-none { --plant: #94A3B8; --plant-soft: #F8FAFC; }
+
+/* ── Toolbar ──────────────────────────────────────────────── */
+.acal-toolbar {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-sm);
+    padding: 0.85rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.acal-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.acal-nav-btn {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid #E2E8F0;
+    background: #F8FAF9;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.acal-nav-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--primary-light);
+}
+
+.acal-period {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    min-width: 13rem;
+    text-align: center;
+}
+
+.acal-today-btn {
+    padding: 0.35rem 0.85rem;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-decoration: none;
+    background: #F8FAF9;
+    border: 1.5px solid #E2E8F0;
+    color: var(--text-secondary);
+    transition: var(--transition);
+}
+
+.acal-today-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--primary-light);
+}
+
+.acal-today-btn.is-current {
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    border-color: var(--border);
+}
+
+/* Day / Week / Month — a segmented control rather than a select:
+   three options that switch the whole page are worth showing. */
+.acal-views {
+    display: inline-flex;
+    background: #F8FAF9;
+    border: 1.5px solid #E2E8F0;
+    border-radius: var(--radius-sm);
+    padding: 2px;
+    gap: 2px;
+}
+
+.acal-view-btn {
+    padding: 0.3rem 0.9rem;
+    border-radius: calc(var(--radius-sm) - 2px);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.acal-view-btn:hover { color: var(--primary); }
+
+.acal-view-btn.active {
+    background: var(--surface);
+    color: var(--primary-dark);
+    box-shadow: var(--shadow-sm);
+}
+
+.acal-toolbar-end {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* ── Summary strip ────────────────────────────────────────── */
+.acal-summary {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.acal-stat {
+    background: var(--surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 0.75rem 1rem;
+    box-shadow: var(--shadow-sm);
+    text-decoration: none;
+    display: block;
+    transition: var(--transition);
+}
+
+.acal-stat:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+}
+
+.acal-stat.active-filter {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.acal-stat-value {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1.1;
+}
+
+.acal-stat-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.acal-stat.overdue .acal-stat-value { color: #B91C1C; }
+
+/* ── Legend ───────────────────────────────────────────────── */
+.acal-legend {
+    background: var(--surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    padding: 0.65rem 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.acal-legend-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-right: 0.25rem;
+}
+
+.acal-legend-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--text-secondary);
+    background: var(--plant-soft);
+    border: 1.5px solid transparent;
+    transition: var(--transition);
+}
+
+.acal-legend-chip:hover { border-color: var(--plant); }
+
+.acal-legend-chip.active-filter {
+    border-color: var(--plant);
+    color: var(--text-primary);
+}
+
+.acal-legend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--plant);
+    flex: 0 0 auto;
+}
+
+.acal-legend-count {
+    color: var(--text-muted);
+    font-weight: 700;
+}
+
+.acal-legend-clear {
+    margin-left: auto;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-decoration: none;
+}
+
+.acal-legend-clear:hover { color: var(--danger); }
+
+/* ── The item chip ────────────────────────────────────────────
+   A button, not a link: it opens the detail panel rather than
+   navigating, and the panel carries the links onward. */
+.acal-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 1px solid var(--border-subtle);
+    border-left: 3px solid var(--plant);
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    padding: 0.45rem 0.6rem;
+    margin-bottom: 0.4rem;
+    cursor: pointer;
+    transition: var(--transition);
+    font-family: inherit;
+}
+
+.acal-item:hover {
+    background: var(--plant-soft);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+.acal-item:focus-visible {
+    outline: 2px solid var(--plant);
+    outline-offset: 1px;
+}
+
+.acal-item-top {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.15rem;
+}
+
+.acal-item-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--plant);
+    flex: 0 0 auto;
+}
+
+.acal-item-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.25;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.acal-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+}
+
+.acal-item-who,
+.acal-item-where {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+/* The plant is named as well as coloured wherever there is room for it:
+   the stripe is a reminder, not the only place the answer lives. */
+.acal-item-where { color: var(--text-secondary); }
+
+.acal-item .badge-pill {
+    font-size: 0.58rem;
+    padding: 0.1rem 0.45rem;
+}
+
+/* An overdue item earns a stronger edge — the status badge says it
+   too, but a manager scanning a month should not have to read. */
+.acal-item.is-overdue {
+    border-color: #FECACA;
+    border-left-color: var(--plant);
+    background: #FEF9F9;
+}
+
+.acal-item.is-complete { opacity: 0.72; }
+
+.acal-item.is-complete .acal-item-title {
+    text-decoration: line-through;
+    text-decoration-color: var(--text-muted);
+}
+
+/* ── Day view ─────────────────────────────────────────────── */
+.acal-day-card {
+    background: var(--surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+.acal-day-head {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.acal-day-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+
+.acal-day-sub {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.acal-day-body {
+    padding: 1rem 1.25rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0.6rem;
+}
+
+/* In the day frame there is room for the assignee and the hours on
+   the chip itself, so the manager can read the day without opening
+   anything. */
+.acal-day-body .acal-item { margin-bottom: 0; padding: 0.7rem 0.85rem; }
+.acal-day-body .acal-item-title { font-size: 0.82rem; -webkit-line-clamp: 3; }
+.acal-day-body .acal-item-meta { font-size: 0.7rem; }
+
+/* ── Week view ────────────────────────────────────────────── */
+.acal-week {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.6rem;
+}
+
+.acal-col {
+    background: var(--surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    min-height: 260px;
+    overflow: hidden;
+}
+
+.acal-col.is-today { border-color: var(--primary); }
+
+.acal-col.is-weekend { background: #FCFDFC; }
+
+.acal-col-head {
+    padding: 0.6rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.acal-col.is-today .acal-col-head {
+    background: var(--primary-light);
+}
+
+.acal-col-day {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.acal-col-num {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.acal-col.is-today .acal-col-num { color: var(--primary-dark); }
+
+.acal-col-count {
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.acal-col-body {
+    padding: 0.5rem;
+    flex: 1;
+    overflow-y: auto;
+    max-height: 60vh;
+}
+
+.acal-empty {
+    text-align: center;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    padding: 0.75rem 0.25rem;
+}
+
+/* ── Month view ───────────────────────────────────────────── */
+.acal-month {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.4rem;
+}
+
+.acal-month-head {
+    text-align: center;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    padding: 0.3rem 0;
+}
+
+.acal-cell {
+    background: var(--surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    min-height: 120px;
+    padding: 0.4rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.acal-cell.other-month { background: #FAFCFB; opacity: 0.6; }
+
+.acal-cell.is-today { border-color: var(--primary); box-shadow: var(--shadow-glow); }
+
+.acal-cell-num {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 0.3rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.acal-cell.is-today .acal-cell-num { color: var(--primary-dark); }
+
+/* Inside the grid the weekday is the column header's job. */
+.acal-cell-date { display: none; }
+
+.acal-cell-count {
+    font-size: 0.58rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.acal-cell .acal-item {
+    padding: 0.25rem 0.4rem;
+    margin-bottom: 0.25rem;
+    border-left-width: 3px;
+}
+
+.acal-cell .acal-item-title {
+    font-size: 0.65rem;
+    -webkit-line-clamp: 1;
+}
+
+/* A month cell holds a title and a status and nothing more. The assignee
+   and the hours are still on the chip in the week and day frames, and in
+   the panel behind every one of them — here they would turn thirty-one
+   cells into a wall. */
+.acal-cell .acal-item-who,
+.acal-cell .acal-item-time { display: none; }
+
+.acal-cell .acal-item-meta + .acal-item-meta { display: none; }
+
+.acal-more {
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: var(--primary);
+    text-decoration: none;
+    padding: 0.1rem 0.2rem;
+}
+
+.acal-more:hover { text-decoration: underline; }
+
+/* ── Nothing to show ──────────────────────────────────────── */
+.acal-blank {
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-lg);
+    padding: 3rem 1.5rem;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.acal-blank i {
+    font-size: 2rem;
+    opacity: 0.25;
+    display: block;
+    margin-bottom: 0.75rem;
+}
+
+/* ── Detail panel ─────────────────────────────────────────────
+   The modal body is filled from the hidden block each item carries,
+   so the detail is rendered by Razor with the same partials the
+   rest of the admin side uses rather than assembled in JavaScript. */
+.acal-detail-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: 0.9rem;
+}
+
+.acal-detail-stripe {
+    width: 4px;
+    align-self: stretch;
+    border-radius: 4px;
+    background: var(--plant);
+    flex: 0 0 auto;
+}
+
+.acal-detail-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 0.35rem;
+    line-height: 1.35;
+}
+
+.acal-detail-badges {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.acal-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 1.25rem;
+}
+
+.acal-detail-row { min-width: 0; }
+
+.acal-detail-row.full { grid-column: 1 / -1; }
+
+.acal-detail-label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 0.2rem;
+}
+
+.acal-detail-value {
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    word-break: break-word;
+}
+
+.acal-detail-value.muted {
+    color: var(--text-muted);
+    font-weight: 400;
+    font-style: italic;
+}
+
+.acal-detail-plant {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.acal-detail-note {
+    background: #F8FAF9;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 0.6rem 0.75rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+}
+
+/* ── Narrow screens ───────────────────────────────────────────
+   The week and month grids keep seven columns as long as they can
+   be read, then fall back to a stack: a seven-column grid squeezed
+   into a phone is a row of unreadable slivers. */
+@media (max-width: 1200px) {
+    .acal-summary { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 992px) {
+    .acal-week { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .acal-col { min-height: 0; }
+
+    /* The month becomes a list of the days that have something on them:
+       seven columns at this width are seven slivers, and a run of empty
+       headings is a lot of scrolling for nothing. */
+    .acal-month { display: block; }
+    .acal-month-head { display: none; }
+    .acal-cell { margin-bottom: 0.4rem; min-height: 0; }
+    .acal-cell.other-month,
+    .acal-cell.is-empty { display: none; }
+    .acal-cell-day { display: none; }
+    .acal-cell-date { display: inline; }
+}
+
+@media (max-width: 640px) {
+    .acal-summary { grid-template-columns: repeat(2, 1fr); }
+    .acal-week { grid-template-columns: minmax(0, 1fr); }
+    .acal-detail-grid { grid-template-columns: minmax(0, 1fr); }
+    .acal-period { min-width: 0; }
+}

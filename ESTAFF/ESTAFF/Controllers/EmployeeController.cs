@@ -292,6 +292,14 @@ namespace ESTAFF.Controllers
         // is required depends on ScheduleType, which no annotation can see.
         private void ValidatePeriod(ITaskPeriodFields fields)
         {
+            // A daily task is due on the day it is worked, so the form hides
+            // the due date and may post nothing for it. The binder's complaint
+            // about a required field the user was never shown is not an error
+            // anyone can act on - TaskPeriod.EffectiveDueDate supplies the
+            // date, and the missing period is reported below in its own words.
+            if (fields.ScheduleType == TaskScheduleType.Daily)
+                ModelState.Remove("DueDate");
+
             foreach (var error in TaskPeriod.Validate(fields))
                 ModelState.AddModelError(error.Key, error.Value);
         }
@@ -326,6 +334,11 @@ namespace ESTAFF.Controllers
                 // Yourself by default - assigning to a plant colleague is the
                 // exception, not the usual case.
                 AssignedToUserId = User.Identity.GetUserId(),
+
+                // Prefilled with today so that choosing "Daily" hands the
+                // user the day they are almost certainly recording. Ignored
+                // while the task is long term - ApplyTo clears it.
+                PeriodDate = DateTime.Today,
 
                 // Long term with no period is the ordinary task, so the
                 // form opens on it and asks for nothing extra. Choosing
@@ -395,7 +408,6 @@ namespace ESTAFF.Controllers
                 Description = model.Description,
                 AssignedToUserId = assigneeId,
                 CreatedByUserId = userId,
-                DueDate = model.DueDate,
                 Priority = model.Priority,
                 Status = TaskStatus.Pending,
                 CreatedDate = DateTime.Now,
@@ -403,8 +415,9 @@ namespace ESTAFF.Controllers
                 TaskClassificationId = model.TaskClassificationId
             };
 
-            // Schedule type and the period, cleared together if the task is
-            // long term and none was given.
+            // Schedule type, period and due date together: a daily task is due
+            // on the day it is worked and carries the hours, a long-term one
+            // is due when the form said and carries no period.
             TaskPeriod.ApplyTo(task, model);
 
             // Sets the task type and any attached CLIP record. Any task may
@@ -521,11 +534,16 @@ namespace ESTAFF.Controllers
                 task.Description = model.Description;
             }
 
-            if (task.DueDate != model.DueDate)
+            // Read from the schedule, not straight off the form: a daily
+            // task's due date is the day it is worked, and the form posts no
+            // due date of its own. The write is ApplyTo's below; this only
+            // records the change while the old value is still readable.
+            var dueDate = TaskPeriod.EffectiveDueDate(model);
+
+            if (task.DueDate != dueDate)
             {
                 changes.Append($"Due: '{task.DueDate:MMM dd}'" +
-                    $" -> '{model.DueDate:MMM dd}'. ");
-                task.DueDate = model.DueDate;
+                    $" -> '{dueDate:MMM dd}'. ");
             }
 
             // Schedule type and period read as one thing in the history:
@@ -772,6 +790,14 @@ namespace ESTAFF.Controllers
 
             var oldDate = task.DueDate;
             task.DueDate = parsedDate;
+
+            // A daily task is due on the day it is worked, so dragging it to
+            // another day moves the period too. Left alone, one task would
+            // carry two dates disagreeing about when the work happens.
+            if (task.ScheduleType == TaskScheduleType.Daily
+                && task.PeriodDate.HasValue)
+                task.PeriodDate = parsedDate.Date;
+
             task.LastModifiedDate = DateTime.Now;
 
             // overdue and new date is future, reset to pending
@@ -888,23 +914,28 @@ namespace ESTAFF.Controllers
         
 
         // ===========
-        // My Reports - LIST
+        // Reports - LIST
         // ===========
+        //
+        // Every report, not only the caller's. A return covers a plant for a
+        // period and there is one of them, so whoever generated it is a detail
+        // of its provenance rather than a reason to hide it from a colleague
+        // who needs to see whether this month has been filed.
         public ActionResult MyReports()
         {
             SetLayoutData();
-            ViewBag.PageTitle = "My Reports";
-            ViewBag.PageSubtitle = "View all your submitted reports.";
-
-            var userId = User.Identity.GetUserId();
+            ViewBag.PageTitle = "Reports";
+            ViewBag.PageSubtitle =
+                "Monthly returns filed for your plants.";
 
             var reports = _db.Reports
-                .Where(r => r.UserId == userId)
                 .OrderByDescending(r => r.CreatedDate)
                 .ToList()
                 .Select(r => new ReportListItemViewModel
                 {
                     ReportId = r.ReportId,
+                    PlantId = r.PlantId,
+                    PlantName = r.Plant?.PlantName,
                     EmpName = r.User?.UserName ?? "-",
                     EmpNumber = r.User?.EmpID ?? "-",
                     ReportType = r.ReportType,    
@@ -937,10 +968,32 @@ namespace ESTAFF.Controllers
             if (today.DayOfWeek == DayOfWeek.Sunday)
                 weekStart = today.AddDays(-6);
             
+            var taskService = new TaskService(_db);
+            var plants = taskService.GetPlants();
+
+            // Default to a plant the generator actually works at, when
+            // EHS_PORTAL knows of one. Someone with no UserPlants row gets no
+            // default and has to choose, rather than being blocked.
+            //
+            // The id is read into a local first: GetUserId() is an extension
+            // method, and EF cannot translate one inside an expression tree -
+            // it has to be a plain value by the time the query is built.
+            var userId = User.Identity.GetUserId();
+
+            var mine = _db.UserPlants
+                .Where(up => up.UserId == userId)
+                .Select(up => up.PlantId)
+                .ToList();
+
             var vm = new GenerateReportViewModel
             {
                 PeriodStart = weekStart,
-                PeriodEnd = today
+                PeriodEnd = today,
+                Plants = plants,
+                PlantId = plants
+                    .Where(p => mine.Contains(p.Id))
+                    .Select(p => (int?)p.Id)
+                    .FirstOrDefault()
             };
 
             return View(vm);
@@ -957,17 +1010,29 @@ namespace ESTAFF.Controllers
             ViewBag.PageTitle = "Preview Report";
             ViewBag.PageSubtitle = "Review before submitting.";
 
+            var taskService = new TaskService(_db);
+            model.Plants = taskService.GetPlants();
+
             if (!ModelState.IsValid)
                 return View("GenerateReport", model);
-
-            var userId = User.Identity.GetUserId();
-            var taskService = new TaskService(_db);
 
             // The same period query the submitted report is read back through,
             // so the preview cannot show a different set of tasks than the one
             // that gets filed.
             var tasks = taskService.GetTasksForReportPeriod(
-                userId, model.PeriodStart, model.PeriodEnd);
+                model.PlantId.Value, model.PeriodStart, model.PeriodEnd);
+
+            // Worth saying plainly rather than printing an empty return: an
+            // empty result here usually means nobody is mapped to the plant in
+            // EHS_PORTAL, not that nothing was done.
+            if (!tasks.Any() && !taskService.UserIdsAtPlant(
+                    model.PlantId.Value).Any())
+            {
+                TempData["ErrorMessage"] =
+                    "No employees are mapped to that plant in CLIP, so no "
+                    + "tasks can be collected for it. Ask for the plant's "
+                    + "staff to be assigned in EHS_PORTAL.";
+            }
 
             model.Tasks = tasks;
 
@@ -989,23 +1054,35 @@ namespace ESTAFF.Controllers
             SetLayoutData();
             var userId = User.Identity.GetUserId();
 
-            // Check if a report already exists for this period
+            if (!model.PlantId.HasValue)
+            {
+                TempData["ErrorMessage"] =
+                    "Select the plant this report covers.";
+                return RedirectToAction("GenerateReport");
+            }
+
+            // One return per plant per period, whoever files it - the report is
+            // the plant's, so a colleague filing the same month again would be
+            // a duplicate return rather than a second opinion. A rejected one
+            // does not block: replacing it is the whole point of a rejection.
             var existingReport = _db.Reports.FirstOrDefault(r =>
-                r.UserId == userId
+                r.PlantId == model.PlantId
                 && r.PeriodStart == model.PeriodStart
                 && r.PeriodEnd == model.PeriodEnd
                 && r.Status != ReportStatus.Rejected);
 
             if (existingReport != null)
             {
-                TempData["ErrorMessage"] = 
-                    "A report for this period has already been submitted.";
+                TempData["ErrorMessage"] =
+                    "A report covering that plant and period has already "
+                    + "been submitted.";
                 return RedirectToAction("MyReports");
             }
 
             var report = new Report
             {
                 UserId = userId,
+                PlantId = model.PlantId,
                 ReportType = model.ReportType,
                 PeriodStart = model.PeriodStart,
                 PeriodEnd = model.PeriodEnd,
@@ -1031,18 +1108,27 @@ namespace ESTAFF.Controllers
         {
             SetLayoutData();
             ViewBag.PageTitle = "Report Details";
-            ViewBag.PageSubtitle = "View your report details.";
+            ViewBag.PageSubtitle = "Monthly return for the plant.";
 
-            var userId = User.Identity.GetUserId();
             var report = _db.Reports.Find(id);
 
-            if (report == null || report.UserId != userId)
+            // No owner check: a return belongs to a plant, not to whoever
+            // happened to file it, and a colleague at that plant has every
+            // reason to read it.
+            if (report == null)
                 return HttpNotFound();
 
             var taskService = new TaskService(_db);
 
-            var tasks = taskService.GetTasksForReportPeriod(
-                userId, report.PeriodStart, report.PeriodEnd);
+            // A plant-scoped report reads its plant's tasks. A legacy personal
+            // one still reads the tasks of the employee who filed it, so
+            // reprinting it shows what it showed when it was filed rather than
+            // silently widening to a whole plant.
+            var tasks = report.PlantId.HasValue
+                ? taskService.GetTasksForReportPeriod(
+                    report.PlantId.Value, report.PeriodStart, report.PeriodEnd)
+                : taskService.GetTasksForReportPeriod(
+                    report.UserId, report.PeriodStart, report.PeriodEnd);
 
             var completed = tasks.Count(t =>
                 t.Status == TaskStatus.Complete);
@@ -1050,6 +1136,8 @@ namespace ESTAFF.Controllers
             var vm = new ReportDetailViewModel
             {
                 ReportId = report.ReportId,
+                PlantId = report.PlantId,
+                PlantName = report.Plant?.PlantName,
                 EmpName = report.User?.UserName ?? "-",
                 EmpNumber = report.User?.EmpID ?? "-",
                 EmpEmail = report.User?.Email ?? "-",
@@ -1088,16 +1176,25 @@ namespace ESTAFF.Controllers
         // ===========
         public ActionResult DownloadReportPdf(int id)
         {
-            var userId = User.Identity.GetUserId();
             var report = _db.Reports.Find(id);
 
-            if (report == null || report.UserId != userId)
+            // No owner check: a return belongs to a plant, not to whoever
+            // happened to file it, and a colleague at that plant has every
+            // reason to read it.
+            if (report == null)
                 return HttpNotFound();
 
             var taskService = new TaskService(_db);
 
-            var tasks = taskService.GetTasksForReportPeriod(
-                userId, report.PeriodStart, report.PeriodEnd);
+            // A plant-scoped report reads its plant's tasks. A legacy personal
+            // one still reads the tasks of the employee who filed it, so
+            // reprinting it shows what it showed when it was filed rather than
+            // silently widening to a whole plant.
+            var tasks = report.PlantId.HasValue
+                ? taskService.GetTasksForReportPeriod(
+                    report.PlantId.Value, report.PeriodStart, report.PeriodEnd)
+                : taskService.GetTasksForReportPeriod(
+                    report.UserId, report.PeriodStart, report.PeriodEnd);
 
             var completed = tasks.Count(t =>
                 t.Status == TaskStatus.Complete);
@@ -1105,6 +1202,8 @@ namespace ESTAFF.Controllers
             var vm = new ReportDetailViewModel
             {
                 ReportId = report.ReportId,
+                PlantId = report.PlantId,
+                PlantName = report.Plant?.PlantName,
                 EmpName = report.User?.UserName ?? "-",
                 EmpNumber = report.User?.EmpID ?? "-",
                 EmpEmail = report.User?.Email ?? "-",
@@ -1153,11 +1252,11 @@ namespace ESTAFF.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult ResubmitReport(int id)
         {
-            var userId = User.Identity.GetUserId();
             var report = _db.Reports.Find(id);
 
-            if (report == null 
-                || report.UserId != userId
+            // Same reasoning as ViewReport: the return is the plant's, so any
+            // employee may put a rejected one back up for approval.
+            if (report == null
                 || report.Status != ReportStatus.Rejected)
                 return HttpNotFound();
 

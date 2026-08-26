@@ -184,9 +184,9 @@ namespace ESTAFF.Services
         // REPORT DETAIL
         // ══════════════════════════════════════════
 
-        // The tasks one report covers: everything assigned to the report's
-        // owner whose due date falls inside the period, with the lookups every
-        // report surface prints already joined.
+        // The tasks one report covers: every task belonging to the plant whose
+        // due date falls inside the period, with the lookups every report
+        // surface prints already joined.
         //
         // Both the employee's copy and the admin's review read a report through
         // here. They used to run this query themselves and disagreed about
@@ -198,9 +198,49 @@ namespace ESTAFF.Services
         // DueDate is the one that decides. The form prints CompletedDate ??
         // DueDate as each task's date, so a task raised in January but due in
         // March belongs to March's return, not January's.
+        //
+        // A report used to cover one employee's tasks. It now covers a plant's,
+        // because that is what the statutory return is: one per plant per
+        // month, not one per officer.
+        public List<TaskItem> GetTasksForReportPeriod(
+            int plantId, DateTime periodStart, DateTime periodEnd)
+        {
+            return TasksInPeriod(UserIdsAtPlant(plantId), periodStart,
+                periodEnd);
+        }
+
+        // The legacy path: reports submitted before reports had a plant cover
+        // one employee's tasks, and reprinting one has to show what it showed
+        // when it was filed rather than silently widening to a whole plant.
         public List<TaskItem> GetTasksForReportPeriod(
             string userId, DateTime periodStart, DateTime periodEnd)
         {
+            return TasksInPeriod(new List<string> { userId }, periodStart,
+                periodEnd);
+        }
+
+        // Who works at a plant, according to EHS_PORTAL.
+        //
+        // CLIP.UserPlants is that system's own record and is incomplete: an
+        // employee with no rows there belongs to no plant, so their tasks reach
+        // no report at all. ESTAFF cannot fix that from here - the rows are
+        // EHS_PORTAL's to write - but callers should know the set can be
+        // smaller than "everyone who works there".
+        public List<string> UserIdsAtPlant(int plantId)
+        {
+            return _db.UserPlants
+                .Where(up => up.PlantId == plantId)
+                .Select(up => up.UserId)
+                .Distinct()
+                .ToList();
+        }
+
+        private List<TaskItem> TasksInPeriod(List<string> userIds,
+            DateTime periodStart, DateTime periodEnd)
+        {
+            if (userIds == null || !userIds.Any())
+                return new List<TaskItem>();
+
             var endOfDay = periodEnd.AddDays(1).AddTicks(-1);
 
             return _db.TaskItems
@@ -208,10 +248,23 @@ namespace ESTAFF.Services
                 .Include(t => t.TaskList)
                 .Include(t => t.AssignedToUser)
                 .Include(t => t.CreatedByUser)
-                .Where(t => t.AssignedToUserId == userId
+                .Where(t => userIds.Contains(t.AssignedToUserId)
                          && t.DueDate >= periodStart
                          && t.DueDate <= endOfDay)
                 .OrderBy(t => t.DueDate)
+                .ToList();
+        }
+
+        // Every plant, for the report form's plant chooser.
+        //
+        // All of them rather than only the generator's own, for the same reason
+        // ClipService.GetAllItems offers every CLIP record: the UserPlants
+        // mapping is incomplete, and restricting the list to it would leave the
+        // four unmapped users unable to generate any report at all.
+        public List<Plant> GetPlants()
+        {
+            return _db.Plants
+                .OrderBy(p => p.PlantName)
                 .ToList();
         }
 

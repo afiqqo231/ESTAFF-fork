@@ -49,8 +49,10 @@
                               style = "resize:none;" })
                 </div>
 
-                <!-- Assign To -->
-                <div class="col-md-6">
+                @* Full width now that the due date has moved: it belongs
+                   with the task type, which decides whether it is asked for
+                   at all. *@
+                <div class="col-12">
                     @Html.LabelFor(m => m.AssignedToUserId,
                         new { @class = "form-label" })
                     @Html.DropDownListFor(m => m.AssignedToUserId,
@@ -63,23 +65,11 @@
                         new { @class = "text-danger small" })
                 </div>
 
-                <!-- Due Date -->
-                <div class="col-md-6">
-                    @Html.LabelFor(m => m.DueDate,
-                        new { @class = "form-label" })
-                    @Html.TextBoxFor(m => m.DueDate,
-                        "{0:yyyy-MM-dd}",
-                        new { @class = "form-control",
-                              type = "date",
-                              id = "dueDate",
-                              oninput = "updatePreview()" })
-                    @Html.ValidationMessageFor(m => m.DueDate, "",
-                        new { @class = "text-danger small" })
-                </div>
-
-                @* Daily-or-long-term, and the period. The model goes straight
-                   through: this view model implements ITaskPeriodFields. *@
-                @Html.Partial("_PeriodField", Model)
+                @* Task type and the date it decides on — a period for a
+                   daily task, a due date for a long-term one. The model goes
+                   straight through: this view model implements
+                   ITaskPeriodFields. *@
+                @Html.Partial("_ScheduleFields", Model)
 
                 <!-- Classification, task type, and the optional CLIP item -->
                 <div class="col-12">
@@ -164,8 +154,10 @@
             </span>
         </div>
 
+        @* Due date or work period, whichever the chosen schedule asks for.
+           One row rather than two, because the form only ever fills one. *@
         <div class="preview-item">
-            <span class="preview-label">Due Date</span>
+            <span class="preview-label" id="prev-due-label">Due Date</span>
             <span class="preview-value" id="prev-due"
                   style="color:var(--text-muted); font-weight:400;
                          font-style:italic;">
@@ -250,13 +242,21 @@
     // in admin.css. It used to be painted here by assembling colours in JS,
     // which also meant the highlight was never restored on a redisplayed form.
 
-    // Classification + CLIP selection feed the preview too, so the panel
-    // always reflects the whole form rather than half of it.
+    // Classification, CLIP and the schedule feed the preview too, so the
+    // panel always reflects the whole form rather than half of it. They are
+    // caught here rather than with an oninput on each: two of them are
+    // rendered by shared partials, which have no business knowing that this
+    // page has a preview panel at all.
     document.addEventListener('change', function (e) {
         if (!e.target.name) return;
         if (e.target.name === 'TaskClassificationId' ||
             e.target.name === 'TaskListId' ||
-            e.target.name === 'ClipItemKey') {
+            e.target.name === 'ClipItemKey' ||
+            e.target.name === 'ScheduleType' ||
+            e.target.name === 'DueDate' ||
+            e.target.name === 'PeriodDate' ||
+            e.target.name === 'PeriodStart' ||
+            e.target.name === 'PeriodEnd') {
             updatePreview();
         }
     });
@@ -266,7 +266,8 @@
         var title    = document.getElementById('taskTitle').value;
         var empSel   = document.getElementById('assignedTo');
         var empText  = empSel.options[empSel.selectedIndex]?.text ?? '';
-        var dueRaw   = document.getElementById('dueDate').value;
+        var dueInput = document.querySelector('[name="DueDate"]');
+        var dueRaw   = dueInput ? dueInput.value : '';
         var priority = document.querySelector('.priority-radio:checked');
 
         // Title
@@ -297,20 +298,58 @@
             prevEmp.style.fontStyle  = 'italic';
         }
 
-        // Due Date
-        var prevDue = document.getElementById('prev-due');
-        if (dueRaw) {
-            var d = new Date(dueRaw + 'T00:00:00');
-            prevDue.textContent  = d.toLocaleDateString('en-US',
-                { month: 'short', day: 'numeric', year: 'numeric' });
-            prevDue.style.color  = 'var(--text-primary)';
-            prevDue.style.fontWeight = '600';
-            prevDue.style.fontStyle  = 'normal';
+        // When the task is due, in the terms it is scheduled in: a daily
+        // task shows the day and hours it is worked, a long-term one its due
+        // date. The form only asks for one of the two, so showing both would
+        // leave a row that is always empty.
+        var schedule = document.querySelector(
+            'input[name="ScheduleType"]:checked');
+        // "1" is TaskScheduleType.Daily — the posted value, not a copy of it.
+        var isDaily  = !!schedule && schedule.value === '1';
+
+        var prevDue      = document.getElementById('prev-due');
+        var prevDueLabel = document.getElementById('prev-due-label');
+        var scheduleText = isDaily ? dailyText() : dateText(dueRaw);
+
+        prevDueLabel.textContent = isDaily ? 'Work Period' : 'Due Date';
+
+        if (scheduleText) {
+            prevDue.textContent = scheduleText;
+            setSolid(prevDue);
         } else {
-            prevDue.textContent  = 'Pick a date...';
-            prevDue.style.color  = 'var(--text-muted)';
-            prevDue.style.fontWeight = '400';
-            prevDue.style.fontStyle  = 'italic';
+            prevDue.textContent = isDaily
+                ? 'Pick a date and hours...'
+                : 'Pick a date...';
+            setMuted(prevDue);
+        }
+
+        function dateText(raw) {
+            if (!raw) return '';
+
+            var d = new Date(raw + 'T00:00:00');
+            return d.toLocaleDateString('en-US',
+                { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        // "08:00:00" as the dropdown posts it; the form offers whole hours,
+        // so the seconds are never anything to read.
+        function hourText(name) {
+            var el = document.querySelector('[name="' + name + '"]');
+            return el && el.value ? el.value.substring(0, 5) : '';
+        }
+
+        // The day alone is worth showing while the hours are still unchosen —
+        // it is already more than "pick a date".
+        function dailyText() {
+            var dateEl = document.querySelector('[name="PeriodDate"]');
+            var date   = dateText(dateEl ? dateEl.value : '');
+            var start  = hourText('PeriodStart');
+            var end    = hourText('PeriodEnd');
+
+            if (!date) return '';
+            if (!start || !end) return date;
+
+            return date + ', ' + start + ' – ' + end;
         }
 
         // Classification — reuse the badge markup from the task lists so the

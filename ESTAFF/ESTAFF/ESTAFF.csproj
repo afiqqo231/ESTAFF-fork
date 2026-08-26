@@ -247,6 +247,7 @@
     <Compile Include="Models\Data\TaskList.cs" />
     <Compile Include="Models\Data\UserPlant.cs" />
     <Compile Include="Models\ViewModels\AccountViewModels.cs" />
+    <Compile Include="Models\ViewModels\CalendarViewModels.cs" />
     <Compile Include="Models\ViewModels\ClipViewModels.cs" />
     <Compile Include="Models\ViewModels\ReportViewModels.cs" />
     <Compile Include="Models\ViewModels\ClassificationViewModels.cs" />
@@ -278,6 +279,7 @@
     <Content Include="Content\bootstrap.rtl.css" />
     <Content Include="Content\bootstrap.rtl.min.css" />
     <Content Include="Content\css\admin.css" />
+    <Content Include="Content\css\admin-calendar.css" />
     <Content Include="Content\css\auth.css" />
     <Content Include="Content\css\clip-picker.css" />
     <Content Include="Content\css\employee.css" />
@@ -336,9 +338,9 @@
     <Content Include="Views\Shared\_ClipItemChip.cshtml" />
     <Content Include="Views\Shared\_ClipPicker.cshtml" />
     <Content Include="Views\Shared\_ClipProgress.cshtml" />
-    <Content Include="Views\Shared\_PeriodField.cshtml" />
     <Content Include="Views\Shared\_ReportSectionField.cshtml" />
     <Content Include="Views\Shared\_ReportTaskTable.cshtml" />
+    <Content Include="Views\Shared\_ScheduleFields.cshtml" />
     <Content Include="Views\Shared\_StatusActionFlow.cshtml" />
     <Content Include="Views\Shared\_StatusActionModal.cshtml" />
     <Content Include="Views\Shared\_StatusActionStep.cshtml" />
@@ -360,6 +362,7 @@
     <Content Include="Views\Admin\Employees.cshtml" />
     <Content Include="Views\Admin\Tasks.cshtml" />
     <Content Include="Views\Admin\AssignTask.cshtml" />
+    <Content Include="Views\Admin\Calendar.cshtml" />
     <Content Include="Views\Admin\TaskHistory.cshtml" />
     <Content Include="Views\Admin\PendingReports.cshtml" />
     <Content Include="Views\Admin\ApprovedReports.cshtml" />
@@ -380,7 +383,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\profiles\" />
-    <Folder Include="Controllers\Api\" />
     <Folder Include="DATABASE\" />
   </ItemGroup>
   <ItemGroup>
@@ -406,7 +408,7 @@
           <AutoAssignPort>True</AutoAssignPort>
           <DevelopmentServerPort>61128</DevelopmentServerPort>
           <DevelopmentServerVPath>/</DevelopmentServerVPath>
-          <IISUrl>https://localhost:44323/</IISUrl>
+          <IISUrl>http://localhost:61128/</IISUrl>
           <NTLMAuthentication>False</NTLMAuthentication>
           <UseCustomServer>False</UseCustomServer>
           <CustomServerUrl>

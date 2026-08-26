@@ -22,14 +22,19 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Assign To")]
         public string AssignedToUserId { get; set; }
 
+        // Asked for by long-term tasks only. A daily task hides this field
+        // and takes its due date from PeriodDate, so the controllers read
+        // TaskPeriod.EffectiveDueDate rather than this property directly.
         [Required(ErrorMessage = "Due date is required")]
         [DataType(DataType.Date)]
         [Display(Name = "Due Date")]
         public DateTime DueDate { get; set; } = DateTime.Today.AddDays(7);
 
-        // ITaskPeriodFields. Daily work happens on one named day between two
-        // hours; long-term work is tracked to the due date above and may
-        // record hours as well.
+        // ITaskPeriodFields. The two kinds of task are scheduled in
+        // different terms and the form asks for one or the other, never both:
+        // daily work happens on one named day between two hours, and is due
+        // that day; long-term work is tracked to the due date above and
+        // carries no period.
         //
         // No [Required] on the period: whether it is needed depends on
         // ScheduleType, which an annotation cannot see. TaskPeriod.Validate
@@ -88,14 +93,19 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Assign To")]
         public string AssignedToUserId { get; set; }
 
+        // Asked for by long-term tasks only. A daily task hides this field
+        // and takes its due date from PeriodDate, so the controllers read
+        // TaskPeriod.EffectiveDueDate rather than this property directly.
         [Required(ErrorMessage = "Due date is required")]
         [DataType(DataType.Date)]
         [Display(Name = "Due Date")]
         public DateTime DueDate { get; set; }
 
-        // ITaskPeriodFields. Daily work happens on one named day between two
-        // hours; long-term work is tracked to the due date above and may
-        // record hours as well.
+        // ITaskPeriodFields. The two kinds of task are scheduled in
+        // different terms and the form asks for one or the other, never both:
+        // daily work happens on one named day between two hours, and is due
+        // that day; long-term work is tracked to the due date above and
+        // carries no period.
         //
         // No [Required] on the period: whether it is needed depends on
         // ScheduleType, which an annotation cannot see. TaskPeriod.Validate
@@ -283,14 +293,19 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Concern/Issue")]
         public string Description { get; set; }
 
+        // Asked for by long-term tasks only. A daily task hides this field
+        // and takes its due date from PeriodDate, so the controllers read
+        // TaskPeriod.EffectiveDueDate rather than this property directly.
         [Required(ErrorMessage = "Due date is required")]
         [DataType(DataType.Date)]
         [Display(Name = "Due Date")]
         public DateTime DueDate { get; set; } = DateTime.Today.AddDays(1);
 
-        // ITaskPeriodFields. Daily work happens on one named day between two
-        // hours; long-term work is tracked to the due date above and may
-        // record hours as well.
+        // ITaskPeriodFields. The two kinds of task are scheduled in
+        // different terms and the form asks for one or the other, never both:
+        // daily work happens on one named day between two hours, and is due
+        // that day; long-term work is tracked to the due date above and
+        // carries no period.
         //
         // No [Required] on the period: whether it is needed depends on
         // ScheduleType, which an annotation cannot see. TaskPeriod.Validate

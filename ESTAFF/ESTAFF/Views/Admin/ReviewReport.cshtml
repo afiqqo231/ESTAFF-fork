@@ -37,8 +37,20 @@
                 </div>
 
                 <div class="report-meta-grid">
+                    @* What the return is about. The employee below it is who
+                       filed it, which is provenance rather than scope. *@
                     <div class="report-meta-item">
-                        <span class="report-meta-label">Employee</span>
+                        <span class="report-meta-label">Plant</span>
+                        <span class="report-meta-value">
+                            @(string.IsNullOrWhiteSpace(Model.PlantName)
+                                ? (Model.PlantId.HasValue
+                                    ? "Plant #" + Model.PlantId.Value
+                                    : "Personal (legacy)")
+                                : Model.PlantName)
+                        </span>
+                    </div>
+                    <div class="report-meta-item">
+                        <span class="report-meta-label">Filed by</span>
                         <span class="report-meta-value">
                             @Model.EmpName
                         </span>

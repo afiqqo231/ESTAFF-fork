@@ -31,8 +31,9 @@ namespace ESTAFF.Models.Data
 
         // Which kind of task this is, chosen by whoever raises it. Daily work
         // is done on one named day between two hours; long-term work is
-        // tracked to a due date. The difference is what the form insists on:
-        // a daily task has to carry a period, a long-term one may.
+        // tracked to a due date. The difference is what the form asks for: a
+        // daily task is asked for its period and nothing else, a long-term one
+        // for its due date and nothing else.
         //
         // Not nullable, and existing rows read as LongTerm - a task with a due
         // date and no period is exactly what that means, so nothing is being
@@ -42,9 +43,13 @@ namespace ESTAFF.Models.Data
         public TaskScheduleType ScheduleType { get; set; }
             = TaskScheduleType.LongTerm;
 
-        // The day the period falls on. Separate from DueDate: a task worked on
-        // the 25th may still not be due until the 28th, and both forms ask for
-        // the two independently.
+        // The day the period falls on, and for a task raised as Daily the day
+        // it is due - TaskPeriod.ApplyTo writes DueDate from this, because the
+        // form only asks once.
+        //
+        // Still its own column rather than a reading of DueDate: rows written
+        // before that rule can hold a period and a later due date both, and
+        // DueDate is what every list, sweep and calendar reads.
         //
         // DATE rather than DATETIME - the time of day is the pair below.
         [Column(TypeName = "date")]
@@ -165,9 +170,13 @@ namespace ESTAFF.Models.Data
 
     // Whether a task is a day's work or something tracked to a deadline.
     //
-    // Both kinds carry a DueDate. What differs is the period: Daily requires
-    // one, LongTerm merely allows it, which is why this cannot be inferred
-    // from whether the period columns are filled in.
+    // Both kinds carry a DueDate - a daily task's is the day it is worked. The
+    // period is what differs: Daily requires one, LongTerm carries none.
+    //
+    // Still stored rather than inferred from whether the period columns are
+    // filled in: rows written while a long-term task could also record hours
+    // would read as Daily, and a daily task whose period predates these
+    // columns would read as long term.
     public enum TaskScheduleType
     {
         Daily = 1,

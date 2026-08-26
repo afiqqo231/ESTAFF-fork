@@ -84,6 +84,12 @@
 @using (Html.BeginForm("SubmitReport", "Employee", FormMethod.Post))
 {
     @Html.AntiForgeryToken()
+
+    @* Every field SubmitReport reads has to survive the preview step - the
+       form posts these, not the model that rendered the page. PlantId is what
+       decides which tasks the filed report covers. *@
+    <input type="hidden" name="PlantId"
+           value="@Model.PlantId" />
     <input type="hidden" name="ReportType"
            value="@((int)Model.ReportType)" />
     <input type="hidden" name="PeriodStart"

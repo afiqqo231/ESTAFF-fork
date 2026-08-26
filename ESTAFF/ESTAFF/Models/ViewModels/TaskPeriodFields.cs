@@ -14,6 +14,12 @@ namespace ESTAFF.Models.ViewModels
     public interface ITaskPeriodFields
     {
         TaskScheduleType ScheduleType { get; set; }
+
+        // What the form posted in its Due Date box. A daily task is not asked
+        // for one - it is due on the day it is worked - so read the due date
+        // through TaskPeriod.EffectiveDueDate rather than from here.
+        DateTime DueDate { get; set; }
+
         DateTime? PeriodDate { get; set; }
         TimeSpan? PeriodStart { get; set; }
         TimeSpan? PeriodEnd { get; set; }
@@ -79,13 +85,6 @@ namespace ESTAFF.Models.ViewModels
                 && fields.PeriodEnd.HasValue;
         }
 
-        private static bool HasAnyPeriodField(ITaskPeriodFields fields)
-        {
-            return fields.PeriodDate.HasValue
-                || fields.PeriodStart.HasValue
-                || fields.PeriodEnd.HasValue;
-        }
-
         // What is wrong with the posted period, as field name -> message.
         //
         // This cannot be data annotations: whether the period is required
@@ -118,38 +117,43 @@ namespace ESTAFF.Models.ViewModels
                 return errors;
             }
 
-            // Long-term: the period is optional, but half of one is not a
-            // period. Either record all three or leave them all blank, so a
-            // task never claims hours on no particular day.
-            if (HasAnyPeriodField(fields) && !HasPeriod(fields))
-            {
-                if (!fields.PeriodDate.HasValue)
-                    errors["PeriodDate"] =
-                        "Give the date these hours were worked, or clear the "
-                        + "hours.";
-
-                if (!fields.PeriodStart.HasValue)
-                    errors["PeriodStart"] =
-                        "Give the hour the work starts, or clear the period.";
-
-                if (!fields.PeriodEnd.HasValue)
-                    errors["PeriodEnd"] =
-                        "Give the hour the work ends, or clear the period.";
-            }
-
+            // Long-term: there is no period to check. The form does not offer
+            // one, and ApplyTo clears anything that posts anyway, so a stale
+            // half-filled period is not the user's problem to fix.
             return errors;
         }
 
-        // Copies the posted scheduling fields onto the task.
+        // The date the task is actually due.
         //
-        // A long-term task that left the period blank has it cleared rather
-        // than left as it was: on the edit forms that is how a period gets
-        // removed, and a stale one would otherwise survive the change.
+        // A daily task is due on the day it is worked, so its period date is
+        // its due date and the form never asks for a second one. A long-term
+        // task is due when the form said it was.
+        public static DateTime EffectiveDueDate(ITaskPeriodFields fields)
+        {
+            if (fields.ScheduleType == TaskScheduleType.Daily
+                && fields.PeriodDate.HasValue)
+                return fields.PeriodDate.Value.Date;
+
+            return fields.DueDate;
+        }
+
+        // Copies the posted schedule onto the task - the type, the period and
+        // the due date, because the two kinds of task answer that last one
+        // differently and only this method knows which kind it is holding.
+        //
+        // A long-term task has its period cleared rather than left as it was.
+        // That matters on the edit forms: a task switched from daily to long
+        // term would otherwise keep hours it no longer has, and the form is no
+        // longer showing them to be cleared by hand.
         public static void ApplyTo(TaskItem task, ITaskPeriodFields fields)
         {
             task.ScheduleType = fields.ScheduleType;
+            task.DueDate = EffectiveDueDate(fields);
 
-            if (!HasPeriod(fields))
+            // HasPeriod is belt and braces: Validate has already refused a
+            // daily task without a complete period.
+            if (fields.ScheduleType != TaskScheduleType.Daily
+                || !HasPeriod(fields))
             {
                 task.PeriodDate = null;
                 task.PeriodStart = null;
