@@ -44,12 +44,15 @@ namespace ESTAFF.Models.ViewModels
         // Null omits the row.
         public string ScheduleText { get; set; }
 
+        // For panel navigation purpose on Day and Month view in calendar
+        public string BackPanelId { get; set; }
+
         // Where "Open task" goes: Admin/EditTask or Employee/EditTask.
         public string OpenUrl { get; set; }
 
         // The manager's calendar, which knows the plant and the assignee.
         public static TaskDetailPanelModel ForCalendarItem(
-            CalendarTaskViewModel item, string openUrl)
+            CalendarTaskViewModel item, string openUrl, bool withBack = false)
         {
             return new TaskDetailPanelModel
             {
@@ -59,7 +62,10 @@ namespace ESTAFF.Models.ViewModels
                 PlantLabel      = item.PlantLabel,
                 OtherPlantNames = item.OtherPlantNames,
                 ScheduleText    = item.ScheduleText,
-                OpenUrl         = openUrl
+                OpenUrl         = openUrl,
+                BackPanelId = withBack
+                    ? CalendarDayEmployeeViewModel.PanelIdFor(item.Task.DueDate, item.Task.AssignedToUserId)
+                    : null
             };
         }
 

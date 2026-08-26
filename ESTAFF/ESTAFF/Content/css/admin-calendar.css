@@ -267,6 +267,60 @@
 
 .acal-legend-clear:hover { color: var(--danger); }
 
+/* ── Employee rows ────────────────────────────────────────────
+   What the month and week cells show instead of tasks. One line
+   each, so a cell holds people rather than titles. */
+.acal-emp {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    width: 100%;
+    padding: 0.3rem 0.4rem;
+    margin-bottom: 0.25rem;
+    background: var(--plant-soft, #F8FAF9);
+    border: 1px solid transparent;
+    border-left: 3px solid var(--plant, var(--primary));
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+    .acal-emp:hover {
+        border-color: var(--plant, var(--primary));
+    }
+
+.acal-emp-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.acal-emp-count {
+    flex: 0 0 auto;
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+.acal-emp.is-overdue {
+    background: #FEF2F2;
+    border-left-color: #DC2626;
+}
+
+.acal-emp-late {
+    flex: 0 0 auto;
+    color: #DC2626;
+    font-weight: 700;
+}
+
+.acal-emp-dot {
+    display: none;
+}
+
 /* ── The item chip ────────────────────────────────────────────
    A button, not a link: it opens the detail panel rather than
    navigating, and the panel carries the links onward. */
@@ -363,6 +417,54 @@
     text-decoration-color: var(--text-muted);
 }
 
+/* ── Day roster ───────────────────────────────────────────────
+   One employee's tasks on one day: the middle step between the
+   grid and a single task. Rendered hidden and lifted into the
+   same modal, so its classes land on .modal-body. */
+.acal-roster-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: 0.9rem;
+}
+
+.acal-roster-stripe {
+    width: 4px;
+    align-self: stretch;
+    border-radius: 4px;
+    background: var(--plant, var(--primary));
+    flex: 0 0 auto;
+}
+
+.acal-roster-name {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 0.2rem;
+    line-height: 1.35;
+}
+
+.acal-roster-sub {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.acal-roster-late {
+    color: #DC2626;
+    font-weight: 700;
+    margin-left: 0.35rem;
+}
+
+/* One task per row. The day frame's auto-fill columns are wrong
+   here — a modal is narrow and the list is read top to bottom. */
+.acal-roster-list {
+    display: grid;
+    gap: 0.6rem;
+}
+
 /* ── Day view ─────────────────────────────────────────────── */
 .acal-day-card {
     background: var(--surface);
@@ -403,9 +505,12 @@
 /* In the day frame there is room for the assignee and the hours on
    the chip itself, so the manager can read the day without opening
    anything. */
-.acal-day-body .acal-item { margin-bottom: 0; padding: 0.7rem 0.85rem; }
-.acal-day-body .acal-item-title { font-size: 0.82rem; -webkit-line-clamp: 3; }
-.acal-day-body .acal-item-meta { font-size: 0.7rem; }
+.acal-day-body .acal-item, 
+.acal-roster-list .acal-item { margin-bottom: 0; padding: 0.7rem 0.85rem; }
+.acal-day-body .acal-item-title,
+.acal-roster-list .acal-item-title{ font-size: 0.82rem; -webkit-line-clamp: 3; }
+.acal-day-body .acal-item-meta,
+.acal-roster-list .acal0item-meta{ font-size: 0.7rem; }
 
 /* ── Week view ────────────────────────────────────────────── */
 .acal-week {

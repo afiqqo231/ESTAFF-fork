@@ -162,6 +162,28 @@ namespace ESTAFF.Models.ViewModels
         public List<CalendarTaskViewModel> Items { get; set; }
             = new List<CalendarTaskViewModel>();
 
+        // Group of employee with its TaskItems
+        public List<CalendarDayEmployeeViewModel> Employees
+        {
+            get
+            {
+                return Items
+                    .GroupBy(i => i.Task.AssignedToUserId)
+                    .Select(g => new CalendarDayEmployeeViewModel
+                    {
+                        Date = Date,
+                        UserId = g.Key,
+                        Name = g.First().Task.AssignedToName,
+                        EmpID = g.First().Task.AssignedToEmpID,
+                        Items = g.ToList()
+                    })
+                    .OrderByDescending(e => e.HasOverdue)
+                    .ThenByDescending(e => e.Count)
+                    .ThenBy(e => e.Name)
+                    .ToList();
+            }
+        }
+
         public bool IsToday { get { return Date.Date == DateTime.Today; } }
 
         public bool IsWeekend
@@ -227,6 +249,41 @@ namespace ESTAFF.Models.ViewModels
                     ? "No plant"
                     : PlantName;
             }
+        }
+    }
+
+    // Item in Admin Calendar View for month and week
+    public class CalendarDayEmployeeViewModel
+    {
+        public DateTime Date { get; set; }
+        public string UserId { get; set; }
+        public string Name { get; set; }
+        public string EmpID { get; set; }
+        public List<CalendarTaskViewModel> Items { get; set; } = new List<CalendarTaskViewModel>();
+        public int Count { get { return Items.Count; } }
+        public int OverdueCount
+        {
+            get
+            {
+                return Items.Count(i => i.Task.Status == TaskStatus.Overdue);
+            }
+        }
+        public bool HasOverdue { get { return OverdueCount > 0;  }  }
+        public string PlantClass
+        {
+            get
+            {
+                var first = Items.FirstOrDefault();
+                return first == null ? "plat-none" : first.PlantClass;
+            }
+        }
+        public static string PanelIdFor(DateTime date, string userId)
+        {
+            return "dayroster-" + date.ToString("yyyyMMdd") + "-" + userId;
+        }
+        public string PanelId
+        {
+            get { return PanelIdFor(Date, UserId); }
         }
     }
 

@@ -95,7 +95,7 @@
             <span class="tdp-label">Due Date</span>
             <span class="tdp-value">
                 @task.DueDate.ToString("ddd, dd MMM yyyy")
-                <span style="color:var(--text-muted); font-weight:400;">
+                <span style="color:var(--danger); font-weight:800;">
                     &middot; @task.DueText
                 </span>
             </span>
@@ -128,7 +128,18 @@
 
     </div>
 
-    <div class="d-flex justify-content-end gap-2 mt-3">
+    <div class="d-flex justify-content-between align-items-center gap-2 mt-3">
+        <div>
+            @if (!string.IsNullOrEmpty(Model.BackPanelId))
+            {
+                @* Just another data-detail trigger — the modal script does
+                not know or care that this one goes backwards. *@
+                <button type="button" class="btn-outline-custom"
+                        data-detail="@Model.BackPanelId">
+                    <i class="fas fa-arrow-left me-1"></i> Back
+                </button>
+            }
+        </div>
         <a href="@Model.OpenUrl" class="btn-primary-custom">
             <i class="fas fa-pen-to-square me-1"></i> Open task
         </a>
