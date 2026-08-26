@@ -25,6 +25,7 @@
 }
 
 @section PageStyles {
+    <link href="~/Content/css/task-detail.css" rel="stylesheet" />
     <link href="~/Content/css/admin-calendar.css" rel="stylesheet" />
 }
 
@@ -58,7 +59,7 @@
 
     <button type="button"
             class="acal-item @item.PlantClass @stateClass"
-            data-detail="acal-detail-@task.TaskId"
+            data-detail="taskdetail-@task.TaskId"
             title="@task.Title — @item.PlantLabel · @task.AssignedToName">
         <span class="acal-item-top">
             <span class="acal-item-dot"></span>
@@ -98,134 +99,6 @@
             </span>
         }
     </button>
-}
-
-@helper DetailPanel(CalendarTaskViewModel item)
-{
-    var task = item.Task;
-
-    <div class="acal-detail @item.PlantClass" id="acal-detail-@task.TaskId">
-
-        <div class="acal-detail-head">
-            <span class="acal-detail-stripe"></span>
-            <div style="min-width:0;">
-                <h6 class="acal-detail-title">@task.Title</h6>
-                <div class="acal-detail-badges">
-                    <span class="badge-pill badge-@task.StatusClass">
-                        @task.StatusLabel
-                    </span>
-                    @if (task.Priority.HasValue)
-                    {
-                        <span class="badge-pill badge-@task.Priority.ToString().ToLower()">
-                            <span class="priority-dot @task.Priority.ToString().ToLower()"></span>
-                            @task.Priority Priority
-                        </span>
-                    }
-                    @Html.Partial("_ClassificationBadge",
-                        ClassificationBadgeModel.From(task))
-                </div>
-            </div>
-        </div>
-
-        <div class="acal-detail-grid">
-
-            <div class="acal-detail-row">
-                <span class="acal-detail-label">Assigned To</span>
-                <span class="acal-detail-value">
-                    @task.AssignedToName
-                    <span style="color:var(--text-muted); font-weight:400;">
-                        (@task.AssignedToEmpID)
-                    </span>
-                </span>
-            </div>
-
-            <div class="acal-detail-row">
-                <span class="acal-detail-label">Plant</span>
-                <span class="acal-detail-value acal-detail-plant">
-                    <span class="acal-legend-dot"></span>
-                    @item.PlantLabel
-                </span>
-                @if (item.OtherPlantNames.Any())
-                {
-                    @* Said outright rather than left to the colour: the stripe
-                       can only stand for one of them. *@
-                    <div class="acal-detail-value muted"
-                         style="font-size:0.72rem;">
-                        Also at @string.Join(", ", item.OtherPlantNames)
-                    </div>
-                }
-            </div>
-
-            <div class="acal-detail-row">
-                <span class="acal-detail-label">Schedule</span>
-                <span class="acal-detail-value">@item.ScheduleText</span>
-            </div>
-
-            <div class="acal-detail-row">
-                <span class="acal-detail-label">Due</span>
-                <span class="acal-detail-value">
-                    @task.DueDate.ToString("ddd, dd MMM yyyy")
-                    <span style="color:var(--text-muted); font-weight:400;">
-                        · @task.DueText
-                    </span>
-                </span>
-            </div>
-
-            <div class="acal-detail-row">
-                <span class="acal-detail-label">Task Type</span>
-                <span class="acal-detail-value @(string.IsNullOrWhiteSpace(task.TaskListName) ? "muted" : "")">
-                    @(string.IsNullOrWhiteSpace(task.TaskListName)
-                        ? "Not set" : task.TaskListName)
-                </span>
-            </div>
-
-            <div class="acal-detail-row">
-                <span class="acal-detail-label">Raised By</span>
-                <span class="acal-detail-value">
-                    @task.CreatedByName
-                    <span style="color:var(--text-muted); font-weight:400;">
-                        · @task.CreatedDate.ToString("dd MMM yyyy")
-                    </span>
-                </span>
-            </div>
-
-            @if (task.ClipItem != null)
-            {
-                <div class="acal-detail-row full">
-                    <span class="acal-detail-label">CLIP Item</span>
-                    @Html.Partial("_ClipItemChip", task.ClipItem)
-                </div>
-            }
-
-            <div class="acal-detail-row full">
-                <span class="acal-detail-label">Concern / Issue</span>
-                @if (string.IsNullOrWhiteSpace(task.Description))
-                {
-                    <span class="acal-detail-value muted">
-                        Nothing was recorded.
-                    </span>
-                }
-                else
-                {
-                    <div class="acal-detail-note">@task.Description</div>
-                }
-            </div>
-
-            <div class="acal-detail-row full">
-                <span class="acal-detail-label">Action Taken</span>
-                @Html.Partial("_StatusActionFlow", task.StatusActions)
-            </div>
-
-        </div>
-
-        <div class="d-flex justify-content-end gap-2 mt-3">
-            <a href="@Url.Action("EditTask", "Admin", new { id = task.TaskId })"
-               class="btn-primary-custom">
-                <i class="fas fa-pen-to-square me-1"></i> Open task
-            </a>
-        </div>
-
-    </div>
 }
 
 <!-- ═══════════ TOOLBAR ═══════════ -->
@@ -525,28 +398,14 @@
 <div id="acalDetails" hidden>
     @foreach (var item in Model.Items)
     {
-        @DetailPanel(item)
+        @Html.Partial("_TaskDetailPanel",
+            TaskDetailPanelModel.ForCalendarItem(item,
+                Url.Action("EditTask", "Admin", new { id = item.Task.TaskId })))
     }
 </div>
 
-<!-- ═══════════ MODAL ═══════════ -->
-<div class="modal fade" id="acalModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content" style="border-radius:var(--radius-lg);">
-            <div class="modal-header"
-                 style="border-bottom:1px solid var(--border-subtle);">
-                <h6 class="modal-title fw-bold">
-                    <i class="fas fa-clipboard-list me-2"
-                       style="color:var(--primary);"></i>
-                    Task Details
-                </h6>
-                <button type="button" class="btn-close"
-                        data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" id="acalModalBody"></div>
-        </div>
-    </div>
-</div>
+@Html.Partial("_TaskDetailModal")
+
 
 @section PageScripts {
 <script>
@@ -577,31 +436,7 @@ document.getElementById('plantFilter')
 document.getElementById('employeeFilter')
     .addEventListener('change', applyCalendarFilter);
 
-// ── Detail modal ──────────────────────────────────────────
-// The panel is already on the page; the modal only borrows its markup. A
-// copy rather than a move, so the item can be opened again.
-(function () {
-    var modalEl = document.getElementById('acalModal');
-    var body    = document.getElementById('acalModalBody');
-    var modal   = new bootstrap.Modal(modalEl);
 
-    document.addEventListener('click', function (e) {
-        var trigger = e.target.closest('.acal-item');
-        if (!trigger) return;
-
-        var panel = document.getElementById(
-            trigger.getAttribute('data-detail'));
-        if (!panel) return;
-
-        body.innerHTML = panel.innerHTML;
-
-        // The panel carries the plant's palette class; the body needs it too
-        // or the stripe inside the modal has no colour to read.
-        body.className = 'modal-body ' + panel.className.replace(
-            'acal-detail', '').trim();
-
-        modal.show();
-    });
-})();
 </script>
+<script src="@Url.Content("~/Scripts/estaff-task-detail.js")"></script>
 }

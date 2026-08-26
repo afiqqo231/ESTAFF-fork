@@ -235,6 +235,7 @@ namespace ESTAFF.Controllers
                     Priority               = t.Priority,
                     DueDate                = t.DueDate,
                     CreatedDate            = t.CreatedDate,
+                    AssignedDate           = t.AssignedDate,
                     CompletedDate          = t.CompletedDate,
                     AssignedToUserId       = t.AssignedToUserId,
                     CreatedByUserId        = t.CreatedByUserId,
@@ -712,11 +713,30 @@ namespace ESTAFF.Controllers
             var endOfDay = periodEnd.AddDays(1).AddTicks(-1);
 
             var tasks = _db.TaskItems
+                .Include(t => t.TaskClassification)
+                .Include(t => t.TaskList)
+                .Include(t => t.CreatedByUser)
                 .Where(t => t.AssignedToUserId == userId
                          && t.DueDate >= periodStart
                          && t.DueDate <= endOfDay)
                 .OrderBy(t => t.DueDate)
                 .ToList();
+
+            // The detail behind each card, resolved once for the whole
+            // period rather than per card: BuildMyTaskList batches the CLIP
+            // lookups and the status history into two queries. The view
+            // renders one hidden panel per task and the modal copies it, so
+            // the employee sees the same detail an admin sees on theirs.
+            var taskById = tasks.ToDictionary(t => t.TaskId);
+
+            ViewBag.TaskDetails = BuildMyTaskList(tasks, userId)
+                .ToDictionary(
+                    t => t.TaskId,
+                    t => TaskDetailPanelModel.ForOwnTask(
+                        t,
+                        TaskPeriod.Describe(taskById[t.TaskId]),
+                        Url.Action("EditTask", "Employee",
+                            new { id = t.TaskId })));
 
             // Build day groups
             var days = new List<DayTaskGroup>();

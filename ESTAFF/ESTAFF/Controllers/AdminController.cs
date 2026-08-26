@@ -1268,6 +1268,7 @@ namespace ESTAFF.Controllers
                     Priority             = t.Priority,
                     DueDate              = t.DueDate,
                     CreatedDate          = t.CreatedDate,
+                    AssignedDate         = t.AssignedDate,
                     CompletedDate        = t.CompletedDate,
                     AssignedToUserId     = t.AssignedToUserId,
                     AssignedToName       = t.AssignedToUser?.UserName ?? "-",

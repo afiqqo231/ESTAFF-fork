@@ -1,0 +1,22 @@
+﻿@*
+    The shell the task detail panel is lifted into, shared by both calendars.
+    Empty until an item is clicked: estaff-task-detail.js fills the body from
+    the hidden panel that item points at.
+*@
+<div class="modal fade" id="taskDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="border-radius:var(--radius-lg);">
+            <div class="modal-header"
+                 style="border-bottom:1px solid var(--border-subtle);">
+                <h6 class="modal-title fw-bold">
+                    <i class="fas fa-clipboard-list me-2"
+                       style="color:var(--primary);"></i>
+                    Task Details
+                </h6>
+                <button type="button" class="btn-close"
+                        data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="taskDetailModalBody"></div>
+        </div>
+    </div>
+</div>

@@ -162,6 +162,7 @@ namespace ESTAFF.Models.ViewModels
         public TaskPriority? Priority { get; set; }
         public DateTime DueDate { get; set; }
         public DateTime CreatedDate { get; set; }
+        public DateTime AssignedDate { get; set; }
         public DateTime? CompletedDate { get; set; }
         public string AssignedToUserId { get; set; }
         public string AssignedToName { get; set; }

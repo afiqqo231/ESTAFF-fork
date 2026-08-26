@@ -1,0 +1,113 @@
+/* ═══════════════════════════════════════════════════════════════
+   Task detail panel
+   ───────────────────────────────────────────────────────────────
+   Shared by both calendars (Views/Admin/Calendar.cshtml and
+   Views/Employee/Calendar.cshtml) through _TaskDetailPanel.cshtml.
+   Lives in its own stylesheet rather than in admin-calendar.css or
+   employee.css because it belongs to neither page: each links this
+   file alongside its own.
+
+   The stripe and dot read --plant, which the palette classes in
+   admin-calendar.css set. The employee calendar has no plant
+   dimension and does not link that file, so both fall back to the
+   app's primary colour.
+   ═════════════════════════════════════════════════════════════ */
+
+.tdp-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: 0.9rem;
+}
+
+.tdp-stripe {
+    width: 4px;
+    align-self: stretch;
+    border-radius: 4px;
+    background: var(--plant, var(--primary));
+    flex: 0 0 auto;
+}
+
+.tdp-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--plant, var(--primary));
+    flex: 0 0 auto;
+}
+
+.tdp-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 0.35rem;
+    line-height: 1.35;
+}
+
+.tdp-badges {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.tdp-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 1.25rem;
+}
+
+.tdp-row { min-width: 0; }
+
+.tdp-row.full { grid-column: 1 / -1; }
+
+.tdp-label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 0.2rem;
+}
+
+.tdp-value {
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    word-break: break-word;
+}
+
+.tdp-value.muted {
+    color: var(--text-muted);
+    font-weight: 400;
+    font-style: italic;
+}
+
+.tdp-plant {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.tdp-note {
+    background: #F8FAF9;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 0.6rem 0.75rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+}
+
+/* An item that opens a panel is clickable wherever it sits. The
+   employee calendar's cards carry their own buttons, which keep
+   their own cursor. */
+[data-detail] { cursor: pointer; }
+
+@media (max-width: 640px) {
+    .tdp-grid { grid-template-columns: minmax(0, 1fr); }
+}

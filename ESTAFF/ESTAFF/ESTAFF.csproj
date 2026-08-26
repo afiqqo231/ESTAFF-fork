@@ -18,7 +18,7 @@
     <MvcBuildViews>false</MvcBuildViews>
     <UseIISExpress>true</UseIISExpress>
     <Use64BitIISExpress />
-    <IISExpressSSLPort>44323</IISExpressSSLPort>
+    <IISExpressSSLPort>44343</IISExpressSSLPort>
     <IISExpressAnonymousAuthentication />
     <IISExpressWindowsAuthentication />
     <IISExpressUseClassicPipelineMode />
@@ -254,6 +254,7 @@
     <Compile Include="Models\ViewModels\StaffViewModels.cs" />
     <Compile Include="Models\ViewModels\TaskViewModels.cs" />
     <Compile Include="Models\ViewModels\TaskPeriodFields.cs" />
+    <Compile Include="Models\ViewModels\TaskDetailPanelModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\EshReportSettings.cs" />
     <Compile Include="Services\ReportPdfService.cs" />
@@ -286,10 +287,12 @@
     <Content Include="Content\css\layout.css" />
     <Content Include="Content\css\Manager.css" />
     <Content Include="Content\css\shared.css" />
+    <Content Include="Content\css\task-detail.css" />
     <Content Include="favicon.ico" />
     <Content Include="Global.asax" />
     <Content Include="Content\Site.css" />
     <Content Include="Scripts\estaff-clip.js" />
+    <Content Include="Scripts\estaff-task-detail.js" />
     <Content Include="Scripts\bootstrap.bundle.js" />
     <Content Include="Scripts\bootstrap.bundle.min.js" />
     <Content Include="Scripts\bootstrap.esm.js" />
@@ -346,6 +349,8 @@
     <Content Include="Views\Shared\_StatusActionStep.cshtml" />
     <Content Include="Views\Shared\_StatusRemark.cshtml" />
     <Content Include="Views\Shared\_StatusRemarkInline.cshtml" />
+    <Content Include="Views\Shared\_TaskDetailModal.cshtml" />
+    <Content Include="Views\Shared\_TaskDetailPanel.cshtml" />
     <Content Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </Content>
@@ -405,7 +410,7 @@
       <FlavorProperties GUID="{349c5851-65df-11da-9384-00065b846f21}">
         <WebProjectProperties>
           <UseIIS>True</UseIIS>
-          <AutoAssignPort>True</AutoAssignPort>
+          <AutoAssignPort>False</AutoAssignPort>
           <DevelopmentServerPort>61128</DevelopmentServerPort>
           <DevelopmentServerVPath>/</DevelopmentServerVPath>
           <IISUrl>http://localhost:61128/</IISUrl>

@@ -1,0 +1,137 @@
+﻿@model TaskDetailPanelModel
+@{
+    var task = Model.Task;
+}
+@*
+    One task, in full, for either calendar's detail modal.
+
+    Rendered hidden into the page by Razor — one block per item on screen —
+    and copied into the modal when its item is clicked. Server-side because
+    the panel reuses the same partials the rest of the app uses for
+    classification badges, CLIP records and the action history, and because
+    the task's own text is escaped by Razor rather than by hand.
+
+    Rows the caller has no value for are dropped rather than printed empty:
+    see TaskDetailPanelModel for which of them each calendar supplies.
+*@
+<div class="tdp @Model.PaletteClass" id="@Model.PanelId">
+
+    <div class="tdp-head">
+        <span class="tdp-stripe"></span>
+        <div style="min-width:0;">
+            <h6 class="tdp-title">@task.Title</h6>
+            <div class="tdp-badges">
+                <span class="badge-pill badge-@task.StatusClass">
+                    @task.StatusLabel
+                </span>
+                @if (task.Priority.HasValue)
+                {
+                    <span class="badge-pill badge-@task.Priority.ToString().ToLower()">
+                        <span class="priority-dot @task.Priority.ToString().ToLower()"></span>
+                        @task.Priority Priority
+                    </span>
+                }
+                @Html.Partial("_ClassificationBadge",
+                    ClassificationBadgeModel.From(task))
+            </div>
+        </div>
+    </div>
+
+    <div class="tdp-grid">
+
+        @if (Model.ShowAssignedTo)
+        {
+            <div class="tdp-row">
+                <span class="tdp-label">Assigned To</span>
+                <span class="tdp-value">
+                    @task.AssignedToName
+                    <span style="color:var(--text-muted); font-weight:400;">
+                        (@task.AssignedToEmpID)
+                    </span>
+                </span>
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Model.PlantLabel))
+        {
+            <div class="tdp-row">
+                <span class="tdp-label">Plant</span>
+                <span class="tdp-value tdp-plant">
+                    <span class="tdp-dot"></span>
+                    @Model.PlantLabel
+                </span>
+                @if (Model.OtherPlantNames.Any())
+                {
+                    @* Said outright rather than left to the colour: the stripe
+                       can only stand for one of them. *@
+                    <div class="tdp-value muted" style="font-size:0.72rem;">
+                        Also at @string.Join(", ", Model.OtherPlantNames)
+                    </div>
+                }
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Model.ScheduleText))
+        {
+            <div class="tdp-row">
+                <span class="tdp-label">Schedule</span>
+                <span class="tdp-value">@Model.ScheduleText</span>
+            </div>
+        }
+
+        <div class="tdp-row">
+            <span class="tdp-label">Raised By</span>
+            <span class="tdp-value">@task.CreatedByName</span>
+        </div>
+
+        <div class="tdp-row">
+            <span class="tdp-label">Assigned Date</span>
+            <span class="tdp-value">
+                @task.AssignedDate.ToString("ddd, dd MMM yyyy")
+            </span>
+        </div>
+
+        <div class="tdp-row">
+            <span class="tdp-label">Due Date</span>
+            <span class="tdp-value">
+                @task.DueDate.ToString("ddd, dd MMM yyyy")
+                <span style="color:var(--text-muted); font-weight:400;">
+                    &middot; @task.DueText
+                </span>
+            </span>
+        </div>
+
+        @if (task.ClipItem != null)
+        {
+            <div class="tdp-row">
+                <span class="tdp-label">CLIP Item</span>
+                @Html.Partial("_ClipItemChip", task.ClipItem)
+            </div>
+        }
+
+        <div class="tdp-row full">
+            <span class="tdp-label">Concern / Issue</span>
+            @if (string.IsNullOrWhiteSpace(task.Description))
+            {
+                <span class="tdp-value muted">Nothing was recorded.</span>
+            }
+            else
+            {
+                <div class="tdp-note">@task.Description</div>
+            }
+        </div>
+
+        <div class="tdp-row full">
+            <span class="tdp-label">Action Taken</span>
+            @Html.Partial("_StatusActionFlow", task.StatusActions)
+        </div>
+
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 mt-3">
+        <a href="@Model.OpenUrl" class="btn-primary-custom">
+            <i class="fas fa-pen-to-square me-1"></i> Open task
+        </a>
+    </div>
+
+</div>

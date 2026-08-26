@@ -576,92 +576,6 @@
     margin-bottom: 0.75rem;
 }
 
-/* ── Detail panel ─────────────────────────────────────────────
-   The modal body is filled from the hidden block each item carries,
-   so the detail is rendered by Razor with the same partials the
-   rest of the admin side uses rather than assembled in JavaScript. */
-.acal-detail-head {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.6rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--border-subtle);
-    margin-bottom: 0.9rem;
-}
-
-.acal-detail-stripe {
-    width: 4px;
-    align-self: stretch;
-    border-radius: 4px;
-    background: var(--plant);
-    flex: 0 0 auto;
-}
-
-.acal-detail-title {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin: 0 0 0.35rem;
-    line-height: 1.35;
-}
-
-.acal-detail-badges {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    flex-wrap: wrap;
-}
-
-.acal-detail-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.75rem 1.25rem;
-}
-
-.acal-detail-row { min-width: 0; }
-
-.acal-detail-row.full { grid-column: 1 / -1; }
-
-.acal-detail-label {
-    font-size: 0.62rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-muted);
-    display: block;
-    margin-bottom: 0.2rem;
-}
-
-.acal-detail-value {
-    font-size: 0.82rem;
-    color: var(--text-primary);
-    font-weight: 500;
-    word-break: break-word;
-}
-
-.acal-detail-value.muted {
-    color: var(--text-muted);
-    font-weight: 400;
-    font-style: italic;
-}
-
-.acal-detail-plant {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-}
-
-.acal-detail-note {
-    background: #F8FAF9;
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-sm);
-    padding: 0.6rem 0.75rem;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    white-space: pre-wrap;
-}
-
 /* ── Narrow screens ───────────────────────────────────────────
    The week and month grids keep seven columns as long as they can
    be read, then fall back to a stack: a seven-column grid squeezed
@@ -689,6 +603,5 @@
 @media (max-width: 640px) {
     .acal-summary { grid-template-columns: repeat(2, 1fr); }
     .acal-week { grid-template-columns: minmax(0, 1fr); }
-    .acal-detail-grid { grid-template-columns: minmax(0, 1fr); }
     .acal-period { min-width: 0; }
 }
