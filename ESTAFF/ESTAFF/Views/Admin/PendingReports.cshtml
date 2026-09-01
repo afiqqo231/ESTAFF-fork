@@ -23,7 +23,8 @@
         <table class="data-table" style="width:100%">
             <thead>
                 <tr>
-                    <th style="padding-left:1.5rem">Employee</th>
+                    <th style="padding-left:1.5rem">Plant</th>
+                    <th>Filed by</th>
                     <th>Report Type</th>
                     <th>Period</th>
                     <th>Submitted</th>
@@ -38,6 +39,15 @@
                             <div style="font-weight:600;
                                         color:var(--text-primary);
                                         font-size:0.845rem;">
+                                @r.PlantLabel
+                            </div>
+                        </td>
+                        @* Provenance, not ownership: the return covers the
+                           plant, this is who filed it. *@
+                        <td>
+                            <div style="font-size:0.82rem;
+                                        color:var(--text-secondary);
+                                        font-weight:500;">
                                 @r.EmpName
                             </div>
                             <div style="font-size:0.72rem;

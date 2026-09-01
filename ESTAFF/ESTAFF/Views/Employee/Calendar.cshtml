@@ -17,6 +17,15 @@
         _         => pStart.ToString("MMM dd") + " – " +
                      pEnd.ToString("MMM dd, yyyy")
     };
+
+    // One panel per task, built by the controller. Null only if the action
+    // was reached without them, in which case the cards simply stay inert.
+    var details = ViewBag.TaskDetails
+        as Dictionary<int, TaskDetailPanelModel>;
+}
+
+@section PageStyles {
+    <link href="~/Content/css/task-detail.css" rel="stylesheet" />
 }
 
 <!-- ── DRAG GHOST ─────────────────────────── -->
@@ -140,6 +149,9 @@
                          draggable="true"
                          data-task-id="@task.TaskId"
                          data-task-title="@task.Title"
+                         data-detail="taskdetail-@task.TaskId"
+                         tabindex="0"
+                         role="button"
                          ondragstart="onDragStart(event)">
 
                         
@@ -289,6 +301,7 @@
                                draggable="true"
                                data-task-id="@task.TaskId"
                                data-task-title="@task.Title"
+                               data-detail="taskdetail-@task.TaskId"
                                ondragstart="onDragStart(event)"
                                style="text-decoration:none;
                                       display:block;">
@@ -378,6 +391,9 @@
                          draggable="true"
                          data-task-id="@task.TaskId"
                          data-task-title="@task.Title"
+                         data-detail="taskdetail-@task.TaskId"
+                         tabindex="0"
+                         role="button"
                          ondragstart="onDragStart(event)"
                          title="@task.Title">
                         @task.Title
@@ -395,6 +411,27 @@
         }
 
     </div>
+}
+
+<!-- ── DETAIL PANELS ──────────────────────── -->
+@* Hidden until a task is clicked, when the modal takes a copy. One block per
+   task in the period, which is what keeps the click instant and offline. *@
+@if (details != null)
+{
+    <div id="ecalDetails" hidden>
+        @foreach (var group in Model)
+        {
+            foreach (var task in group.Tasks)
+            {
+                if (details.ContainsKey(task.TaskId))
+                {
+                    @Html.Partial("_TaskDetailPanel", details[task.TaskId])
+                }
+            }
+        }
+    </div>
+
+    @Html.Partial("_TaskDetailModal")
 }
 
 @* Status change form + "Action Taken" modal *@
@@ -565,4 +602,5 @@ function showToast(msg, type) {
     }, 3000);
 }
 </script>
+<script src="@Url.Content("~/Scripts/estaff-task-detail.js")"></script>
 }

@@ -1,6 +1,6 @@
 @model List<ESTAFF.Models.ViewModels.ReportListItemViewModel>
 @{
-    ViewBag.Title = "My Reports";
+    ViewBag.Title = "Reports";
     Layout = "~/Views/Shared/_EmployeeLayout.cshtml";
 }
 
@@ -21,7 +21,7 @@
         <div class="report-table-header">
             <h6>
                 <i class="fas fa-file-alt"></i>
-                My Reports
+                Reports
             </h6>
             <span class="task-count-badge">
                 @Model.Count reports
@@ -35,6 +35,7 @@
             <thead>
                 <tr>
                     <th style="padding-left:1.5rem">Type</th>
+                    <th>Plant</th>
                     <th>Period</th>
                     <th>Status</th>
                     <th>Submitted</th>
@@ -53,6 +54,19 @@
                                         font-size:0.845rem;">
                                 @r.ReportType Report
                             </div>
+                            @* Whoever filed it. The return is the plant's, so
+                               this is provenance rather than ownership. *@
+                            <div style="font-size:0.72rem;
+                                        color:var(--text-muted);">
+                                filed by @r.EmpName
+                            </div>
+                        </td>
+                        <td>
+                            <span style="font-size:0.82rem;
+                                         color:var(--text-secondary);
+                                         font-weight:500;">
+                                @r.PlantLabel
+                            </span>
                         </td>
                         <td>
                             <span style="font-size:0.82rem;

@@ -8,7 +8,7 @@ using Newtonsoft.Json;
 
 namespace ESTAFF.Models.ViewModels
 {
-    public class AssignTaskViewModel
+    public class AssignTaskViewModel : ITaskPeriodFields
     {
         [Required(ErrorMessage = "Title is required")]
         [StringLength(256)]
@@ -22,10 +22,36 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Assign To")]
         public string AssignedToUserId { get; set; }
 
+        // Asked for by long-term tasks only. A daily task hides this field
+        // and takes its due date from PeriodDate, so the controllers read
+        // TaskPeriod.EffectiveDueDate rather than this property directly.
         [Required(ErrorMessage = "Due date is required")]
         [DataType(DataType.Date)]
         [Display(Name = "Due Date")]
         public DateTime DueDate { get; set; } = DateTime.Today.AddDays(7);
+
+        // ITaskPeriodFields. The two kinds of task are scheduled in
+        // different terms and the form asks for one or the other, never both:
+        // daily work happens on one named day between two hours, and is due
+        // that day; long-term work is tracked to the due date above and
+        // carries no period.
+        //
+        // No [Required] on the period: whether it is needed depends on
+        // ScheduleType, which an annotation cannot see. TaskPeriod.Validate
+        // holds that rule, and the controllers report what it returns.
+        [Display(Name = "Task Type")]
+        public TaskScheduleType ScheduleType { get; set; }
+            = TaskScheduleType.LongTerm;
+
+        [DataType(DataType.Date)]
+        [Display(Name = "Period Date")]
+        public DateTime? PeriodDate { get; set; }
+
+        [Display(Name = "Period Start")]
+        public TimeSpan? PeriodStart { get; set; }
+
+        [Display(Name = "Period End")]
+        public TimeSpan? PeriodEnd { get; set; }
 
         [Display(Name = "Priority")]
         public TaskPriority? Priority { get; set; }
@@ -51,7 +77,7 @@ namespace ESTAFF.Models.ViewModels
             = new List<EmployeeSelectItem>();
     }
 
-    public class EditTaskViewModel
+    public class EditTaskViewModel : ITaskPeriodFields
     {
         public int TaskId { get; set; }
 
@@ -67,10 +93,36 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Assign To")]
         public string AssignedToUserId { get; set; }
 
+        // Asked for by long-term tasks only. A daily task hides this field
+        // and takes its due date from PeriodDate, so the controllers read
+        // TaskPeriod.EffectiveDueDate rather than this property directly.
         [Required(ErrorMessage = "Due date is required")]
         [DataType(DataType.Date)]
         [Display(Name = "Due Date")]
         public DateTime DueDate { get; set; }
+
+        // ITaskPeriodFields. The two kinds of task are scheduled in
+        // different terms and the form asks for one or the other, never both:
+        // daily work happens on one named day between two hours, and is due
+        // that day; long-term work is tracked to the due date above and
+        // carries no period.
+        //
+        // No [Required] on the period: whether it is needed depends on
+        // ScheduleType, which an annotation cannot see. TaskPeriod.Validate
+        // holds that rule, and the controllers report what it returns.
+        [Display(Name = "Task Type")]
+        public TaskScheduleType ScheduleType { get; set; }
+            = TaskScheduleType.LongTerm;
+
+        [DataType(DataType.Date)]
+        [Display(Name = "Period Date")]
+        public DateTime? PeriodDate { get; set; }
+
+        [Display(Name = "Period Start")]
+        public TimeSpan? PeriodStart { get; set; }
+
+        [Display(Name = "Period End")]
+        public TimeSpan? PeriodEnd { get; set; }
 
         [Display(Name = "Priority")]
         public TaskPriority? Priority { get; set; }
@@ -110,6 +162,7 @@ namespace ESTAFF.Models.ViewModels
         public TaskPriority? Priority { get; set; }
         public DateTime DueDate { get; set; }
         public DateTime CreatedDate { get; set; }
+        public DateTime AssignedDate { get; set; }
         public DateTime? CompletedDate { get; set; }
         public string AssignedToUserId { get; set; }
         public string AssignedToName { get; set; }
@@ -225,8 +278,14 @@ namespace ESTAFF.Models.ViewModels
 
     // Employee Side. Carries the same classification/task-type/CLIP trio as the
     // admin forms so both routes can render _ClassificationField.
-    public class CreateTaskViewModel
+    public class CreateTaskViewModel : ITaskPeriodFields
     {
+        // Optional: blank assigns the task to whoever is creating it. Only
+        // employees sharing a plant with the creator may be chosen, which the
+        // controller re-checks on post.
+        [Display(Name = "Assign To")]
+        public string AssignedToUserId { get; set; }
+
         [Required(ErrorMessage = "Title is required")]
         [StringLength(256)]
         [Display(Name = "Task Title")]
@@ -235,10 +294,36 @@ namespace ESTAFF.Models.ViewModels
         [Display(Name = "Concern/Issue")]
         public string Description { get; set; }
 
+        // Asked for by long-term tasks only. A daily task hides this field
+        // and takes its due date from PeriodDate, so the controllers read
+        // TaskPeriod.EffectiveDueDate rather than this property directly.
         [Required(ErrorMessage = "Due date is required")]
         [DataType(DataType.Date)]
         [Display(Name = "Due Date")]
         public DateTime DueDate { get; set; } = DateTime.Today.AddDays(1);
+
+        // ITaskPeriodFields. The two kinds of task are scheduled in
+        // different terms and the form asks for one or the other, never both:
+        // daily work happens on one named day between two hours, and is due
+        // that day; long-term work is tracked to the due date above and
+        // carries no period.
+        //
+        // No [Required] on the period: whether it is needed depends on
+        // ScheduleType, which an annotation cannot see. TaskPeriod.Validate
+        // holds that rule, and the controllers report what it returns.
+        [Display(Name = "Task Type")]
+        public TaskScheduleType ScheduleType { get; set; }
+            = TaskScheduleType.LongTerm;
+
+        [DataType(DataType.Date)]
+        [Display(Name = "Period Date")]
+        public DateTime? PeriodDate { get; set; }
+
+        [Display(Name = "Period Start")]
+        public TimeSpan? PeriodStart { get; set; }
+
+        [Display(Name = "Period End")]
+        public TimeSpan? PeriodEnd { get; set; }
 
         [Required(ErrorMessage = "Please select a task classification")]
         [Display(Name = "Task Classification")]
@@ -256,6 +341,10 @@ namespace ESTAFF.Models.ViewModels
         public TaskPriority? Priority { get; set; }
 
         public TaskFormOptions Options { get; set; } = new TaskFormOptions();
+        
+        // Dropdown List
+        public List<EmployeeSelectItem> Employees { get; set; }
+            = new List<EmployeeSelectItem>();
     }
 
     public class UpdateTaskStatusViewModel

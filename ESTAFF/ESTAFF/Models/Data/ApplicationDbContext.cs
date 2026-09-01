@@ -137,6 +137,15 @@ namespace ESTAFF.Models.Data
                 .HasForeignKey(r => r.UserId)
                 .WillCascadeOnDelete(false);
 
+            // Optional, and with no database foreign key behind it - see
+            // Report.PlantId. Mapped only so a report can read its plant's
+            // name; ESTAFF never writes to CLIP.Plants.
+            modelBuilder.Entity<Report>()
+                .HasOptional(r => r.Plant)
+                .WithMany()
+                .HasForeignKey(r => r.PlantId)
+                .WillCascadeOnDelete(false);
+
             modelBuilder.Entity<TaskList>()
                 .HasRequired(t => t.TaskClassification)
                 .WithMany(tc => tc.TaskLists)

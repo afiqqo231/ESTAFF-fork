@@ -18,7 +18,7 @@
     <MvcBuildViews>false</MvcBuildViews>
     <UseIISExpress>true</UseIISExpress>
     <Use64BitIISExpress />
-    <IISExpressSSLPort>44323</IISExpressSSLPort>
+    <IISExpressSSLPort>44343</IISExpressSSLPort>
     <IISExpressAnonymousAuthentication />
     <IISExpressWindowsAuthentication />
     <IISExpressUseClassicPipelineMode />
@@ -247,11 +247,14 @@
     <Compile Include="Models\Data\TaskList.cs" />
     <Compile Include="Models\Data\UserPlant.cs" />
     <Compile Include="Models\ViewModels\AccountViewModels.cs" />
+    <Compile Include="Models\ViewModels\CalendarViewModels.cs" />
     <Compile Include="Models\ViewModels\ClipViewModels.cs" />
     <Compile Include="Models\ViewModels\ReportViewModels.cs" />
     <Compile Include="Models\ViewModels\ClassificationViewModels.cs" />
     <Compile Include="Models\ViewModels\StaffViewModels.cs" />
     <Compile Include="Models\ViewModels\TaskViewModels.cs" />
+    <Compile Include="Models\ViewModels\TaskPeriodFields.cs" />
+    <Compile Include="Models\ViewModels\TaskDetailPanelModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\EshReportSettings.cs" />
     <Compile Include="Services\ReportPdfService.cs" />
@@ -277,19 +280,19 @@
     <Content Include="Content\bootstrap.rtl.css" />
     <Content Include="Content\bootstrap.rtl.min.css" />
     <Content Include="Content\css\admin.css" />
+    <Content Include="Content\css\admin-calendar.css" />
     <Content Include="Content\css\auth.css" />
     <Content Include="Content\css\clip-picker.css" />
-    <None Include="DATABASE\Add_Classification_ReportSection.sql" />
-    <None Include="DATABASE\Add_Task_ClipItemKind.sql" />
-    <None Include="DATABASE\Add_Task_Status_Remark.sql" />
     <Content Include="Content\css\employee.css" />
     <Content Include="Content\css\layout.css" />
     <Content Include="Content\css\Manager.css" />
     <Content Include="Content\css\shared.css" />
+    <Content Include="Content\css\task-detail.css" />
     <Content Include="favicon.ico" />
     <Content Include="Global.asax" />
     <Content Include="Content\Site.css" />
     <Content Include="Scripts\estaff-clip.js" />
+    <Content Include="Scripts\estaff-task-detail.js" />
     <Content Include="Scripts\bootstrap.bundle.js" />
     <Content Include="Scripts\bootstrap.bundle.min.js" />
     <Content Include="Scripts\bootstrap.esm.js" />
@@ -340,11 +343,14 @@
     <Content Include="Views\Shared\_ClipProgress.cshtml" />
     <Content Include="Views\Shared\_ReportSectionField.cshtml" />
     <Content Include="Views\Shared\_ReportTaskTable.cshtml" />
+    <Content Include="Views\Shared\_ScheduleFields.cshtml" />
     <Content Include="Views\Shared\_StatusActionFlow.cshtml" />
     <Content Include="Views\Shared\_StatusActionModal.cshtml" />
     <Content Include="Views\Shared\_StatusActionStep.cshtml" />
     <Content Include="Views\Shared\_StatusRemark.cshtml" />
     <Content Include="Views\Shared\_StatusRemarkInline.cshtml" />
+    <Content Include="Views\Shared\_TaskDetailModal.cshtml" />
+    <Content Include="Views\Shared\_TaskDetailPanel.cshtml" />
     <Content Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </Content>
@@ -361,6 +367,7 @@
     <Content Include="Views\Admin\Employees.cshtml" />
     <Content Include="Views\Admin\Tasks.cshtml" />
     <Content Include="Views\Admin\AssignTask.cshtml" />
+    <Content Include="Views\Admin\Calendar.cshtml" />
     <Content Include="Views\Admin\TaskHistory.cshtml" />
     <Content Include="Views\Admin\PendingReports.cshtml" />
     <Content Include="Views\Admin\ApprovedReports.cshtml" />
@@ -381,7 +388,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\profiles\" />
-    <Folder Include="Controllers\Api\" />
+    <Folder Include="DATABASE\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -403,10 +410,10 @@
       <FlavorProperties GUID="{349c5851-65df-11da-9384-00065b846f21}">
         <WebProjectProperties>
           <UseIIS>True</UseIIS>
-          <AutoAssignPort>True</AutoAssignPort>
+          <AutoAssignPort>False</AutoAssignPort>
           <DevelopmentServerPort>61128</DevelopmentServerPort>
           <DevelopmentServerVPath>/</DevelopmentServerVPath>
-          <IISUrl>https://localhost:44323/</IISUrl>
+          <IISUrl>http://localhost:61128/</IISUrl>
           <NTLMAuthentication>False</NTLMAuthentication>
           <UseCustomServer>False</UseCustomServer>
           <CustomServerUrl>

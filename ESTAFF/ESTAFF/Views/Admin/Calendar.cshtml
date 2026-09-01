@@ -1,0 +1,497 @@
+﻿@using ESTAFF.Models.Data
+@using ESTAFF.Models.ViewModels
+@model AdminCalendarViewModel
+@{
+    ViewBag.Title = "Calendar";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+
+    // The two switchers' options, declared here rather than as an array
+    // initialiser inside a @foreach's parentheses: legal C# either way, but
+    // a brace inside a loop header is an odd shape to hand the Razor parser.
+    var frames = new[]
+    {
+        new { Key = AdminCalendarViewModel.Daily,   Label = "Day" },
+        new { Key = AdminCalendarViewModel.Weekly,  Label = "Week" },
+        new { Key = AdminCalendarViewModel.Monthly, Label = "Month" }
+    };
+
+    var statuses = new[]
+    {
+        ESTAFF.Models.Data.TaskStatus.Pending,
+        ESTAFF.Models.Data.TaskStatus.InProgress,
+        ESTAFF.Models.Data.TaskStatus.Complete,
+        ESTAFF.Models.Data.TaskStatus.Overdue
+    };
+}
+
+@section PageStyles {
+    <link href="~/Content/css/task-detail.css" rel="stylesheet" />
+    <link href="~/Content/css/admin-calendar.css" rel="stylesheet" />
+}
+
+@*
+    The manager's calendar: every employee's tasks on the day each is due.
+
+    Three frames of the same data — day, week, month — chosen in the toolbar
+    and carried in the query string, so any view is a link somebody can send.
+    The filters (plant, employee, status) ride along with every navigation
+    control, because a manager who filtered to one plant and then paged to next
+    week means to still be looking at that plant.
+
+    Items are deliberately terse on the grid: a plant stripe, a status badge, a
+    title, and who it is on. Everything else — the concern, the classification,
+    the CLIP record, the action history — is one click away in the detail
+    panel, which is rendered here by Razor (hidden, one block per item) and
+    lifted into the modal on click. Rendering it server-side means the panel
+    can reuse the same partials the rest of the admin side uses instead of
+    rebuilding them in JavaScript, where the task's own text would have to be
+    escaped by hand.
+*@
+
+@helper ItemChip(CalendarTaskViewModel item, bool detailed)
+{
+    var task = item.Task;
+    var stateClass = task.Status == ESTAFF.Models.Data.TaskStatus.Complete
+        ? "is-complete"
+        : task.Status == ESTAFF.Models.Data.TaskStatus.Overdue
+            ? "is-overdue"
+            : "";
+
+    <button type="button"
+            class="acal-item @item.PlantClass @stateClass"
+            data-detail="taskdetail-@task.TaskId"
+            title="@task.Title — @item.PlantLabel · @task.AssignedToName">
+        <span class="acal-item-top">
+            <span class="acal-item-dot"></span>
+            <span class="acal-item-title">@task.Title</span>
+        </span>
+        <span class="acal-item-meta">
+            <span class="badge-pill badge-@task.StatusClass">
+                @task.StatusLabel
+            </span>
+            @if (detailed)
+            {
+                <span class="acal-item-who">
+                    <i class="fas fa-user" style="font-size:0.58rem;"></i>
+                    @task.AssignedToName
+                </span>
+                <span class="acal-item-where">
+                    <i class="fas fa-industry" style="font-size:0.58rem;"></i>
+                    @item.PlantLabel
+                </span>
+            }
+            @if (!string.IsNullOrEmpty(item.PeriodText))
+            {
+                <span class="acal-item-time">
+                    <i class="fas fa-clock" style="font-size:0.58rem;"></i>
+                    @item.PeriodText
+                </span>
+            }
+        </span>
+        @if (!detailed)
+        {
+            @* The assignee gets its own line in the narrow frames: beside the
+               status badge there is room for one or the other, and a week
+               column that does not say who is doing the work is half a
+               calendar. Density per frame is admin-calendar.css's call. *@
+            <span class="acal-item-meta">
+                <span class="acal-item-who">@task.AssignedToName</span>
+            </span>
+        }
+    </button>
+}
+@helper EmployeeRow(CalendarDayEmployeeViewModel emp)
+{
+    <button type="button" 
+            class="acal-emp @emp.PlantClass @(emp.HasOverdue ? "is-overdue" : "")"
+            data-detail="@emp.PanelId"
+            title="@emp.Name (@emp.EmpID) - @emp.Count task@(emp.Count == 1 ? "" : "s")@(emp.HasOverdue ? ", " + emp.OverdueCount + " overdue" : "")">
+        <span class="acal-emp-dot"></span>
+        <span class="acal-emp-name">@emp.Name</span>
+        @if (emp.HasOverdue)
+        {
+            <span class="acal-emp-late" title="Overdue">
+                <i class="fas fa-triangle-exclamation"></i>
+                @emp.OverdueCount
+            </span>
+        }
+        <span class="acal-emp-count">@emp.Count</span>
+    </button>
+}
+
+@helper RosterPanel(CalendarDayViewModel day, CalendarDayEmployeeViewModel emp)
+    {
+        <div class="acal-roster @emp.PlantClass"
+             id="@emp.PanelId">
+            <div class="acal-roster-head">
+                <span class="acal-roster-stripe"></span>
+                <div style="min-width:0;">
+                    <h6 class="acal-roster-name">@emp.Name</h6>
+                    <div class="acal-roster-sub">
+                        @emp.EmpID - @day.Date.ToString("ddd, dd MM yyyy")
+                        : @emp.Count task@(emp.Count == 1 ? "" : "s")
+                        @if (emp.HasOverdue)
+                        {
+                            <span class="acal-roster-late">@emp.OverdueCount overdue
+                            </span>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="acal-roster-list">
+                @foreach (var item in emp.Items)
+                {
+                    @ItemChip(item, true)
+                }
+            </div>
+        </div>
+    }
+
+<!-- ═══════════ TOOLBAR ═══════════ -->
+<div class="acal-toolbar">
+
+    <div class="acal-nav">
+        <a class="acal-nav-btn"
+           title="Previous"
+           href="@Url.Action("Calendar", "Admin",
+                Model.RouteFor(Model.View, Model.PrevDate))">
+            <i class="fas fa-chevron-left"></i>
+        </a>
+
+        <span class="acal-period">@Model.PeriodLabel</span>
+
+        <a class="acal-nav-btn"
+           title="Next"
+           href="@Url.Action("Calendar", "Admin",
+                Model.RouteFor(Model.View, Model.NextDate))">
+            <i class="fas fa-chevron-right"></i>
+        </a>
+
+        <a class="acal-today-btn @(Model.IsCurrentPeriod ? "is-current" : "")"
+           href="@Url.Action("Calendar", "Admin",
+                Model.RouteFor(Model.View, DateTime.Today))">
+            Today
+        </a>
+    </div>
+
+    @* Day / Week / Month keep the date they are switched on, so the manager
+       stays where they were looking instead of being sent back to today. *@
+    <div class="acal-views">
+        @foreach (var frame in frames)
+        {
+            <a class="acal-view-btn @(Model.View == frame.Key ? "active" : "")"
+               href="@Url.Action("Calendar", "Admin",
+                    Model.RouteFor(frame.Key, Model.TargetDate))">
+                @frame.Label
+            </a>
+        }
+    </div>
+
+    <div class="acal-toolbar-end">
+        <div class="filter-group">
+            <span class="filter-label">Plant</span>
+            <select class="filter-select" id="plantFilter">
+                <option value="">All plants</option>
+                @foreach (var plant in Model.Plants)
+                {
+                    <option value="@plant.Id"
+                            selected="@(Model.PlantId == plant.Id)">
+                        @plant.PlantName
+                    </option>
+                }
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <span class="filter-label">Employee</span>
+            <select class="filter-select" id="employeeFilter">
+                <option value="">All employees</option>
+                @foreach (var emp in Model.Employees)
+                {
+                    <option value="@emp.UserId"
+                            selected="@(Model.EmployeeId == emp.UserId)">
+                        @emp.Display
+                    </option>
+                }
+            </select>
+        </div>
+
+        <a href="@Url.Action("AssignTask", "Admin")"
+           class="btn-primary-custom">
+            <i class="fas fa-plus"></i> Assign Task
+        </a>
+    </div>
+
+</div>
+
+<!-- ═══════════ SUMMARY ═══════════ -->
+@* Each tile is also the status filter — the number a manager wants to act on
+   is the one they want to see on its own. *@
+<div class="acal-summary">
+    <a class="acal-stat @(string.IsNullOrEmpty(Model.Status) ? "active-filter" : "")"
+       href="@Url.Action("Calendar", "Admin", Model.RouteWithStatus(null))">
+        <div class="acal-stat-value">@Model.TotalCount</div>
+        <div class="acal-stat-label">In this @(Model.View == AdminCalendarViewModel.Daily ? "day" : Model.View == AdminCalendarViewModel.Monthly ? "month" : "week")</div>
+    </a>
+
+    @foreach (var status in statuses)
+    {
+        <a class="acal-stat @(status == ESTAFF.Models.Data.TaskStatus.Overdue ? "overdue" : "") @(Model.Status == status.ToString() ? "active-filter" : "")"
+           href="@Url.Action("Calendar", "Admin",
+                Model.RouteWithStatus(status.ToString()))">
+            <div class="acal-stat-value">@Model.CountOf(status)</div>
+            <div class="acal-stat-label">@TaskDisplay.StatusLabel(status)</div>
+        </a>
+    }
+</div>
+
+<!-- ═══════════ LEGEND ═══════════ -->
+@if (Model.Legend.Any())
+{
+    <div class="acal-legend">
+        <span class="acal-legend-label">Plants</span>
+
+        @foreach (var plant in Model.Legend)
+        {
+            // Clicking a plant filters to it, and clicking it again clears
+            // the filter - the legend is the fastest way to ask "just this
+            // plant" when the colours have already caught the eye.
+            var isActive = Model.PlantId == plant.PlantId
+                && plant.PlantId.HasValue;
+
+            <a class="acal-legend-chip @plant.PlantClass @(isActive ? "active-filter" : "")"
+               href="@Url.Action("Calendar", "Admin",
+                    Model.RouteWithPlant(isActive ? null : plant.PlantId))">
+                <span class="acal-legend-dot"></span>
+                @plant.Name
+                <span class="acal-legend-count">@plant.Count</span>
+            </a>
+        }
+
+        @if (Model.HasFilters)
+        {
+            <a class="acal-legend-clear"
+               href="@Url.Action("Calendar", "Admin",
+                    new { view = Model.View,
+                          date = Model.TargetDate.ToString("yyyy-MM-dd") })">
+                <i class="fas fa-times"></i> Clear filters
+            </a>
+        }
+    </div>
+}
+
+<!-- ═══════════ DAY ═══════════ -->
+@if (Model.View == AdminCalendarViewModel.Daily)
+{
+    var day = Model.Days.FirstOrDefault()
+        ?? new CalendarDayViewModel { Date = Model.TargetDate };
+
+    <div class="acal-day-card">
+        <div class="acal-day-head">
+            <div>
+                <div class="acal-day-title">
+                    @day.Date.ToString("dddd")
+                    @if (day.IsToday)
+                    {
+                        <span class="acal-today-btn is-current ms-2"
+                              style="font-size:0.62rem;">Today</span>
+                    }
+                </div>
+                <div class="acal-day-sub">
+                    @day.Date.ToString("dd MMMM yyyy")
+                    · @day.Items.Count task@(day.Items.Count == 1 ? "" : "s")
+                </div>
+            </div>
+        </div>
+
+        @if (day.Items.Any())
+        {
+            <div class="acal-day-body">
+                @foreach (var item in day.Items)
+                {
+                    @ItemChip(item, true)
+                }
+            </div>
+        }
+        else
+        {
+            <div class="acal-blank" style="border:none; box-shadow:none;">
+                <i class="fas fa-calendar-check"></i>
+                Nothing is due on this day.
+            </div>
+        }
+    </div>
+}
+
+<!-- ═══════════ WEEK ═══════════ -->
+@if (Model.View == AdminCalendarViewModel.Weekly)
+{
+    <div class="acal-week">
+        @foreach (var day in Model.Days)
+        {
+            <div class="acal-col @(day.IsToday ? "is-today" : "") @(day.IsWeekend ? "is-weekend" : "")">
+                <div class="acal-col-head">
+                    <div class="acal-col-day">@day.Date.ToString("ddd")</div>
+                    <div class="acal-col-num">@day.Date.Day</div>
+                    @if (day.Items.Any())
+                    {
+                        <div class="acal-col-count">
+                            @day.Items.Count task@(day.Items.Count == 1 ? "" : "s")
+                        </div>
+                    }
+                </div>
+
+                <div class="acal-col-body">
+                    @if (day.Employees.Any())
+                    {
+                        foreach (var emp in day.Employees)
+                        {
+                            @EmployeeRow(emp)
+                        }
+                    }
+                    else
+                    {
+                        <div class="acal-empty">—</div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<!-- ═══════════ MONTH ═══════════ -->
+@if (Model.View == AdminCalendarViewModel.Monthly)
+{
+    // A full six-week grid so the month always has the same shape, with the
+    // days either side of it dimmed rather than left as holes.
+    var first = new DateTime(
+        Model.TargetDate.Year, Model.TargetDate.Month, 1);
+
+    // Monday-first, matching the column headers below: Sunday is 0 in
+    // DayOfWeek, so it has to wrap to the end of the week rather than
+    // start one.
+    var lead = ((int)first.DayOfWeek + 6) % 7;
+    var gridStart = first.AddDays(-lead);
+    var byDate = Model.Days.ToDictionary(d => d.Date.Date, d => d);
+
+    <div class="acal-month">
+        @foreach (var name in new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" })
+        {
+            <div class="acal-month-head">@name</div>
+        }
+
+        @for (var d = gridStart; d < gridStart.AddDays(42); d = d.AddDays(1))
+            {
+                var day = byDate.ContainsKey(d.Date) ? byDate[d.Date] : null;
+                var items = day == null
+                    ? new List<CalendarTaskViewModel>()
+                    : day.Items;
+
+            // is-empty is what lets a narrow screen drop the days with
+            // nothing on them: a month stacked into one column is a list of
+            // the days that have work, not thirty-one headings.
+            <div class="acal-cell @(d.Month == Model.TargetDate.Month ? "" : "other-month") @(d.Date == DateTime.Today ? "is-today" : "") @(items.Any() ? "" : "is-empty")">
+                <div class="acal-cell-num">
+                    @* The bare number reads as a date inside the grid, where
+                       the column header names the weekday. Once the grid
+                       stacks there is no header to read it against, so the
+                       long form takes over. *@
+                    <span class="acal-cell-day">@d.Day</span>
+                    <span class="acal-cell-date">@d.ToString("ddd, dd MMM")</span>
+                    @if (items.Any())
+                    {
+                        <span class="acal-cell-count">@items.Count</span>
+                    }
+                </div>
+
+                @if (day != null)
+                {
+                    foreach (var emp in day.Employees)
+                        {
+                            @EmployeeRow(emp)
+                        }
+                }
+            </div>
+        }
+    </div>
+}
+
+@if (!Model.Items.Any())
+{
+    <div class="acal-blank mt-3">
+        <i class="fas fa-calendar-xmark"></i>
+        <p class="mb-1 fw-semibold">Nothing is scheduled in this period.</p>
+        <p class="mb-0" style="font-size:0.8rem;">
+            @(Model.HasFilters
+                ? "Try clearing the filters, or move to another period."
+                : "Assign a task to see it here.")
+        </p>
+    </div>
+}
+
+<!-- ═══════════ DETAIL PANELS ═══════════ -->
+@* Hidden until an item is clicked, when the modal takes a copy. One block per
+   item on screen, which is what keeps the click instant and offline. *@
+@{ 
+    // Set only week and month view can drill down through rooster, so they view would have back button
+    var drilled = Model.View != AdminCalendarViewModel.Daily;
+}
+
+<div id="acalDetails" hidden>
+    @foreach (var item in Model.Items)
+    {
+        @Html.Partial("_TaskDetailPanel",
+            TaskDetailPanelModel.ForCalendarItem(item,
+                Url.Action("EditTask", "Admin", new { id = item.Task.TaskId }),
+                drilled))
+    }
+
+    @if (drilled)
+    {
+        foreach (var day in Model.Days)
+        {
+            foreach (var emp in day.Employees)
+            {
+                @RosterPanel(day, emp)
+            }
+        }
+    }
+</div>
+
+@Html.Partial("_TaskDetailModal")
+
+
+@section PageScripts {
+<script>
+// ── Filters ───────────────────────────────────────────────
+// Both selects rebuild the current URL rather than posting a form, so the
+// frame and the date the manager is looking at survive the change.
+function applyCalendarFilter() {
+    var params = new URLSearchParams(window.location.search);
+
+    params.set('view', '@Model.View');
+    params.set('date', '@Model.TargetDate.ToString("yyyy-MM-dd")');
+
+    setOrDrop(params, 'plantId',
+        document.getElementById('plantFilter').value);
+    setOrDrop(params, 'employeeId',
+        document.getElementById('employeeFilter').value);
+
+    window.location.search = params.toString();
+}
+
+function setOrDrop(params, key, value) {
+    if (value) { params.set(key, value); }
+    else { params.delete(key); }
+}
+
+document.getElementById('plantFilter')
+    .addEventListener('change', applyCalendarFilter);
+document.getElementById('employeeFilter')
+    .addEventListener('change', applyCalendarFilter);
+
+
+</script>
+<script src="@Url.Content("~/Scripts/estaff-task-detail.js")"></script>
+}

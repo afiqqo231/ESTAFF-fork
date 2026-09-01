@@ -64,8 +64,6 @@ namespace ESTAFF.Services
         // How many blank rows a statutory grid with no ESTAFF source behind it
         // prints. Enough to write a month's worth in by hand without running
         // the section onto its own page.
-        private const int BlankFormRows = 5;
-
         public byte[] GeneratePdf(ReportDetailViewModel vm)
         {
             var tasks    = ResolveTasks(vm);
@@ -91,7 +89,22 @@ namespace ESTAFF.Services
                 AddLetterhead(doc, vm, settings);
                 AddIdentityBlock(doc, vm, settings);
 
-                foreach (var section in EshSections.InFormOrder())
+                // Only the parts ESTAFF holds the data for.
+                //
+                // Sections 3 (incident statistics) and 6 (purchase requests)
+                // have no source in this system - there is no incident or
+                // purchase-order record - and used to print as blank statutory
+                // grids for completion by hand. They are now left out
+                // altogether.
+                //
+                // The numbering of the rest is untouched: what prints runs
+                // 1, 2, 4, 5, 7, 8, 9, 10, so the two gaps are visible to a
+                // reader and the parts that are present still carry the
+                // numbers the regulation gives them. Anyone filing the return
+                // has to supply 3 and 6 from the incident register and the
+                // purchasing record separately.
+                foreach (var section in EshSections.InFormOrder()
+                             .Where(s => s.IsTaskBacked))
                     AddSection(doc, section, tasks);
 
                 AddApprovalTrail(doc, vm);
@@ -206,7 +219,12 @@ namespace ESTAFF.Services
             AddLine(cell, "Month", vm.PeriodStart.ToString("MMM-yy"), true);
             AddLine(cell, "Report Date",
                 DateText(vm.SubmittedDate ?? vm.CreatedDate));
-            AddLine(cell, "Plant", Blank(settings.Plant, null));
+            // The plant the return covers, falling back to the Esh:Plant
+            // setting for a legacy personal report that has none.
+            AddLine(cell, "Plant",
+                Blank(!string.IsNullOrWhiteSpace(vm.PlantName)
+                    ? vm.PlantName
+                    : settings.Plant, null));
             AddLine(cell, "JKKP No", Blank(settings.Jkkp, null));
 
             return cell;
@@ -291,13 +309,9 @@ namespace ESTAFF.Services
                     AddNoteTable(doc, info, TasksIn(tasks, info.Section));
                     break;
 
-                case EshSectionShape.Statistics:
-                    AddStatisticsSection(doc, info);
-                    break;
-
-                case EshSectionShape.PurchaseRequest:
-                    AddPurchaseRequestTable(doc, info);
-                    break;
+                // Statistics and PurchaseRequest are filtered out in
+                // GeneratePdf - ESTAFF holds no incident or purchase-order
+                // record - so they never reach here.
             }
         }
 
@@ -497,166 +511,6 @@ namespace ESTAFF.Services
                 table.AddCell(TrailingCell(task, "Remarks", bg));
             }
 
-            doc.Add(table);
-        }
-
-        // ── 3 ──────────────────────────────────────────────────
-        // The incident case matrix. ESTAFF has no incident record, so this
-        // prints as the statutory grid with the counts zeroed and the
-        // occurrence log left ruled and blank.
-        private static void AddStatisticsSection(Document doc,
-            EshSectionInfo info)
-        {
-            // Summary counts
-            var summary = NewTable(new[] { 3.2f, 1.6f, 1.6f });
-            summary.SpacingAfter = 8f;
-
-            var header = AddSectionHeader(summary, info, 3,
-                "ESTAFF does not record incident cases. This section prints "
-                + "the statutory grid for completion from the incident "
-                + "register.");
-
-            AddTh(summary, "Case Categories");
-            AddTh(summary, "Total of Current Month", Element.ALIGN_CENTER);
-            AddTh(summary, "Total of Year", Element.ALIGN_CENTER);
-
-            summary.HeaderRows = header + 1;
-
-            AddCountRow(summary, "Total of First Aid Injuries Cases", White);
-            AddCountRow(summary, "Total of Lost Workday Cases", Panel);
-            AddCountRow(summary, "Number of Lost Workdays", White);
-
-            doc.Add(summary);
-
-            // Occurrence log
-            var log = NewTable(new[] { 0.42f, 1.3f, 3.2f, 2.1f });
-            log.SpacingAfter = 8f;
-            log.HeaderRows = 1;
-
-            AddTh(log, "No", Element.ALIGN_CENTER);
-            AddTh(log, "Date Occurrence", Element.ALIGN_CENTER);
-            AddTh(log, "Accident / Near Miss / Dangerous Occurrence / "
-                     + "Occupational Poisoning / Occupational Disease "
-                     + "Description");
-            AddTh(log, "Action Taken");
-
-            AddBlankRows(log, 4, 3);
-            doc.Add(log);
-
-            // Cumulative matrix
-            var matrix = NewTable(new[] { 0.42f, 2.4f, 1.4f, 1.4f, 1.4f });
-            matrix.SpacingAfter = 4f;
-            matrix.HeaderRows = 1;
-
-            AddTh(matrix, "No", Element.ALIGN_CENTER);
-            AddTh(matrix, "Items");
-            AddTh(matrix, "Previous Cumulative", Element.ALIGN_CENTER);
-            AddTh(matrix, "Current Month", Element.ALIGN_CENTER);
-            AddTh(matrix, "Current Cumulative", Element.ALIGN_CENTER);
-
-            AddMatrixGroup(matrix, "Lost Time Injury", new[]
-            {
-                "Fatality",
-                "Permanent Total Disability",
-                "Permanent Partial Disability",
-                "Lost Work Day Case"
-            });
-
-            AddMatrixGroup(matrix, "Non-Lost Time Injury", new[]
-            {
-                "Restricted Work Case (RWC)",
-                "Medical Treatment Case",
-                "First Aid Treatment Case",
-                "Medical Evacuation"
-            });
-
-            AddMatrixGroup(matrix, "Non-Injurious Case", new[]
-            {
-                "Near Misses",
-                "Fire Incident",
-                "Property Damage",
-                "Chemical Spillage"
-            });
-
-            // Total
-            var total = new PdfPCell(new Phrase("Total Incident Cases",
-                Font(8f, Ink, true)))
-            {
-                Colspan             = 2,
-                BackgroundColor     = PanelDeep,
-                Border              = Rectangle.BOX,
-                BorderWidth         = 0.7f,
-                BorderColor         = Rule,
-                Padding             = 6f
-            };
-            matrix.AddCell(total);
-
-            for (var i = 0; i < 3; i++)
-                AddTd(matrix, "0", PanelDeep, Ink, true,
-                    Element.ALIGN_CENTER);
-
-            doc.Add(matrix);
-        }
-
-        private static void AddMatrixGroup(PdfPTable table, string title,
-            string[] items)
-        {
-            var header = new PdfPCell(new Phrase(title, Font(8f, Ink, true)))
-            {
-                Colspan         = 5,
-                BackgroundColor = PanelDeep,
-                Border          = Rectangle.BOX,
-                BorderWidth     = 0.7f,
-                BorderColor     = Rule,
-                Padding         = 5f
-            };
-            table.AddCell(header);
-
-            var index = 0;
-            foreach (var item in items)
-            {
-                index++;
-                AddTd(table, index.ToString(), White, Muted,
-                    align: Element.ALIGN_CENTER);
-                AddTd(table, item, White, InkSoft);
-
-                for (var i = 0; i < 3; i++)
-                    AddTd(table, "0", White, Muted, false,
-                        Element.ALIGN_CENTER);
-            }
-        }
-
-        private static void AddCountRow(PdfPTable table, string label,
-            BaseColor bg)
-        {
-            AddTd(table, label, bg, InkSoft);
-            AddTd(table, "0", bg, Ink, true, Element.ALIGN_CENTER);
-            AddTd(table, "0", bg, Ink, true, Element.ALIGN_CENTER);
-        }
-
-        // ── 6 ──────────────────────────────────────────────────
-        // Purchase requests. ESTAFF holds no purchase order data, so the grid
-        // prints ruled and blank.
-        private static void AddPurchaseRequestTable(Document doc,
-            EshSectionInfo info)
-        {
-            var table = NewTable(new[] { 0.42f, 1.2f, 1.3f, 3.4f, 1.4f });
-            table.SpacingAfter = 4f;
-
-            var header = AddSectionHeader(table, info, 5,
-                "ESTAFF does not record purchase requests. This section "
-                + "prints the statutory grid for completion from the "
-                + "purchasing record.");
-
-            AddTh(table, "No", Element.ALIGN_CENTER);
-            AddTh(table, "Date", Element.ALIGN_CENTER);
-            AddTh(table, "PR No");
-            AddTh(table, "Description");
-            AddTh(table, "Status", Element.ALIGN_CENTER);
-
-            table.HeaderRows = header + 1;
-
-            AddBlankRows(table, 5, BlankFormRows);
             doc.Add(table);
         }
 
@@ -1120,30 +974,6 @@ namespace ESTAFF.Services
                 Padding             = 12f,
                 HorizontalAlignment = Element.ALIGN_CENTER
             });
-        }
-
-        // Ruled empty rows, numbered, for a grid that is completed by hand.
-        private static void AddBlankRows(PdfPTable table, int columns,
-            int rows)
-        {
-            for (var row = 1; row <= rows; row++)
-            {
-                var bg = row % 2 == 0 ? Panel : White;
-
-                AddTd(table, row.ToString(), bg, Muted,
-                    align: Element.ALIGN_CENTER);
-
-                for (var column = 2; column <= columns; column++)
-                    table.AddCell(new PdfPCell(new Phrase(" ", Font(8f, Ink)))
-                    {
-                        BackgroundColor = bg,
-                        Border          = Rectangle.BOX,
-                        BorderWidth     = 0.5f,
-                        BorderColor     = Rule,
-                        Padding         = 6f,
-                        FixedHeight     = 22f
-                    });
-            }
         }
 
         private static Font Font(float size, BaseColor color,

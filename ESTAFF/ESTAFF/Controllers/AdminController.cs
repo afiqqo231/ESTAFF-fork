@@ -362,7 +362,17 @@ namespace ESTAFF.Controllers
             var vm = new AssignTaskViewModel
             {
                 Employees = GetEmployeeSelectList(),
-                Options   = GetFormOptions()
+                Options   = GetFormOptions(),
+
+                // Prefilled with today so that choosing "Daily" hands the
+                // user the day they are almost certainly recording. Ignored
+                // while the task is long term - ApplyTo clears it.
+                PeriodDate = DateTime.Today,
+
+                // Long term with no period is the ordinary task, so the
+                // form opens on it and asks for nothing extra. Choosing
+                // "Daily" is what brings the period into play.
+                ScheduleType = TaskScheduleType.LongTerm
             };
             
             return View(vm);
@@ -389,6 +399,8 @@ namespace ESTAFF.Controllers
                     "Select the task type this task covers.");
             }
 
+            ValidatePeriod(model);
+
             if (!ModelState.IsValid)
                 return View(model);
 
@@ -402,12 +414,16 @@ namespace ESTAFF.Controllers
                 AssignedToUserId = model.AssignedToUserId,
                 CreatedByUserId = adminId,
                 TaskClassificationId = model.TaskClassificationId,
-                DueDate = model.DueDate,
                 Priority = model.Priority,
                 Status = TaskStatus.Pending,
                 CreatedDate = DateTime.Now,
                 LastModifiedDate = DateTime.Now
             };
+
+            // Schedule type, period and due date together: a daily task is due
+            // on the day it is worked and carries the hours, a long-term one
+            // is due when the form said and carries no period.
+            TaskPeriod.ApplyTo(task, model);
 
             if (!ApplyClassificationLink(task, model.TaskClassificationId,
                     model.TaskListId, model.ClipItemKey))
@@ -448,6 +464,16 @@ namespace ESTAFF.Controllers
                 Description = task.Description,
                 AssignedToUserId = task.AssignedToUserId,
                 DueDate = task.DueDate,
+
+                // Shown exactly as stored. A task with no period keeps none:
+                // the form only insists on one if it is switched to Daily, and
+                // filling the hours in here would put a period on a long-term
+                // task nobody asked to change.
+                ScheduleType = task.ScheduleType,
+                PeriodDate = task.PeriodDate,
+                PeriodStart = task.PeriodStart,
+                PeriodEnd = task.PeriodEnd,
+
                 Priority = task.Priority,
                 Status = task.Status,
                 TaskClassificationId = task.TaskClassificationId,
@@ -488,6 +514,8 @@ namespace ESTAFF.Controllers
                     "Select the task type this task covers.");
             }
 
+            ValidatePeriod(model);
+
             if (!ModelState.IsValid)
                 return View(model);
 
@@ -512,12 +540,28 @@ namespace ESTAFF.Controllers
                 task.AssignedToUserId = model.AssignedToUserId;
             }
 
-            if(task.DueDate != model.DueDate)
+            // Read from the schedule, not straight off the form: a daily
+            // task's due date is the day it is worked, and the form posts no
+            // due date of its own. The write is ApplyTo's below; this only
+            // records the change while the old value is still readable.
+            var dueDate = TaskPeriod.EffectiveDueDate(model);
+
+            if (task.DueDate != dueDate)
             {
-                changes.Append($"Due Date: '{task.DueDate:MMM dd}'" + 
-                    $" → '{model.DueDate:MMM dd}'. ");
-                task.DueDate = model.DueDate;
+                changes.Append($"Due Date: '{task.DueDate:MMM dd}'" +
+                    $" → '{dueDate:MMM dd}'. ");
             }
+
+            // Schedule type and period read as one thing in the history:
+            // "Daily, 25 Aug 08:00 - 17:00", so a change to any part of it is
+            // one legible line rather than three.
+            var scheduleBefore = TaskPeriod.Describe(task);
+            TaskPeriod.ApplyTo(task, model);
+            var scheduleAfter = TaskPeriod.Describe(task);
+
+            if (scheduleBefore != scheduleAfter)
+                changes.Append(
+                    $"Schedule: '{scheduleBefore}' → '{scheduleAfter}'. ");
 
             if (task.Priority != model.Priority)
             {
@@ -608,6 +652,256 @@ namespace ESTAFF.Controllers
         }
 
         // ══════════════════════════════════════════
+        // CALENDAR — EVERY EMPLOYEE'S TASKS BY DAY
+        // ══════════════════════════════════════════
+        //
+        // The manager's view of the same tasks the list on /Admin/Tasks holds:
+        // what is committed, when, by whom, and for which plant. Tasks sit on
+        // their DueDate — which for a daily task is the day it is worked, so
+        // both kinds land on the day the work actually belongs to.
+        //
+        // Filters are deliberately the same three a manager asks by: plant,
+        // employee, status. Classification is not among them; it says what
+        // kind of work a task is, which is a question for the list, not for
+        // "who is doing what this week".
+        public ActionResult Calendar(
+            string view = AdminCalendarViewModel.Weekly,
+            DateTime? date = null,
+            int? plantId = null,
+            string employeeId = "",
+            string status = "")
+        {
+            ViewBag.PageTitle = "Calendar";
+            ViewBag.PageSubtitle =
+                "Every employee's tasks, by day, week or month.";
+
+            // Same sweep the task list does: a calendar that still shows last
+            // week's work as Pending would be reporting a state nobody holds.
+            var taskService = new TaskService(_db);
+            taskService.UpdateOverdueTasks();
+
+            view = NormaliseCalendarView(view);
+
+            var target = (date?.Date ?? DateTime.Today);
+            DateTime periodStart, periodEnd;
+            CalendarPeriod(view, target, out periodStart, out periodEnd);
+
+            var vm = new AdminCalendarViewModel
+            {
+                View = view,
+                TargetDate = target,
+                PeriodStart = periodStart,
+                PeriodEnd = periodEnd,
+                PlantId = plantId,
+                EmployeeId = employeeId,
+                Status = status,
+                Plants = taskService.GetPlants(),
+                Employees = GetEmployeeSelectList()
+            };
+
+            switch (view)
+            {
+                case AdminCalendarViewModel.Daily:
+                    vm.PrevDate = target.AddDays(-1);
+                    vm.NextDate = target.AddDays(1);
+                    break;
+
+                case AdminCalendarViewModel.Monthly:
+                    vm.PrevDate = target.AddMonths(-1);
+                    vm.NextDate = target.AddMonths(1);
+                    break;
+
+                default:
+                    vm.PrevDate = target.AddDays(-7);
+                    vm.NextDate = target.AddDays(7);
+                    break;
+            }
+
+            // The whole of the last day, not midnight on it: DueDate is a
+            // DATETIME and a task saved with a time on it would fall outside
+            // the frame it is plainly inside.
+            var endOfPeriod = periodEnd.AddDays(1).AddTicks(-1);
+
+            var query = TaskQuery()
+                .Where(t => t.DueDate >= periodStart
+                         && t.DueDate <= endOfPeriod);
+
+            if (!string.IsNullOrEmpty(employeeId))
+                query = query.Where(t => t.AssignedToUserId == employeeId);
+
+            if (!string.IsNullOrEmpty(status) &&
+                Enum.TryParse<TaskStatus>(status, out var statusEnum))
+                query = query.Where(t => t.Status == statusEnum);
+
+            if (plantId.HasValue)
+            {
+                // A task has no plant of its own; it belongs to a plant
+                // through whoever it is assigned to. Resolved to user ids
+                // first so the filter is one IN clause rather than a join
+                // across the CLIP schema on every row.
+                var atPlant = taskService.UserIdsAtPlant(plantId.Value);
+                query = query.Where(t => atPlant.Contains(t.AssignedToUserId));
+            }
+
+            var tasks = query.OrderBy(t => t.DueDate).ToList();
+
+            var items = BuildCalendarItems(tasks, vm.Plants);
+
+            var byDay = items
+                .GroupBy(i => i.Task.DueDate.Date)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            for (var d = periodStart; d <= periodEnd; d = d.AddDays(1))
+            {
+                vm.Days.Add(new CalendarDayViewModel
+                {
+                    Date = d,
+                    Items = byDay.ContainsKey(d.Date)
+                        ? byDay[d.Date]
+                        : new List<CalendarTaskViewModel>()
+                });
+            }
+
+            vm.Legend = BuildCalendarLegend(items);
+
+            return View(vm);
+        }
+
+        private static string NormaliseCalendarView(string view)
+        {
+            switch ((view ?? "").ToLowerInvariant())
+            {
+                case AdminCalendarViewModel.Daily:
+                    return AdminCalendarViewModel.Daily;
+                case AdminCalendarViewModel.Monthly:
+                    return AdminCalendarViewModel.Monthly;
+                default:
+                    return AdminCalendarViewModel.Weekly;
+            }
+        }
+
+        // The days the frame covers. Weeks start on Monday, which is what the
+        // month grid's column headers assume as well.
+        private static void CalendarPeriod(string view, DateTime target,
+            out DateTime periodStart, out DateTime periodEnd)
+        {
+            switch (view)
+            {
+                case AdminCalendarViewModel.Daily:
+                    periodStart = target;
+                    periodEnd = target;
+                    return;
+
+                case AdminCalendarViewModel.Monthly:
+                    periodStart = new DateTime(target.Year, target.Month, 1);
+                    periodEnd = periodStart.AddMonths(1).AddDays(-1);
+                    return;
+
+                default:
+                    var offset = (int)target.DayOfWeek - (int)DayOfWeek.Monday;
+                    if (offset < 0) offset += 7;
+                    periodStart = target.AddDays(-offset);
+                    periodEnd = periodStart.AddDays(6);
+                    return;
+            }
+        }
+
+        // Wraps each task with the plant it belongs to and the hours it runs.
+        //
+        // The plant comes from the assignee's CLIP.UserPlants rows, which is
+        // EHS_PORTAL's record and incomplete — an employee with no rows there
+        // shows as "No plant" rather than dropping off the calendar, because a
+        // task nobody can see is worse than one whose plant is unknown.
+        private List<CalendarTaskViewModel> BuildCalendarItems(
+            List<TaskItem> tasks, List<Plant> plants)
+        {
+            var list = BuildTaskList(tasks);
+            var slots = CalendarPalette.SlotsFor(plants);
+            var plantsByUser = PlantsByUser(
+                tasks.Select(t => t.AssignedToUserId));
+            var scheduleByTask = tasks.ToDictionary(t => t.TaskId, t => t);
+
+            return list.Select(t =>
+            {
+                var task = scheduleByTask[t.TaskId];
+
+                var userPlants = plantsByUser.ContainsKey(t.AssignedToUserId)
+                    ? plantsByUser[t.AssignedToUserId]
+                    : new List<Plant>();
+
+                // The first by name carries the colour when someone is mapped
+                // to several plants; the rest are named in the detail panel.
+                var plant = userPlants.FirstOrDefault();
+
+                return new CalendarTaskViewModel
+                {
+                    Task = t,
+                    PlantId = plant?.Id,
+                    PlantName = plant?.PlantName,
+                    OtherPlantNames = userPlants.Skip(1)
+                        .Select(p => p.PlantName)
+                        .ToList(),
+                    ColorIndex = plant != null && slots.ContainsKey(plant.Id)
+                        ? slots[plant.Id]
+                        : 0,
+                    IsDaily = task.ScheduleType == TaskScheduleType.Daily,
+                    PeriodText = PeriodText(task),
+                    ScheduleText = TaskPeriod.Describe(task)
+                };
+            }).ToList();
+        }
+
+        // "08:00 – 17:00", or empty when the task records no hours.
+        private static string PeriodText(TaskItem task)
+        {
+            if (!task.PeriodStart.HasValue || !task.PeriodEnd.HasValue)
+                return "";
+
+            return string.Format("{0:hh\\:mm} – {1:hh\\:mm}",
+                task.PeriodStart.Value, task.PeriodEnd.Value);
+        }
+
+        // Which plants each of these users works at, in one query rather than
+        // one per task.
+        private Dictionary<string, List<Plant>> PlantsByUser(
+            IEnumerable<string> userIds)
+        {
+            var ids = userIds.Distinct().ToList();
+
+            return _db.UserPlants
+                .Where(up => ids.Contains(up.UserId))
+                .Select(up => new { up.UserId, up.Plant })
+                .ToList()
+                .GroupBy(x => x.UserId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Select(x => x.Plant)
+                          .Where(p => p != null)
+                          .OrderBy(p => p.PlantName)
+                          .ToList());
+        }
+
+        // The colours actually on screen, with what each one accounts for.
+        // "No plant" sorts last: it is a gap in EHS_PORTAL's records rather
+        // than a place, and reads oddly among the real ones.
+        private static List<CalendarPlantViewModel> BuildCalendarLegend(
+            List<CalendarTaskViewModel> items)
+        {
+            return items
+                .GroupBy(i => new { i.PlantId, i.PlantLabel, i.ColorIndex })
+                .Select(g => new CalendarPlantViewModel
+                {
+                    PlantId = g.Key.PlantId,
+                    Name = g.Key.PlantLabel,
+                    ColorIndex = g.Key.ColorIndex,
+                    Count = g.Count()
+                })
+                .OrderBy(p => p.PlantId.HasValue ? 0 : 1)
+                .ThenBy(p => p.Name)
+                .ToList();
+        }
+
+        // ══════════════════════════════════════════
         // TASK HISTORY
         // ══════════════════════════════════════════
         public ActionResult TaskHistory()
@@ -653,6 +947,8 @@ namespace ESTAFF.Controllers
                 .Select(r => new ReportListItemViewModel
                 {
                     ReportId = r.ReportId,
+                    PlantId = r.PlantId,
+                    PlantName = r.Plant?.PlantName,
                     EmpName = r.User?.UserName ?? "-",
                     EmpNumber = r.User?.EmpID ?? "-",
                     ReportType = r.ReportType,
@@ -684,6 +980,8 @@ namespace ESTAFF.Controllers
                 .Select(r => new ReportListItemViewModel
                 {
                     ReportId = r.ReportId,
+                    PlantId = r.PlantId,
+                    PlantName = r.Plant?.PlantName,
                     EmpName = r.User?.UserName ?? "-",
                     EmpNumber = r.User?.EmpID ?? "-",
                     ReportType = r.ReportType,
@@ -712,15 +1010,21 @@ namespace ESTAFF.Controllers
             var report = _db.Reports.Find(id);
             if (report == null) return HttpNotFound();
 
-            var userId = report.UserId;
-            var endOfDay = report.PeriodEnd.AddDays(1).AddTicks(-1);
+            var taskService = new TaskService(_db);
 
-            var tasks = TaskQuery()
-                .Where(t => t.AssignedToUserId == userId
-                         && t.CreatedDate >= report.PeriodStart
-                         && t.CreatedDate <= endOfDay)
-                .OrderBy(t => t.DueDate)
-                .ToList();
+            // Read through TaskService so the admin's copy of a report covers
+            // exactly the tasks the employee submitted. This used to run its
+            // own query filtered on CreatedDate while every employee-facing
+            // page filtered on DueDate, which meant an approver could be
+            // reviewing a different set of tasks than the one that was filed.
+            //
+            // Plant-scoped reports read their plant's tasks; a legacy personal
+            // one still reads the filer's, so an old return reprints as filed.
+            var tasks = report.PlantId.HasValue
+                ? taskService.GetTasksForReportPeriod(
+                    report.PlantId.Value, report.PeriodStart, report.PeriodEnd)
+                : taskService.GetTasksForReportPeriod(
+                    report.UserId, report.PeriodStart, report.PeriodEnd);
 
             var completed = tasks.Count(t =>
                 t.Status == TaskStatus.Complete);
@@ -728,6 +1032,8 @@ namespace ESTAFF.Controllers
             var vm = new ReportDetailViewModel
             {
                 ReportId = report.ReportId,
+                PlantId = report.PlantId,
+                PlantName = report.Plant?.PlantName,
                 EmpName = report.User?.UserName ?? "-",
                 EmpNumber = report.User?.EmpID ?? "-",
                 EmpEmail = report.User?.Email ?? "-",
@@ -755,7 +1061,7 @@ namespace ESTAFF.Controllers
 
             // The review table shows the actions taken on each task, so the
             // page needs the same resolved detail the PDF is built from.
-            vm.TaskDetails = new TaskService(_db)
+            vm.TaskDetails = taskService
                 .BuildReportTaskDetails(tasks, Clip.GetItemsForTasks(tasks));
 
             return View(vm);
@@ -822,15 +1128,21 @@ namespace ESTAFF.Controllers
             var report = _db.Reports.Find(id);
             if (report == null) return HttpNotFound();
 
-            var userId = report.UserId;
-            var endOfDay = report.PeriodEnd.AddDays(1).AddTicks(-1);
+            var taskService = new TaskService(_db);
 
-            var tasks = TaskQuery()
-                .Where(t => t.AssignedToUserId == userId
-                         && t.CreatedDate >= report.PeriodStart
-                         && t.CreatedDate <= endOfDay)
-                .OrderBy(t => t.DueDate)
-                .ToList();
+            // Read through TaskService so the admin's copy of a report covers
+            // exactly the tasks the employee submitted. This used to run its
+            // own query filtered on CreatedDate while every employee-facing
+            // page filtered on DueDate, which meant an approver could be
+            // reviewing a different set of tasks than the one that was filed.
+            //
+            // Plant-scoped reports read their plant's tasks; a legacy personal
+            // one still reads the filer's, so an old return reprints as filed.
+            var tasks = report.PlantId.HasValue
+                ? taskService.GetTasksForReportPeriod(
+                    report.PlantId.Value, report.PeriodStart, report.PeriodEnd)
+                : taskService.GetTasksForReportPeriod(
+                    report.UserId, report.PeriodStart, report.PeriodEnd);
 
             var completed = tasks.Count(t =>
                 t.Status == TaskStatus.Complete);
@@ -838,6 +1150,8 @@ namespace ESTAFF.Controllers
             var vm = new ReportDetailViewModel
             {
                 ReportId = report.ReportId,
+                PlantId = report.PlantId,
+                PlantName = report.Plant?.PlantName,
                 EmpName = report.User?.UserName ?? "-",
                 EmpNumber = report.User?.EmpID ?? "-",
                 EmpEmail = report.User?.Email ?? "-",
@@ -862,7 +1176,7 @@ namespace ESTAFF.Controllers
                     : 0
             };
 
-            vm.TaskDetails = new TaskService(_db)
+            vm.TaskDetails = taskService
                 .BuildReportTaskDetails(tasks, Clip.GetItemsForTasks(tasks));
 
             var pdfService = new ReportPdfService();
@@ -897,6 +1211,24 @@ namespace ESTAFF.Controllers
         // ══════════════════════════════════════════
         // HELPER
         // ══════════════════════════════════════════
+
+        // The period rules live in TaskPeriod because both the admin and
+        // employee forms answer to them; the controller only reports what they
+        // return. Whether a period is required depends on ScheduleType, which
+        // no data annotation can see.
+        private void ValidatePeriod(ITaskPeriodFields fields)
+        {
+            // A daily task is due on the day it is worked, so the form hides
+            // the due date and may post nothing for it. The binder's complaint
+            // about a required field the user was never shown is not an error
+            // anyone can act on - TaskPeriod.EffectiveDueDate supplies the
+            // date, and the missing period is reported below in its own words.
+            if (fields.ScheduleType == TaskScheduleType.Daily)
+                ModelState.Remove("DueDate");
+
+            foreach (var error in TaskPeriod.Validate(fields))
+                ModelState.AddModelError(error.Key, error.Value);
+        }
 
         // Tasks with the lookups the list view model needs already joined.
         private IQueryable<TaskItem> TaskQuery()
@@ -936,6 +1268,7 @@ namespace ESTAFF.Controllers
                     Priority             = t.Priority,
                     DueDate              = t.DueDate,
                     CreatedDate          = t.CreatedDate,
+                    AssignedDate         = t.AssignedDate,
                     CompletedDate        = t.CompletedDate,
                     AssignedToUserId     = t.AssignedToUserId,
                     AssignedToName       = t.AssignedToUser?.UserName ?? "-",

@@ -525,6 +525,125 @@
     // to refetch and the list is never empty while an assignee is unchosen.
 
     // ════════════════════════════════════════════
+    // SCHEDULE TYPE — daily or long term
+    // ════════════════════════════════════════════
+
+    // Swaps the date fields for the kind of task chosen: a daily task is
+    // scheduled as the day and hours the work is done, a long-term task as a
+    // due date, and the two share one slot in _ScheduleFields.
+    //
+    // The state the form opens in is rendered server-side; this takes over
+    // from the first click. The rules behind it are the server's too -
+    // TaskPeriod.Validate insists on a daily task's period, and
+    // TaskPeriod.ApplyTo derives its due date from the period date and clears
+    // a long-term task's hours. So an old copy of this file cached in a
+    // browser costs the user the switching, not a wrong task.
+    function wireScheduleChoice(group) {
+        var form = group.form || group.closest('form');
+        if (!form) return;
+
+        var radios = form.querySelectorAll('input[name="ScheduleType"]');
+        if (!radios.length) return;
+
+        var periodDate = form.querySelector('[name="PeriodDate"]');
+        var periodFields = [];
+        var names = ['PeriodDate', 'PeriodStart', 'PeriodEnd'];
+
+        for (var i = 0; i < names.length; i++) {
+            var el = form.querySelector('[name="' + names[i] + '"]');
+            if (el) periodFields.push(el);
+        }
+
+        if (!periodFields.length) return;
+
+        var dueDate = form.querySelector('[name="DueDate"]');
+
+        // The whole column, not the input: hiding the input alone would leave
+        // its label and validation message behind, labelling nothing.
+        function column(field) {
+            return (field.closest && field.closest('[class*="col-"]'))
+                || field.parentNode;
+        }
+
+        function show(field, visible) {
+            var col = column(field);
+            if (col) col.style.display = visible ? '' : 'none';
+        }
+
+        function selectedValue() {
+            for (var i = 0; i < radios.length; i++) {
+                if (radios[i].checked) return radios[i].value;
+            }
+            return null;
+        }
+
+        // What the user last put in the due date box themselves, so that
+        // switching back to long term returns it rather than handing them the
+        // period date the mirror below wrote while the box was out of sight.
+        var typedDueDate = dueDate ? dueDate.value : '';
+
+        // The due date box is hidden rather than removed or disabled, so it
+        // still posts. What it posts is the period date, which is what the
+        // server derives anyway - so a daily task reads the same whether or
+        // not this ran.
+        function mirrorDueDate() {
+            if (!dueDate || !periodDate || !periodDate.value) return;
+            dueDate.value = periodDate.value;
+        }
+
+        // A daily task is nearly always today's work, so the period date
+        // opens on today rather than empty. Only when it is empty: an edit
+        // form showing work done last week keeps last week, and a date the
+        // user has already chosen is theirs.
+        function defaultPeriodDate() {
+            if (!periodDate || periodDate.value) return;
+
+            var now = new Date();
+            periodDate.value = now.getFullYear()
+                + '-' + ('0' + (now.getMonth() + 1)).slice(-2)
+                + '-' + ('0' + now.getDate()).slice(-2);
+        }
+
+        function sync() {
+            // "1" is TaskScheduleType.Daily. Kept as the posted string rather
+            // than mirrored into JS, so the two cannot drift apart.
+            var daily = selectedValue() === '1';
+
+            for (var i = 0; i < periodFields.length; i++) {
+                show(periodFields[i], daily);
+            }
+
+            if (dueDate) show(dueDate, !daily);
+
+            if (daily) {
+                defaultPeriodDate();
+                mirrorDueDate();
+            } else if (dueDate) {
+                dueDate.value = typedDueDate;
+            }
+        }
+
+        for (var j = 0; j < radios.length; j++) {
+            radios[j].addEventListener('change', sync);
+        }
+
+        if (dueDate) {
+            // Only fires for a date the user chose: the mirror sets the value
+            // directly, which raises no event.
+            dueDate.addEventListener('change', function () {
+                typedDueDate = dueDate.value;
+            });
+        }
+
+        if (periodDate) {
+            periodDate.addEventListener('change', sync);
+            periodDate.addEventListener('input', sync);
+        }
+
+        sync();
+    }
+
+    // ════════════════════════════════════════════
     // BOOT
     // ════════════════════════════════════════════
 
@@ -540,6 +659,9 @@
 
         var fields = document.querySelectorAll('.classification-field');
         for (var j = 0; j < fields.length; j++) wireClassificationField(fields[j]);
+
+        var choices = document.querySelectorAll('.task-schedule-choice');
+        for (var k = 0; k < choices.length; k++) wireScheduleChoice(choices[k]);
     }
 
     if (document.readyState === 'loading') {

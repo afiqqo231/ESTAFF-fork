@@ -19,6 +19,25 @@
                 @Html.ValidationSummary(true, "",
                     new { @class = "alert alert-danger py-2 small" })
 
+                @* The plant the return covers. First, because everything
+                   else in the report follows from it: the tasks collected are
+                   the ones belonging to this plant for the period. *@
+                <div class="mb-4">
+                    @Html.LabelFor(m => m.PlantId,
+                        new { @class = "form-label" })
+                    @Html.DropDownListFor(m => m.PlantId,
+                        new SelectList(Model.Plants, "Id", "PlantName",
+                            Model.PlantId),
+                        "— Select a plant —",
+                        new { @class = "form-control" })
+                    @Html.ValidationMessageFor(m => m.PlantId, "",
+                        new { @class = "text-danger small" })
+                    <span class="text-muted small d-block mt-1">
+                        The report collects every task assigned to staff at
+                        this plant, not only your own.
+                    </span>
+                </div>
+
                 <!-- Report Type -->
                 <div class="mb-4">
                     <label class="form-label">Report Type</label>

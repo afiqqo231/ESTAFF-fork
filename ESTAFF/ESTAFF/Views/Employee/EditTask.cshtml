@@ -47,18 +47,15 @@
                                   style = "resize:none;" })
                     </div>
 
-                    <div class="col-md-6">
-                        @Html.LabelFor(m => m.DueDate,
-                            new { @class = "form-label" })
-                        @Html.TextBoxFor(m => m.DueDate,
-                            "{0:yyyy-MM-dd}",
-                            new { @class = "form-control",
-                                  type = "date" })
-                        @Html.ValidationMessageFor(m => m.DueDate, "",
-                            new { @class = "text-danger small" })
-                    </div>
+                    @* Task type and the date it decides on — a period for a
+                       daily task, a due date for a long-term one. The model
+                       goes straight through: this view model implements
+                       ITaskPeriodFields. *@
+                    @Html.Partial("_ScheduleFields", Model)
 
-                    <div class="col-md-6">
+                    @* Full width: the due date it used to share the row
+                       with is rendered by _ScheduleFields now. *@
+                    <div class="col-12">
                         @Html.LabelFor(m => m.Priority,
                             new { @class = "form-label" })
                         @Html.DropDownListFor(m => m.Priority,

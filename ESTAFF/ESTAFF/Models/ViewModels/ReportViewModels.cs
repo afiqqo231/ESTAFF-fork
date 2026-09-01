@@ -8,6 +8,18 @@ namespace ESTAFF.Models.ViewModels
 {
     public class GenerateReportViewModel
     {
+        // The plant this return covers. A report is one per plant per period,
+        // so this is the first thing it needs - the tasks follow from it.
+        [Required(ErrorMessage = "Select the plant this report covers")]
+        [Display(Name = "Plant")]
+        public int? PlantId { get; set; }
+
+        // Every plant, not only the generator's. CLIP.UserPlants is
+        // EHS_PORTAL's incomplete record of who works where, and restricting
+        // the list to it would leave an unmapped employee unable to generate
+        // anything at all.
+        public List<Plant> Plants { get; set; } = new List<Plant>();
+
         [Required(ErrorMessage = "Report type is required")]
         [Display(Name = "Report Type")]
         public ReportType ReportType { get; set; }
@@ -37,6 +49,16 @@ namespace ESTAFF.Models.ViewModels
     public class ReportListItemViewModel
     {
         public int ReportId { get; set; }
+
+        // Null on reports submitted before reports covered a plant. Those are
+        // legacy personal returns and say so rather than claiming a plant.
+        public int? PlantId { get; set; }
+        public string PlantName { get; set; }
+
+        public string PlantLabel => string.IsNullOrWhiteSpace(PlantName)
+            ? (PlantId.HasValue ? "Plant #" + PlantId.Value : "Personal (legacy)")
+            : PlantName;
+
         public string EmpName { get; set; }
         public string EmpNumber { get; set; }
         public ReportType ReportType { get; set; }
@@ -52,6 +74,13 @@ namespace ESTAFF.Models.ViewModels
     public class ReportDetailViewModel
     {
         public int ReportId { get; set; }
+
+        // The plant the return covers. Null on a legacy personal report, in
+        // which case the printed letterhead falls back to the Esh:Plant
+        // setting as it always did.
+        public int? PlantId { get; set; }
+        public string PlantName { get; set; }
+
         public string EmpName { get; set; }
         public string EmpNumber { get; set; }
         public string EmpEmail { get; set; }
